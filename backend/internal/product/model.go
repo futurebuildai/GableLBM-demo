@@ -30,11 +30,12 @@ const (
 
 // Product represents a catalog item
 type Product struct {
-	ID            uuid.UUID `json:"id"`
-	SKU           string    `json:"sku"`
-	Description   string    `json:"description"`
-	UOMPrimary    UOM       `json:"uom_primary"`
-	TotalQuantity float64   `json:"total_quantity"` // Aggregated from inventory
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID             uuid.UUID `json:"id"`
+	SKU            string    `json:"sku"`
+	Description    string    `json:"description"`
+	UOMPrimary     UOM       `json:"uom_primary"`
+	TotalQuantity  float64   `json:"total_quantity" db:"-"` // Aggregated from inventory
+	TotalAllocated float64   `json:"total_allocated" db:"-"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }

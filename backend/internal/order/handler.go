@@ -20,6 +20,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /orders", h.HandleListOrders)
 	mux.HandleFunc("GET /orders/{id}", h.HandleGetOrder)
 	mux.HandleFunc("POST /orders/{id}/confirm", h.HandleConfirmOrder)
+	mux.HandleFunc("POST /orders/{id}/fulfill", h.HandleFulfillOrder)
 }
 
 func (h *Handler) HandleCreateOrder(w http.ResponseWriter, r *http.Request) {
@@ -77,6 +78,22 @@ func (h *Handler) HandleConfirmOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.ConfirmOrder(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) HandleFulfillOrder(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid Order ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.FulfillOrder(r.Context(), id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -22,6 +22,7 @@ export interface Product {
     description: string;
     uom_primary: UOM;
     total_quantity?: number;
+    total_allocated?: number;
     created_at: string;
     updated_at: string;
 }
@@ -31,5 +32,6 @@ export interface Inventory {
     product_id: string;
     location: string;
     quantity: number;
+    allocated?: number;
     updated_at: string;
 }

@@ -45,5 +45,16 @@ export const OrderService = {
             const errorText = await response.text();
             throw new Error(errorText || 'Failed to confirm order');
         }
+    },
+
+    async fulfillOrder(id: string): Promise<void> {
+        const response = await fetch(`${API_URL}/orders/${id}/fulfill`, {
+            method: 'POST',
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to fulfill order');
+        }
     }
 };

@@ -4,6 +4,8 @@ import { Inventory } from "./pages/Inventory";
 import { QuoteBuilder } from "./pages/QuoteBuilder";
 import OrderList from "./pages/orders/OrderList";
 import OrderDetail from "./pages/orders/OrderDetail";
+import InvoiceList from "./pages/invoices/InvoiceList";
+import InvoiceDetail from "./pages/invoices/InvoiceDetail";
 
 function App() {
   return (
@@ -15,6 +17,8 @@ function App() {
           <Route path="quotes/new" element={<QuoteBuilder />} />
           <Route path="orders" element={<OrderList />} />
           <Route path="orders/:id" element={<OrderDetail />} />
+          <Route path="invoices" element={<InvoiceList />} />
+          <Route path="invoices/:id" element={<InvoiceDetail />} />
         </Route>
       </Routes>
     </BrowserRouter>

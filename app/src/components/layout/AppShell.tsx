@@ -59,6 +59,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         active={location.pathname.startsWith('/orders')}
                     />
                     <NavItem
+                        to="/invoices"
+                        icon={<FileText size={20} />}
+                        label="Invoices"
+                        isOpen={sidebarOpen}
+                        active={location.pathname.startsWith('/invoices')}
+                    />
+                    <NavItem
                         to="/logistics"
                         icon={<Truck size={20} />}
                         label="Logistics"

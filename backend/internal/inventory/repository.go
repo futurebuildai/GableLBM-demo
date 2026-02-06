@@ -15,6 +15,7 @@ type Repository interface {
 	CreateInventory(ctx context.Context, inv *Inventory) error
 	ListInventoryByProduct(ctx context.Context, productID uuid.UUID) ([]Inventory, error)
 	AllocateStock(ctx context.Context, inventoryID uuid.UUID, delta float64) error
+	FulfillStock(ctx context.Context, inventoryID uuid.UUID, delta float64) error
 }
 
 type PostgresRepository struct {
@@ -119,6 +120,18 @@ func (r *PostgresRepository) AllocateStock(ctx context.Context, inventoryID uuid
 	_, err := r.db.Pool.Exec(ctx, query, delta, inventoryID)
 	if err != nil {
 		return fmt.Errorf("failed to allocate stock: %w", err)
+	}
+	return nil
+}
+func (r *PostgresRepository) FulfillStock(ctx context.Context, inventoryID uuid.UUID, delta float64) error {
+	query := `
+		UPDATE inventory
+		SET quantity = quantity - $1, allocated = allocated - $1, updated_at = NOW()
+		WHERE id = $2
+	`
+	_, err := r.db.Pool.Exec(ctx, query, delta, inventoryID)
+	if err != nil {
+		return fmt.Errorf("failed to fulfill stock: %w", err)
 	}
 	return nil
 }

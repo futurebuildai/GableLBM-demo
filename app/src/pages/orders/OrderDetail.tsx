@@ -41,6 +41,21 @@ export default function OrderDetail() {
         }
     }
 
+    async function handleFulfill() {
+        if (!order) return;
+        if (!confirm("Fulfilling this order will reduce stock and create an invoice. Proceed?")) return;
+
+        setProcessing(true);
+        try {
+            await OrderService.fulfillOrder(order.id);
+            await loadOrder(order.id);
+        } catch (error) {
+            alert("Failed to fulfill order: " + error);
+        } finally {
+            setProcessing(false);
+        }
+    }
+
     if (loading || !order) {
         return <div className="text-white">Loading order details...</div>;
     }
@@ -67,8 +82,12 @@ export default function OrderDetail() {
                         </button>
                     )}
                     {order.status === 'CONFIRMED' && (
-                        <button className="bg-blue-500 text-white font-bold px-4 py-2 rounded hover:bg-blue-600 transition-colors flex items-center gap-2">
-                            <Truck size={18} /> Dispatch
+                        <button
+                            onClick={handleFulfill}
+                            disabled={processing}
+                            className="bg-blue-500 text-white font-bold px-4 py-2 rounded hover:bg-blue-600 transition-colors flex items-center gap-2"
+                        >
+                            {processing ? 'Processing...' : <><Truck size={18} /> Fulfill & Invoice</>}
                         </button>
                     )}
                 </div>

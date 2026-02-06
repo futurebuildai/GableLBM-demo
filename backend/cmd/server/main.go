@@ -15,6 +15,7 @@ import (
 	"github.com/gablelbm/gable/internal/config"
 	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/inventory"
+	"github.com/gablelbm/gable/internal/invoice"
 	"github.com/gablelbm/gable/internal/location"
 	"github.com/gablelbm/gable/internal/order"
 	"github.com/gablelbm/gable/internal/product"
@@ -82,8 +83,14 @@ func main() {
 	quoteHandler := quote.NewHandler(quote.NewService(quote.NewRepository(db)))
 	quoteHandler.RegisterRoutes(mux)
 
-	// Order Module - injected with InventoryService
-	orderHandler := order.NewHandler(order.NewService(order.NewRepository(db), inventorySvc))
+	// Invoice Module
+	invoiceRepo := invoice.NewRepository(db)
+	invoiceSvc := invoice.NewService(invoiceRepo)
+	invoiceHandler := invoice.NewHandler(invoiceSvc)
+	invoiceHandler.RegisterRoutes(mux)
+
+	// Order Module - injected with InventoryService and InvoiceService
+	orderHandler := order.NewHandler(order.NewService(order.NewRepository(db), inventorySvc, invoiceSvc))
 	orderHandler.RegisterRoutes(mux)
 
 	// Health Check (Public?)

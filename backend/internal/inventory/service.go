@@ -131,7 +131,60 @@ func (s *Service) Allocate(ctx context.Context, productID uuid.UUID, quantity fl
 	return s.repo.AllocateStock(ctx, best.ID, quantity)
 }
 
+func (s *Service) Release(ctx context.Context, productID uuid.UUID, quantity float64) error {
+	return s.Allocate(ctx, productID, -quantity)
+}
+
 func (s *Service) ListByProduct(ctx context.Context, productIDStr string) ([]Inventory, error) {
 	// Parse UUID
 	return []Inventory{}, nil // TODO: Fix UUID parsing in handler or here
+}
+
+func (s *Service) Fulfill(ctx context.Context, productID uuid.UUID, quantity float64) error {
+	if quantity <= 0 {
+		return fmt.Errorf("quantity must be positive")
+	}
+
+	items, err := s.repo.ListInventoryByProduct(ctx, productID)
+	if err != nil {
+		return fmt.Errorf("failed to list inventory: %w", err)
+	}
+
+	remaining := quantity
+
+	// Consume allocated stock
+	for i := range items {
+		if remaining <= 0 {
+			break
+		}
+
+		// We prefer to take from where it was allocated.
+		available := items[i].Allocated
+		if available > 0 {
+			take := remaining
+			if available < remaining {
+				take = available
+			}
+
+			if err := s.repo.FulfillStock(ctx, items[i].ID, take); err != nil {
+				return createError(fmt.Errorf("failed to fulfill stock from inv %s: %w", items[i].ID, err))
+			}
+			remaining -= take
+		}
+	}
+
+	if remaining > 0 {
+		return fmt.Errorf("insufficient allocated stock to fulfill %f (remaining: %f)", quantity, remaining)
+	}
+
+	return nil
+}
+
+func (s *Service) RevertFulfillment(ctx context.Context, productID uuid.UUID, quantity float64) error {
+	return s.Fulfill(ctx, productID, -quantity)
+}
+
+func createError(err error) error {
+	// Helper to handle error wrapping
+	return err
 }

@@ -17,13 +17,15 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdju
                             <th className="px-6 py-3 border-b border-zinc-800">Description</th>
                             <th className="px-6 py-3 border-b border-zinc-800">UOM</th>
                             <th className="px-6 py-3 border-b border-zinc-800 text-right">On Hand</th>
+                            <th className="px-6 py-3 border-b border-zinc-800 text-right">Allocated</th>
+                            <th className="px-6 py-3 border-b border-zinc-800 text-right">Available</th>
                             <th className="px-6 py-3 border-b border-zinc-800 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800">
                         {products.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="px-6 py-8 text-center text-zinc-600">
+                                <td colSpan={7} className="px-6 py-8 text-center text-zinc-600">
                                     No products found. Add items to the pile.
                                 </td>
                             </tr>
@@ -39,6 +41,12 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdju
                                     </td>
                                     <td className="px-6 py-3 text-right font-mono text-emerald-400">
                                         {(p.total_quantity || 0).toFixed(4)}
+                                    </td>
+                                    <td className="px-6 py-3 text-right font-mono text-amber-400">
+                                        {(p.total_allocated || 0).toFixed(4)}
+                                    </td>
+                                    <td className="px-6 py-3 text-right font-mono text-zinc-100">
+                                        {((p.total_quantity || 0) - (p.total_allocated || 0)).toFixed(4)}
                                     </td>
                                     <td className="px-6 py-3 text-right">
                                         <button

@@ -77,7 +77,8 @@ func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Pro
 func (r *PostgresRepository) ListProducts(ctx context.Context) ([]Product, error) {
 	query := `
 		SELECT p.id, p.sku, p.description, p.uom_primary, p.created_at, p.updated_at,
-		       COALESCE(SUM(i.quantity), 0) as total_quantity
+		       COALESCE(SUM(i.quantity), 0) as total_quantity,
+		       COALESCE(SUM(i.allocated), 0) as total_allocated
 		FROM products p
 		LEFT JOIN inventory i ON p.id = i.product_id
 		GROUP BY p.id
@@ -100,6 +101,7 @@ func (r *PostgresRepository) ListProducts(ctx context.Context) ([]Product, error
 			&p.CreatedAt,
 			&p.UpdatedAt,
 			&p.TotalQuantity,
+			&p.TotalAllocated,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan product: %w", err)
 		}
