@@ -1,23 +1,22 @@
 # Contributing to GableLBM
 
-We welcome contributions from LBM dealers, developers, and industry partners. GableLBM is an open-source "Open Operating System" for the lumber industry.
+We build with the **Antigravity** Standard. Zero laziness. L8 Quality.
 
-## How to Contribute
+## The Workflow
+1.  **Sprints**: We work in strict sprints defined in `productdocs/sprint_plans/`.
+2.  **Agent Execution**: Agents must follow the `.agent/workflows/sprint_execution.md` protocol.
+3.  **Human Execution**: Humans should mimic this rigor—PRs required, tests required.
 
-### 1. Industry Partners (Dealers & Co-ops)
-- **Natural Language Change Requests (NL-CRs):** Use the Partner Portal to submit requests in plain English. Our AI Governance layer analyzes these for roadmap inclusion.
-- **Workflow Audits:** Help us refine the user journeys for Yard, Sales, and Finance.
+## The "Gate"
+No code merges to `main` without passing the **L8 Production Readiness Gate**.
+See: `productdocs/process/production_readiness_gate.md`.
 
-### 2. Developers
-- **Module Ownership:** We encourage developers to take ownership of specific modules (e.g., "PostgreSQL Driver for BisTrack Data").
-- **Pull Requests:** 
-    - Fork the repo.
-    - Create a feature branch.
-    - Ensure all tests pass.
-    - Submit a PR with a clear description of the "WHY" behind the change.
+## Tech Stack
+*   **Backend**: Go 1.25+ (Standard Lib + Chi).
+*   **Frontend**: React 19 + Vite + Shadcn/UI.
+*   **Style**: Tailwind CSS ("Industrial Dark").
 
-## Code of Conduct
-We are committed to a professional, inclusive, and collaborative environment. Please be respectful of all contributors.
-
-## Licensing
-By contributing to GableLBM, you agree that your contributions will be licensed under the AGPL-3.0.
+## Principles
+*   **Headless**: Logic lives in hooks/services. UI is just a render layer.
+*   **Safety**: Strong types. No `any`.
+*   **Speed**: < 100ms interactions.
