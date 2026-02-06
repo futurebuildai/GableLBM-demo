@@ -19,6 +19,7 @@ import (
 	"github.com/gablelbm/gable/internal/invoice"
 	"github.com/gablelbm/gable/internal/location"
 	"github.com/gablelbm/gable/internal/order"
+	"github.com/gablelbm/gable/internal/payment"
 	"github.com/gablelbm/gable/internal/pricing"
 	"github.com/gablelbm/gable/internal/product"
 	"github.com/gablelbm/gable/internal/quote"
@@ -113,6 +114,12 @@ func main() {
 	docSvc := document.NewService(productRepo)
 	docHandler := document.NewHandler(docSvc, orderSvc, invoiceSvc, customerSvc)
 	docHandler.RegisterRoutes(mux)
+
+	// Payment Module
+	paymentRepo := payment.NewRepository(db)
+	paymentSvc := payment.NewService(paymentRepo, invoiceRepo)
+	paymentHandler := payment.NewHandler(paymentSvc)
+	paymentHandler.RegisterRoutes(mux)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

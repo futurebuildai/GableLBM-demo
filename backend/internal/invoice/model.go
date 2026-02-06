@@ -10,6 +10,7 @@ type InvoiceStatus string
 
 const (
 	InvoiceStatusUnpaid  InvoiceStatus = "UNPAID"
+	InvoiceStatusPartial InvoiceStatus = "PARTIAL"
 	InvoiceStatusPaid    InvoiceStatus = "PAID"
 	InvoiceStatusVoid    InvoiceStatus = "VOID"
 	InvoiceStatusOverdue InvoiceStatus = "OVERDUE"

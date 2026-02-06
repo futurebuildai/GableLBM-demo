@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { LocationService } from '../../services/LocationService';
-import type { Location } from '../../types/location';
+import type { Location, LocationType } from '../../types/location';
 
 export const LocationManager: React.FC = () => {
     const [locations, setLocations] = useState<Location[]>([]);
     const [newCode, setNewCode] = useState('');
-    const [newType, setNewType] = useState('ZONE');
+    const [newType, setNewType] = useState<LocationType>('ZONE');
 
     const loadLocations = useCallback(async () => {
         try {
@@ -26,6 +26,7 @@ export const LocationManager: React.FC = () => {
             await LocationService.createLocation({
                 code: newCode,
                 type: newType,
+                path: newCode,
                 // parent_id: ... TODO: Selection logic
             });
             setNewCode('');
@@ -49,7 +50,7 @@ export const LocationManager: React.FC = () => {
                 <select
                     className="bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
                     value={newType}
-                    onChange={(e) => setNewType(e.target.value)}
+                    onChange={(e) => setNewType(e.target.value as LocationType)}
                 >
                     <option value="YARD">Yard</option>
                     <option value="ZONE">Zone</option>

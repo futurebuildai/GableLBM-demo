@@ -14,6 +14,7 @@ type Repository interface {
 	CreateInvoice(ctx context.Context, inv *Invoice) error
 	GetInvoice(ctx context.Context, id uuid.UUID) (*Invoice, error)
 	ListInvoices(ctx context.Context) ([]Invoice, error)
+	UpdateInvoice(ctx context.Context, inv *Invoice) error
 }
 
 type PostgresRepository struct {
@@ -139,4 +140,18 @@ func (r *PostgresRepository) ListInvoices(ctx context.Context) ([]Invoice, error
 		invoices = append(invoices, inv)
 	}
 	return invoices, nil
+}
+
+func (r *PostgresRepository) UpdateInvoice(ctx context.Context, inv *Invoice) error {
+	inv.UpdatedAt = time.Now()
+	query := `
+		UPDATE invoices
+		SET status = $1, paid_at = $2, updated_at = $3
+		WHERE id = $4
+	`
+	_, err := r.db.Pool.Exec(ctx, query, inv.Status, inv.PaidAt, inv.UpdatedAt, inv.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update invoice: %w", err)
+	}
+	return nil
 }

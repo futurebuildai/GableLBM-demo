@@ -1,18 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { InvoiceService } from '../../services/InvoiceService';
+import { paymentService } from '../../services/paymentService';
+import { PaymentModal } from '../../components/invoices/PaymentModal';
 import type { Invoice } from '../../types/invoice';
-import { Download } from 'lucide-react';
+import type { Payment, CreatePaymentRequest } from '../../types/payment';
+import { Download, CreditCard } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export default function InvoiceDetail() {
     const { id } = useParams();
     const [invoice, setInvoice] = useState<Invoice | null>(null);
+    const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
     useEffect(() => {
-        if (id) loadInvoice(id);
+        if (id) {
+            loadInvoice(id);
+            loadPayments(id);
+        }
     }, [id]);
 
     async function loadInvoice(id: string) {
@@ -26,10 +34,30 @@ export default function InvoiceDetail() {
         }
     }
 
+    async function loadPayments(id: string) {
+        try {
+            const data = await paymentService.getHistory(id);
+            setPayments(data);
+        } catch (error) {
+            console.error("Failed to load payments", error);
+        }
+    }
+
+    const handlePayment = async (input: CreatePaymentRequest) => {
+        await paymentService.createPayment(input);
+        if (id) {
+            await loadInvoice(id);
+            await loadPayments(id);
+        }
+    };
+
     if (loading || !invoice) return <div className="text-white">Loading invoice...</div>;
 
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const amountDue = invoice.total_amount - totalPaid;
+
     return (
-        <div className="space-y-8 max-w-4xl mx-auto">
+        <div className="space-y-8 max-w-4xl mx-auto pb-20">
             <div className="flex items-center justify-between pb-6 border-b border-white/10">
                 <div>
                     <h1 className="text-3xl font-bold font-mono text-white">Invoice #{invoice.id.slice(0, 8)}</h1>
@@ -38,11 +66,19 @@ export default function InvoiceDetail() {
                 <div className="flex gap-3">
                     <button
                         onClick={() => window.open(`${API_URL}/documents/print/invoice/${invoice.id}`, '_blank')}
-                        className="bg-white/10 text-white hover:bg-white/20 px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                        className="bg-white/10 text-white hover:bg-white/20 px-4 py-2 rounded flex items-center gap-2 transition-colors border border-white/10"
                     >
                         <Download size={18} /> Download PDF
                     </button>
-                    {/* Placeholder for Pay Now */}
+
+                    {invoice.status !== 'PAID' && (
+                        <button
+                            onClick={() => setIsPaymentModalOpen(true)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded flex items-center gap-2 transition-colors font-medium shadow-lg shadow-emerald-900/20"
+                        >
+                            <CreditCard size={18} /> Process Payment
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -70,6 +106,7 @@ export default function InvoiceDetail() {
                             <span className="text-zinc-400">Status</span>
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border
                                 ${invoice.status === 'UNPAID' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : ''}
+                                ${invoice.status === 'PARTIAL' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : ''}
                                 ${invoice.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : ''}
                             `}>
                                 {invoice.status}
@@ -80,6 +117,9 @@ export default function InvoiceDetail() {
             </div>
 
             <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+                <div className="px-6 py-4 border-b border-zinc-800">
+                    <h3 className="text-zinc-100 font-bold">Line Items</h3>
+                </div>
                 <table className="w-full text-left text-sm">
                     <thead className="bg-zinc-950 text-zinc-400 uppercase text-xs">
                         <tr>
@@ -92,7 +132,7 @@ export default function InvoiceDetail() {
                     <tbody className="divide-y divide-zinc-800">
                         {invoice.lines?.map(line => (
                             <tr key={line.id}>
-                                <td className="px-6 py-4 text-white font-medium">{line.product_id.slice(0, 8)}</td>{/* Resolve Name */}
+                                <td className="px-6 py-4 text-white font-medium">{line.product_id.slice(0, 8)}</td>
                                 <td className="px-6 py-4 text-right text-zinc-300 font-mono">{line.quantity}</td>
                                 <td className="px-6 py-4 text-right text-zinc-300 font-mono">${line.price_each.toFixed(2)}</td>
                                 <td className="px-6 py-4 text-right text-white font-mono font-bold">${(line.quantity * line.price_each).toFixed(2)}</td>
@@ -108,6 +148,45 @@ export default function InvoiceDetail() {
                 </table>
             </div>
 
+            {/* Payment History Section */}
+            {payments.length > 0 && (
+                <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
+                        <h3 className="text-zinc-100 font-bold">Payment History</h3>
+                        <span className="text-zinc-400 text-sm">Paid: <span className="text-green-400 font-mono">${totalPaid.toFixed(2)}</span></span>
+                    </div>
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-zinc-950 text-zinc-400 uppercase text-xs">
+                            <tr>
+                                <th className="px-6 py-4">Date</th>
+                                <th className="px-6 py-4">Method</th>
+                                <th className="px-6 py-4">Reference</th>
+                                <th className="px-6 py-4 text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-800">
+                            {payments.map(p => (
+                                <tr key={p.id}>
+                                    <td className="px-6 py-4 text-zinc-300">{new Date(p.created_at).toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-zinc-300 font-bold">{p.method}</td>
+                                    <td className="px-6 py-4 text-zinc-400 font-mono text-xs">{p.reference || '-'}</td>
+                                    <td className="px-6 py-4 text-right text-white font-mono font-bold">${p.amount.toFixed(2)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {invoice.id && (
+                <PaymentModal
+                    isOpen={isPaymentModalOpen}
+                    onClose={() => setIsPaymentModalOpen(false)}
+                    onSave={handlePayment}
+                    invoiceId={invoice.id}
+                    amountDue={amountDue > 0 ? amountDue : 0}
+                />
+            )}
         </div>
     );
 }
