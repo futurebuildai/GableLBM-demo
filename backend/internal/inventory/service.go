@@ -56,38 +56,33 @@ func (s *Service) AdjustStock(ctx context.Context, req StockAdjustmentRequest) e
 }
 
 func (s *Service) MoveStock(ctx context.Context, req StockMovementRequest) error {
-	// Transactional logic ideally
-	// 1. Remove from FromLocation
-	// 2. Add to ToLocation
+	return s.repo.ExecuteInTx(ctx, func(ctx context.Context) error {
+		// Subtract from source
+		err := s.AdjustStock(ctx, StockAdjustmentRequest{
+			ProductID:  req.ProductID,
+			LocationID: req.FromLocationID,
+			Quantity:   -req.Quantity,
+			IsDelta:    true,
+			Reason:     "Move Out: " + req.Reason,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to remove stock from source: %w", err)
+		}
 
-	// Subtract from source
-	err := s.AdjustStock(ctx, StockAdjustmentRequest{
-		ProductID:  req.ProductID,
-		LocationID: req.FromLocationID,
-		Quantity:   -req.Quantity,
-		IsDelta:    true,
-		Reason:     "Move Out: " + req.Reason,
+		// Add to dest
+		err = s.AdjustStock(ctx, StockAdjustmentRequest{
+			ProductID:  req.ProductID,
+			LocationID: &req.ToLocationID,
+			Quantity:   req.Quantity,
+			IsDelta:    true,
+			Reason:     "Move In: " + req.Reason,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to add stock to destination: %w", err)
+		}
+
+		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("failed to remove stock from source: %w", err)
-	}
-
-	// Add to dest
-	err = s.AdjustStock(ctx, StockAdjustmentRequest{
-		ProductID:  req.ProductID,
-		LocationID: &req.ToLocationID,
-		Quantity:   req.Quantity,
-		IsDelta:    true,
-		Reason:     "Move In: " + req.Reason,
-	})
-	if err != nil {
-		// Ideally rollback source... but manual rollback here:
-		// This is why we need DB transactions in service layer.
-		// For MVP Sprint 03, we might accept risk or implement rudimentary transaction support.
-		return fmt.Errorf("failed to add stock to destination: %w", err)
-	}
-
-	return nil
 }
 
 // Allocate reserves stock for a product.
@@ -136,8 +131,11 @@ func (s *Service) Release(ctx context.Context, productID uuid.UUID, quantity flo
 }
 
 func (s *Service) ListByProduct(ctx context.Context, productIDStr string) ([]Inventory, error) {
-	// Parse UUID
-	return []Inventory{}, nil // TODO: Fix UUID parsing in handler or here
+	id, err := uuid.Parse(productIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid product id: %w", err)
+	}
+	return s.repo.ListInventoryByProduct(ctx, id)
 }
 
 func (s *Service) Fulfill(ctx context.Context, productID uuid.UUID, quantity float64) error {

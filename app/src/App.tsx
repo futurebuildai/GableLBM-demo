@@ -8,6 +8,10 @@ import InvoiceList from "./pages/invoices/InvoiceList";
 import InvoiceDetail from "./pages/invoices/InvoiceDetail";
 import DailyTill from "./pages/DailyTill";
 import { DispatchBoard } from "./pages/DispatchBoard";
+import { DriverLayout } from "./pages/driver/DriverLayout";
+import { RouteList } from "./pages/driver/RouteList";
+import { StopList } from "./pages/driver/StopList";
+import { DeliveryDetail } from "./pages/driver/DeliveryDetail";
 
 function App() {
   return (
@@ -23,6 +27,13 @@ function App() {
           <Route path="invoices/:id" element={<InvoiceDetail />} />
           <Route path="reports/daily-till" element={<DailyTill />} />
           <Route path="dispatch" element={<DispatchBoard />} />
+        </Route>
+
+        {/* Mobile Driver App */}
+        <Route path="/driver" element={<DriverLayout />}>
+          <Route index element={<RouteList />} />
+          <Route path="routes/:id" element={<StopList />} />
+          <Route path="deliveries/:id" element={<DeliveryDetail />} />
         </Route>
       </Routes>
     </BrowserRouter>

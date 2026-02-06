@@ -16,6 +16,7 @@ type Repository interface {
 	ListInventoryByProduct(ctx context.Context, productID uuid.UUID) ([]Inventory, error)
 	AllocateStock(ctx context.Context, inventoryID uuid.UUID, delta float64) error
 	FulfillStock(ctx context.Context, inventoryID uuid.UUID, delta float64) error
+	ExecuteInTx(ctx context.Context, fn func(context.Context) error) error
 }
 
 type PostgresRepository struct {
@@ -26,6 +27,10 @@ func NewRepository(db *database.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
 
+func (r *PostgresRepository) ExecuteInTx(ctx context.Context, fn func(context.Context) error) error {
+	return r.db.RunInTx(ctx, fn)
+}
+
 func (r *PostgresRepository) GetInventory(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID) (*Inventory, error) {
 	query := `
 		SELECT id, product_id, location_id, location, quantity, allocated, updated_at
@@ -33,7 +38,7 @@ func (r *PostgresRepository) GetInventory(ctx context.Context, productID uuid.UU
 		WHERE product_id = $1 AND (($2::uuid IS NULL AND location_id IS NULL) OR location_id = $2)
 	`
 	var inv Inventory
-	err := r.db.Pool.QueryRow(ctx, query, productID, locationID).Scan(
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, query, productID, locationID).Scan(
 		&inv.ID,
 		&inv.ProductID,
 		&inv.LocationID,
@@ -59,7 +64,7 @@ func (r *PostgresRepository) CreateInventory(ctx context.Context, inv *Inventory
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, updated_at
 	`
-	err := r.db.Pool.QueryRow(ctx, query, inv.ProductID, inv.LocationID, inv.Location, inv.Quantity, inv.Allocated).Scan(
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, query, inv.ProductID, inv.LocationID, inv.Location, inv.Quantity, inv.Allocated).Scan(
 		&inv.ID,
 		&inv.UpdatedAt,
 	)
@@ -76,7 +81,7 @@ func (r *PostgresRepository) UpdateInventory(ctx context.Context, inv *Inventory
 		WHERE id = $3
 		RETURNING updated_at
 	`
-	err := r.db.Pool.QueryRow(ctx, query, inv.Quantity, inv.Allocated, inv.ID).Scan(&inv.UpdatedAt)
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, query, inv.Quantity, inv.Allocated, inv.ID).Scan(&inv.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
@@ -92,7 +97,7 @@ func (r *PostgresRepository) ListInventoryByProduct(ctx context.Context, product
         LEFT JOIN locations l ON i.location_id = l.id
         WHERE i.product_id = $1
     `
-	rows, err := r.db.Pool.Query(ctx, query, productID)
+	rows, err := r.db.GetExecutor(ctx).Query(ctx, query, productID)
 	if err != nil {
 		return nil, err
 	}
@@ -115,9 +120,7 @@ func (r *PostgresRepository) AllocateStock(ctx context.Context, inventoryID uuid
 		SET allocated = allocated + $1, updated_at = NOW()
 		WHERE id = $2
 	`
-	// TODO: Add check to ensure allocated <= quantity? Or allow over-allocation?
-	// For now, allow it, but maybe warn.
-	_, err := r.db.Pool.Exec(ctx, query, delta, inventoryID)
+	_, err := r.db.GetExecutor(ctx).Exec(ctx, query, delta, inventoryID)
 	if err != nil {
 		return fmt.Errorf("failed to allocate stock: %w", err)
 	}
@@ -129,7 +132,7 @@ func (r *PostgresRepository) FulfillStock(ctx context.Context, inventoryID uuid.
 		SET quantity = quantity - $1, allocated = allocated - $1, updated_at = NOW()
 		WHERE id = $2
 	`
-	_, err := r.db.Pool.Exec(ctx, query, delta, inventoryID)
+	_, err := r.db.GetExecutor(ctx).Exec(ctx, query, delta, inventoryID)
 	if err != nil {
 		return fmt.Errorf("failed to fulfill stock: %w", err)
 	}

@@ -142,6 +142,10 @@ type UpdateDeliveryStatusRequest struct {
 	PODSignedBy *string        `json:"pod_signed_by"`
 }
 
+type ReorderStopsRequest struct {
+	OrderedDeliveryIDs []uuid.UUID `json:"ordered_delivery_ids"`
+}
+
 // Interfaces
 
 type Repository interface {
@@ -154,7 +158,7 @@ type Repository interface {
 	// Routes
 	CreateRoute(ctx context.Context, route *Route) error
 	GetRoute(ctx context.Context, id uuid.UUID) (*Route, error)
-	ListRoutes(ctx context.Context, date *time.Time) ([]Route, error)
+	ListRoutes(ctx context.Context, date *time.Time, driverID *uuid.UUID) ([]Route, error)
 	UpdateRouteStatus(ctx context.Context, id uuid.UUID, status RouteStatus) error
 
 	// Deliveries
@@ -162,6 +166,7 @@ type Repository interface {
 	GetDelivery(ctx context.Context, id uuid.UUID) (*Delivery, error)
 	ListDeliveriesByRoute(ctx context.Context, routeID uuid.UUID) ([]Delivery, error)
 	UpdateDeliveryStatus(ctx context.Context, id uuid.UUID, status DeliveryStatus, pod *PODUpdate) error
+	ReorderRouteDeliveries(ctx context.Context, routeID uuid.UUID, deliveryIDs []uuid.UUID) error
 }
 
 type PODUpdate struct {

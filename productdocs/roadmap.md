@@ -52,9 +52,9 @@
     *   General Ledger (QuickBooks/NetSuite) Sync.
     *   Vendor EDI (Purchasing).
 2.  **Advanced Logistics & Operations**:
-    *   Inventory Transfers (Multi-Location Sync).
+    *   [x] Inventory Transfers (Multi-Location Sync).
     *   Millwork Configurator (Doors/Windows).
-    *   Dispatch Route Optimization.
+    *   [x] Dispatch Route Optimization (Stop Reordering & Driver App).
 3.  **Governance**:
     *   Partner Portal (Co-op management).
     *   AI Governance Layer (RFC generation).

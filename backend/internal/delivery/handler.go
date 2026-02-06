@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -26,9 +27,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/delivery/routes", h.HandleListRoutes)
 	mux.HandleFunc("POST /api/v1/delivery/routes", h.HandleCreateRoute)
 	mux.HandleFunc("POST /api/v1/delivery/routes/{id}/dispatch", h.HandleDispatchRoute)
+	mux.HandleFunc("POST /api/v1/delivery/routes/{id}/reorder", h.HandleReorderStops)
 
 	// Deliveries
 	mux.HandleFunc("GET /api/v1/delivery/routes/{id}/deliveries", h.HandleListDeliveries)
+	mux.HandleFunc("GET /api/v1/delivery/deliveries/{id}", h.HandleGetDelivery)
 	mux.HandleFunc("POST /api/v1/delivery/deliveries", h.HandleAssignOrder)                     // Assign Order to Route
 	mux.HandleFunc("PUT /api/v1/delivery/deliveries/{id}/status", h.HandleUpdateDeliveryStatus) // Complete Delivery
 }
@@ -38,7 +41,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 func (h *Handler) HandleListVehicles(w http.ResponseWriter, r *http.Request) {
 	vehicles, err := h.service.ListVehicles(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("ListVehicles failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -53,7 +57,8 @@ func (h *Handler) HandleCreateVehicle(w http.ResponseWriter, r *http.Request) {
 	}
 	v, err := h.service.CreateVehicle(r.Context(), req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("CreateVehicle failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -63,7 +68,8 @@ func (h *Handler) HandleCreateVehicle(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListDrivers(w http.ResponseWriter, r *http.Request) {
 	drivers, err := h.service.ListDrivers(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("ListDrivers failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -78,7 +84,8 @@ func (h *Handler) HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
 	}
 	d, err := h.service.CreateDriver(r.Context(), req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("CreateDriver failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -94,9 +101,21 @@ func (h *Handler) HandleListRoutes(w http.ResponseWriter, r *http.Request) {
 		datePtr = &dateStr
 	}
 
-	routes, err := h.service.ListRoutes(r.Context(), datePtr)
+	driverIDStr := r.URL.Query().Get("driver_id")
+	var driverID *uuid.UUID
+	if driverIDStr != "" {
+		id, err := uuid.Parse(driverIDStr)
+		if err != nil {
+			http.Error(w, "Invalid driver_id UUID", http.StatusBadRequest)
+			return
+		}
+		driverID = &id
+	}
+
+	routes, err := h.service.ListRoutes(r.Context(), datePtr, driverID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("ListRoutes failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -111,7 +130,8 @@ func (h *Handler) HandleCreateRoute(w http.ResponseWriter, r *http.Request) {
 	}
 	route, err := h.service.CreateRoute(r.Context(), req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("CreateRoute failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -127,7 +147,30 @@ func (h *Handler) HandleDispatchRoute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.DispatchRoute(r.Context(), id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("DispatchRoute failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) HandleReorderStops(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+
+	var req ReorderStopsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.ReorderStops(r.Context(), id, req.OrderedDeliveryIDs); err != nil {
+		slog.Error("ReorderStops failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -145,11 +188,30 @@ func (h *Handler) HandleListDeliveries(w http.ResponseWriter, r *http.Request) {
 
 	deliveries, err := h.service.ListDeliveries(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("ListDeliveries failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(deliveries)
+}
+
+func (h *Handler) HandleGetDelivery(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+
+	d, err := h.service.GetDelivery(r.Context(), id)
+	if err != nil {
+		slog.Error("GetDelivery failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(d)
 }
 
 func (h *Handler) HandleAssignOrder(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +223,8 @@ func (h *Handler) HandleAssignOrder(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.service.AssignOrderToRoute(r.Context(), req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("AssignOrderToRoute failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -183,7 +246,8 @@ func (h *Handler) HandleUpdateDeliveryStatus(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := h.service.CompleteDelivery(r.Context(), id, req); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("CompleteDelivery failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)

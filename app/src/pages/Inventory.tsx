@@ -4,6 +4,7 @@ import type { Product } from '../types/product';
 import { InventoryTable } from '../components/inventory/InventoryTable';
 import { AddProductModal } from '../components/inventory/AddProductModal';
 import { StockAdjustmentModal } from '../components/inventory/StockAdjustmentModal';
+import { InventoryTransferModal } from '../components/inventory/InventoryTransferModal';
 import { Plus, Search } from 'lucide-react';
 
 export const Inventory = () => {
@@ -14,6 +15,7 @@ export const Inventory = () => {
 
     // Stock Adjustment State
     const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
     const loadProducts = async () => {
@@ -42,6 +44,11 @@ export const Inventory = () => {
     const handleAdjustStock = (product: Product) => {
         setSelectedProduct(product);
         setIsStockModalOpen(true);
+    };
+
+    const handleTransferStock = (product: Product) => {
+        setSelectedProduct(product);
+        setIsTransferModalOpen(true);
     };
 
     return (
@@ -81,7 +88,11 @@ export const Inventory = () => {
             {isLoading ? (
                 <div className="text-zinc-500 text-center py-12 animate-pulse">Loading core inventory...</div>
             ) : (
-                <InventoryTable products={products} onAdjustStock={handleAdjustStock} />
+                <InventoryTable
+                    products={products}
+                    onAdjustStock={handleAdjustStock}
+                    onTransferStock={handleTransferStock}
+                />
             )}
 
             <AddProductModal
@@ -96,6 +107,15 @@ export const Inventory = () => {
                 product={selectedProduct}
                 onSuccess={() => {
                     loadProducts(); // Reload to update "On Hand" if we calculate it (currently hardcoded 0.0000, need backend update to show real sum)
+                }}
+            />
+
+            <InventoryTransferModal
+                isOpen={isTransferModalOpen}
+                onClose={() => setIsTransferModalOpen(false)}
+                product={selectedProduct}
+                onSuccess={() => {
+                    loadProducts();
                 }}
             />
         </div>

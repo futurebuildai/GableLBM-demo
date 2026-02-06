@@ -12,14 +12,16 @@ import (
 )
 
 type AuthConfig struct {
-	JWKSURL string
-	Issuer  string
+	JWKSURL     string
+	Issuer      string
+	PublicPaths []string
 }
 
 type AuthMiddleware struct {
-	jwks   keyfunc.Keyfunc
-	issuer string
-	logger *slog.Logger
+	jwks        keyfunc.Keyfunc
+	issuer      string
+	publicPaths []string
+	logger      *slog.Logger
 }
 
 // UserClaims holds standard OIDC claims we care about
@@ -46,15 +48,24 @@ func NewAuthMiddleware(ctx context.Context, cfg AuthConfig, logger *slog.Logger)
 	}
 
 	return &AuthMiddleware{
-		jwks:   k,
-		issuer: cfg.Issuer,
-		logger: logger,
+		jwks:        k,
+		issuer:      cfg.Issuer,
+		publicPaths: cfg.PublicPaths,
+		logger:      logger,
 	}, nil
 }
 
 // Handler is the actual middleware function
 func (m *AuthMiddleware) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 0. Check Public Paths
+		for _, path := range m.publicPaths {
+			if r.URL.Path == path {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
 		// 1. Extract Token
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {

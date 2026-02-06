@@ -78,7 +78,7 @@ func (s *Service) GetRoute(ctx context.Context, id uuid.UUID) (*Route, error) {
 	return s.repo.GetRoute(ctx, id)
 }
 
-func (s *Service) ListRoutes(ctx context.Context, dateStr *string) ([]Route, error) {
+func (s *Service) ListRoutes(ctx context.Context, dateStr *string, driverID *uuid.UUID) ([]Route, error) {
 	var date *time.Time
 	if dateStr != nil && *dateStr != "" {
 		parsed, err := time.Parse("2006-01-02", *dateStr)
@@ -87,7 +87,7 @@ func (s *Service) ListRoutes(ctx context.Context, dateStr *string) ([]Route, err
 		}
 		date = &parsed
 	}
-	return s.repo.ListRoutes(ctx, date)
+	return s.repo.ListRoutes(ctx, date, driverID)
 }
 
 func (s *Service) DispatchRoute(ctx context.Context, id uuid.UUID) error {
@@ -122,6 +122,10 @@ func (s *Service) ListDeliveries(ctx context.Context, routeID uuid.UUID) ([]Deli
 	return s.repo.ListDeliveriesByRoute(ctx, routeID)
 }
 
+func (s *Service) GetDelivery(ctx context.Context, id uuid.UUID) (*Delivery, error) {
+	return s.repo.GetDelivery(ctx, id)
+}
+
 func (s *Service) CompleteDelivery(ctx context.Context, id uuid.UUID, req UpdateDeliveryStatusRequest) error {
 	var pod *PODUpdate
 	if req.Status == DeliveryStatusDelivered || req.Status == DeliveryStatusPartial {
@@ -137,4 +141,8 @@ func (s *Service) CompleteDelivery(ctx context.Context, id uuid.UUID, req Update
 	}
 
 	return s.repo.UpdateDeliveryStatus(ctx, id, req.Status, pod)
+}
+
+func (s *Service) ReorderStops(ctx context.Context, routeID uuid.UUID, deliveryIDs []uuid.UUID) error {
+	return s.repo.ReorderRouteDeliveries(ctx, routeID, deliveryIDs)
 }

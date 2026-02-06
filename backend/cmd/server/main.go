@@ -55,8 +55,9 @@ func main() {
 	if cfg.JWKSURL != "" {
 		logger.Info("Initializing Auth Middleware", "jwks_url", cfg.JWKSURL)
 		am, err := middleware.NewAuthMiddleware(context.Background(), middleware.AuthConfig{
-			JWKSURL: cfg.JWKSURL,
-			Issuer:  cfg.AuthIssuer,
+			JWKSURL:     cfg.JWKSURL,
+			Issuer:      cfg.AuthIssuer,
+			PublicPaths: []string{"/health"},
 		}, logger)
 		if err != nil {
 			logger.Error("Failed to initialize Auth Middleware", "error", err)

@@ -6,11 +6,19 @@ export interface StockAdjustmentRequest {
     is_delta: boolean;
 }
 
-const API_URL = 'http://localhost:8080';
+export interface StockMovementRequest {
+    product_id: string;
+    from_location_id: string;
+    to_location_id: string;
+    quantity: number;
+    reason: string;
+}
+
+const API_URL = '/api/v1/inventory'; // Use relative path via proxy or updated base
 
 export const InventoryService = {
     async adjustStock(data: StockAdjustmentRequest): Promise<void> {
-        const response = await fetch(`${API_URL}/inventory/adjust`, {
+        const response = await fetch(`${API_URL}/adjust`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -20,12 +28,22 @@ export const InventoryService = {
         }
     },
 
-    // Helper to get inventory for a product if we want to show it in the modal
-    async getInventoryByProduct(productId: string): Promise<unknown[]> {
-        console.log("Fetching inventory for", productId);
-        // TODO: Implement list endpoint in backend if not exists, 
-        // or rely on the main product list to contain total if needed.
-        // For Sprint 03, we rely on the main list or assume 0 start.
-        return [];
+    async transferStock(data: StockMovementRequest): Promise<void> {
+        const response = await fetch(`${API_URL}/transfer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to transfer stock');
+        }
+    },
+
+    async getInventoryByProduct(productId: string): Promise<any[]> {
+        const response = await fetch(`${API_URL}?product_id=${productId}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch inventory');
+        }
+        return response.json();
     }
 };

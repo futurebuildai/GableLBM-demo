@@ -2,6 +2,7 @@ package inventory
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 )
 
@@ -14,9 +15,9 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /inventory/adjust", h.AdjustStock)
-	mux.HandleFunc("POST /inventory/move", h.MoveStock)
-	// mux.HandleFunc("GET /inventory", h.ListInventory)
+	mux.HandleFunc("POST /api/v1/inventory/adjust", h.AdjustStock)
+	mux.HandleFunc("POST /api/v1/inventory/transfer", h.MoveStock)
+	mux.HandleFunc("GET /api/v1/inventory", h.ListInventory)
 }
 
 func (h *Handler) AdjustStock(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +28,8 @@ func (h *Handler) AdjustStock(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.AdjustStock(r.Context(), req); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("AdjustStock failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -43,10 +45,29 @@ func (h *Handler) MoveStock(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.MoveStock(r.Context(), req); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("MoveStock failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *Handler) ListInventory(w http.ResponseWriter, r *http.Request) {
+	prodID := r.URL.Query().Get("product_id")
+	if prodID == "" {
+		http.Error(w, "product_id required", http.StatusBadRequest)
+		return
+	}
+
+	items, err := h.service.ListByProduct(r.Context(), prodID)
+	if err != nil {
+		slog.Error("ListByProduct failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
 }

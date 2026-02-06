@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gablelbm/gable/pkg/database"
@@ -131,7 +132,7 @@ func (r *PostgresRepository) GetRoute(ctx context.Context, id uuid.UUID) (*Route
 	return &route, nil
 }
 
-func (r *PostgresRepository) ListRoutes(ctx context.Context, date *time.Time) ([]Route, error) {
+func (r *PostgresRepository) ListRoutes(ctx context.Context, date *time.Time, driverID *uuid.UUID) ([]Route, error) {
 	query := `
 		SELECT r.id, r.vehicle_id, r.driver_id, r.scheduled_date, r.status, r.notes, r.created_at, r.updated_at,
 		       v.name as vehicle_name, d.name as driver_name,
@@ -141,10 +142,21 @@ func (r *PostgresRepository) ListRoutes(ctx context.Context, date *time.Time) ([
 		JOIN drivers d ON r.driver_id = d.id
 	`
 	args := []any{}
+	whereClauses := []string{}
+
 	if date != nil {
-		query += " WHERE r.scheduled_date = $1"
 		args = append(args, *date)
+		whereClauses = append(whereClauses, fmt.Sprintf("r.scheduled_date = $%d", len(args)))
 	}
+	if driverID != nil {
+		args = append(args, *driverID)
+		whereClauses = append(whereClauses, fmt.Sprintf("r.driver_id = $%d", len(args)))
+	}
+
+	if len(whereClauses) > 0 {
+		query += " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
 	query += " ORDER BY r.scheduled_date DESC, r.created_at DESC"
 
 	rows, err := r.db.GetExecutor(ctx).Query(ctx, query, args...)
@@ -263,4 +275,16 @@ func (r *PostgresRepository) UpdateDeliveryStatus(ctx context.Context, id uuid.U
 	query := `UPDATE deliveries SET status = $1, updated_at = NOW() WHERE id = $2`
 	_, err := r.db.GetExecutor(ctx).Exec(ctx, query, status, id)
 	return err
+}
+
+func (r *PostgresRepository) ReorderRouteDeliveries(ctx context.Context, routeID uuid.UUID, deliveryIDs []uuid.UUID) error {
+	return r.db.RunInTx(ctx, func(ctx context.Context) error {
+		for i, id := range deliveryIDs {
+			query := `UPDATE deliveries SET stop_sequence = $1, updated_at = NOW() WHERE id = $2 AND route_id = $3`
+			if _, err := r.db.GetExecutor(ctx).Exec(ctx, query, i+1, id, routeID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

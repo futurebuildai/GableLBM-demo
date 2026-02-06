@@ -4,9 +4,10 @@ import type { Product } from '../../types/product';
 interface InventoryTableProps {
     products: Product[];
     onAdjustStock: (product: Product) => void;
+    onTransferStock: (product: Product) => void;
 }
 
-export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdjustStock }) => {
+export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdjustStock, onTransferStock }) => {
     return (
         <div className="w-full overflow-hidden border border-zinc-800 rounded-lg bg-zinc-900 text-sm">
             <div className="overflow-x-auto">
@@ -19,7 +20,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdju
                             <th className="px-6 py-3 border-b border-zinc-800 text-right">On Hand</th>
                             <th className="px-6 py-3 border-b border-zinc-800 text-right">Allocated</th>
                             <th className="px-6 py-3 border-b border-zinc-800 text-right">Available</th>
-                            <th className="px-6 py-3 border-b border-zinc-800 text-right">Actions</th>
+                            <th className="px-6 py-3 border-b border-zinc-800 text-right w-[180px]">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800">
@@ -48,12 +49,18 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdju
                                     <td className="px-6 py-3 text-right font-mono text-zinc-100">
                                         {((p.total_quantity || 0) - (p.total_allocated || 0)).toFixed(4)}
                                     </td>
-                                    <td className="px-6 py-3 text-right">
+                                    <td className="px-6 py-3 text-right space-x-4">
                                         <button
                                             onClick={() => onAdjustStock(p)}
                                             className="text-emerald-400 hover:text-emerald-300 hover:underline"
                                         >
                                             Adjust
+                                        </button>
+                                        <button
+                                            onClick={() => onTransferStock(p)}
+                                            className="text-blue-400 hover:text-blue-300 hover:underline"
+                                        >
+                                            Transfer
                                         </button>
                                     </td>
                                 </tr>

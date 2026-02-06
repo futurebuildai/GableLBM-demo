@@ -41,9 +41,10 @@ export const deliveryService = {
     },
 
     // Routes
-    listRoutes: async (date?: string): Promise<Route[]> => {
+    listRoutes: async (date?: string, driverId?: string): Promise<Route[]> => {
         const params = new URLSearchParams();
         if (date) params.append('date', date);
+        if (driverId) params.append('driver_id', driverId);
 
         const res = await fetch(`${API_BASE}/routes?${params.toString()}`);
         if (!res.ok) throw new Error('Failed to fetch routes');
@@ -60,6 +61,15 @@ export const deliveryService = {
         return res.json();
     },
 
+    reorderStops: async (routeId: string, orderedDeliveryIds: string[]): Promise<void> => {
+        const res = await fetch(`${API_BASE}/routes/${routeId}/reorder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ordered_delivery_ids: orderedDeliveryIds })
+        });
+        if (!res.ok) throw new Error('Failed to reorder stops');
+    },
+
     dispatchRoute: async (id: string): Promise<void> => {
         const res = await fetch(`${API_BASE}/routes/${id}/dispatch`, {
             method: 'POST'
@@ -71,6 +81,12 @@ export const deliveryService = {
     listDeliveries: async (routeId: string): Promise<Delivery[]> => {
         const res = await fetch(`${API_BASE}/routes/${routeId}/deliveries`);
         if (!res.ok) throw new Error('Failed to fetch deliveries');
+        return res.json();
+    },
+
+    getDelivery: async (id: string): Promise<Delivery> => {
+        const res = await fetch(`${API_BASE}/deliveries/${id}`);
+        if (!res.ok) throw new Error('Failed to fetch delivery');
         return res.json();
     },
 
