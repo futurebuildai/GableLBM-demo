@@ -32,8 +32,11 @@ func (r *PostgresRepository) CreatePayment(ctx context.Context, p *Payment) erro
 		INSERT INTO payments (id, invoice_id, amount, method, reference, notes, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
-	_, err := r.db.Pool.Exec(ctx, query,
-		p.ID, p.InvoiceID, p.Amount, p.Method, p.Reference, p.Notes, p.CreatedAt,
+	// Convert Cents (int64) to Dollars (float64) for DB
+	amountFloat := float64(p.Amount) / 100.0
+
+	_, err := r.db.GetExecutor(ctx).Exec(ctx, query,
+		p.ID, p.InvoiceID, amountFloat, p.Method, p.Reference, p.Notes, p.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create payment: %w", err)
@@ -48,7 +51,7 @@ func (r *PostgresRepository) GetPaymentsByInvoiceID(ctx context.Context, invoice
 		WHERE invoice_id = $1
 		ORDER BY created_at DESC
 	`
-	rows, err := r.db.Pool.Query(ctx, query, invoiceID)
+	rows, err := r.db.GetExecutor(ctx).Query(ctx, query, invoiceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list payments: %w", err)
 	}
@@ -57,11 +60,14 @@ func (r *PostgresRepository) GetPaymentsByInvoiceID(ctx context.Context, invoice
 	var payments []Payment
 	for rows.Next() {
 		var p Payment
+		var amountFloat float64
 		if err := rows.Scan(
-			&p.ID, &p.InvoiceID, &p.Amount, &p.Method, &p.Reference, &p.Notes, &p.CreatedAt,
+			&p.ID, &p.InvoiceID, &amountFloat, &p.Method, &p.Reference, &p.Notes, &p.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan payment: %w", err)
 		}
+		// Convert Dollars (float64) to Cents (int64)
+		p.Amount = int64(amountFloat*100.0 + 0.5)
 		payments = append(payments, p)
 	}
 	return payments, nil

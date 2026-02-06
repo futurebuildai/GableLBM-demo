@@ -5,8 +5,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// Executor is an interface that matches both pgxpool.Pool and pgx.Tx
+type Executor interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
 
 type DB struct {
 	Pool *pgxpool.Pool
@@ -59,6 +68,17 @@ func (db *DB) RunInTx(ctx context.Context, fn func(ctx context.Context) error) e
 		}
 	}()
 
-	err = fn(ctx)
+	// Inject tx into context
+	ctxWithTx := context.WithValue(ctx, txKey{}, tx)
+	err = fn(ctxWithTx)
 	return err
+}
+
+type txKey struct{}
+
+func (db *DB) GetExecutor(ctx context.Context) Executor {
+	if tx, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
+		return tx
+	}
+	return db.Pool
 }

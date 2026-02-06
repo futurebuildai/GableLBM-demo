@@ -21,7 +21,7 @@ type Invoice struct {
 	OrderID     uuid.UUID     `json:"order_id" db:"order_id"`
 	CustomerID  uuid.UUID     `json:"customer_id" db:"customer_id"`
 	Status      InvoiceStatus `json:"status" db:"status"`
-	TotalAmount float64       `json:"total_amount" db:"total_amount"`
+	TotalAmount int64         `json:"total_amount" db:"total_amount"` // Cents
 	DueDate     *time.Time    `json:"due_date" db:"due_date"`
 	PaidAt      *time.Time    `json:"paid_at" db:"paid_at"`
 	CreatedAt   time.Time     `json:"created_at" db:"created_at"`
@@ -36,6 +36,6 @@ type InvoiceLine struct {
 	InvoiceID uuid.UUID `json:"invoice_id" db:"invoice_id"`
 	ProductID uuid.UUID `json:"product_id" db:"product_id"`
 	Quantity  float64   `json:"quantity" db:"quantity"`
-	PriceEach float64   `json:"price_each" db:"price_each"`
+	PriceEach int64     `json:"price_each" db:"price_each"` // Cents
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }

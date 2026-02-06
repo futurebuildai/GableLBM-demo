@@ -60,13 +60,13 @@ func (s *Service) GenerateInvoicePDF(ctx context.Context, inv *invoice.Invoice, 
 		m.AddRow(10,
 			text.NewCol(4, desc, props.Text{Size: 9}),
 			text.NewCol(2, fmt.Sprintf("%.2f", line.Quantity), props.Text{Size: 9, Align: align.Center}),
-			text.NewCol(3, fmt.Sprintf("$%.2f", line.PriceEach), props.Text{Size: 9, Align: align.Right}),
-			text.NewCol(3, fmt.Sprintf("$%.2f", line.Quantity*line.PriceEach), props.Text{Size: 9, Align: align.Right}),
+			text.NewCol(3, fmt.Sprintf("$%.2f", float64(line.PriceEach)/100.0), props.Text{Size: 9, Align: align.Right}),
+			text.NewCol(3, fmt.Sprintf("$%.2f", (line.Quantity*float64(line.PriceEach))/100.0), props.Text{Size: 9, Align: align.Right}),
 		)
 	}
 
 	m.AddRow(15,
-		text.NewCol(12, fmt.Sprintf("TOTAL DUE: $%.2f", inv.TotalAmount), props.Text{
+		text.NewCol(12, fmt.Sprintf("TOTAL DUE: $%.2f", float64(inv.TotalAmount)/100.0), props.Text{
 			Top:   5,
 			Style: fontstyle.Bold,
 			Align: align.Right,

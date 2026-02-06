@@ -43,12 +43,15 @@ func (r *PostgresRepository) CreateInvoice(ctx context.Context, inv *Invoice) er
 	}
 
 	// Insert Invoice
+	// Convert Cents -> Dollars
+	totalAmountFloat := float64(inv.TotalAmount) / 100.0
+
 	queryInv := `
 		INSERT INTO invoices (id, order_id, customer_id, status, total_amount, due_date, paid_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 	_, err = tx.Exec(ctx, queryInv,
-		inv.ID, inv.OrderID, inv.CustomerID, inv.Status, inv.TotalAmount, inv.DueDate, inv.PaidAt, inv.CreatedAt, inv.UpdatedAt,
+		inv.ID, inv.OrderID, inv.CustomerID, inv.Status, totalAmountFloat, inv.DueDate, inv.PaidAt, inv.CreatedAt, inv.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert invoice: %w", err)
@@ -65,8 +68,11 @@ func (r *PostgresRepository) CreateInvoice(ctx context.Context, inv *Invoice) er
 			line.ID = uuid.New()
 		}
 		line.InvoiceID = inv.ID
+		// Convert PriceEach (Cents -> Dollars)
+		priceEachFloat := float64(line.PriceEach) / 100.0
+
 		_, err = tx.Exec(ctx, queryLine,
-			line.ID, line.InvoiceID, line.ProductID, line.Quantity, line.PriceEach, now,
+			line.ID, line.InvoiceID, line.ProductID, line.Quantity, priceEachFloat, now,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to insert invoice line: %w", err)
@@ -86,9 +92,11 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Inv
 		FROM invoices WHERE id = $1
 	`
 	var inv Invoice
-	err := r.db.Pool.QueryRow(ctx, queryInv, id).Scan(
-		&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.Status, &inv.TotalAmount, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
+	var totalAmountFloat float64
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, queryInv, id).Scan(
+		&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.Status, &totalAmountFloat, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
 	)
+	inv.TotalAmount = int64(totalAmountFloat*100.0 + 0.5)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("invoice not found")
@@ -101,7 +109,7 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Inv
 		SELECT id, invoice_id, product_id, quantity, price_each, created_at
 		FROM invoice_lines WHERE invoice_id = $1
 	`
-	rows, err := r.db.Pool.Query(ctx, queryLines, id)
+	rows, err := r.db.GetExecutor(ctx).Query(ctx, queryLines, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get invoice lines: %w", err)
 	}
@@ -109,9 +117,11 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Inv
 
 	for rows.Next() {
 		var l InvoiceLine
-		if err := rows.Scan(&l.ID, &l.InvoiceID, &l.ProductID, &l.Quantity, &l.PriceEach, &l.CreatedAt); err != nil {
+		var priceEachFloat float64
+		if err := rows.Scan(&l.ID, &l.InvoiceID, &l.ProductID, &l.Quantity, &priceEachFloat, &l.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan invoice line: %w", err)
 		}
+		l.PriceEach = int64(priceEachFloat*100.0 + 0.5)
 		inv.Lines = append(inv.Lines, l)
 	}
 
@@ -132,11 +142,13 @@ func (r *PostgresRepository) ListInvoices(ctx context.Context) ([]Invoice, error
 	var invoices []Invoice
 	for rows.Next() {
 		var inv Invoice
+		var totalAmountFloat float64
 		if err := rows.Scan(
-			&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.Status, &inv.TotalAmount, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
+			&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.Status, &totalAmountFloat, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan invoice: %w", err)
 		}
+		inv.TotalAmount = int64(totalAmountFloat*100.0 + 0.5)
 		invoices = append(invoices, inv)
 	}
 	return invoices, nil
@@ -149,7 +161,7 @@ func (r *PostgresRepository) UpdateInvoice(ctx context.Context, inv *Invoice) er
 		SET status = $1, paid_at = $2, updated_at = $3
 		WHERE id = $4
 	`
-	_, err := r.db.Pool.Exec(ctx, query, inv.Status, inv.PaidAt, inv.UpdatedAt, inv.ID)
+	_, err := r.db.GetExecutor(ctx).Exec(ctx, query, inv.Status, inv.PaidAt, inv.UpdatedAt, inv.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update invoice: %w", err)
 	}

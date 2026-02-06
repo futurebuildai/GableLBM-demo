@@ -157,7 +157,7 @@ func (s *Service) FulfillOrder(ctx context.Context, id uuid.UUID) error {
 	inv := &invoice.Invoice{
 		OrderID:     o.ID,
 		CustomerID:  o.CustomerID,
-		TotalAmount: o.TotalAmount,
+		TotalAmount: int64(o.TotalAmount*100.0 + 0.5), // Cents
 		Status:      invoice.InvoiceStatusUnpaid,
 	}
 	// Map lines
@@ -165,7 +165,7 @@ func (s *Service) FulfillOrder(ctx context.Context, id uuid.UUID) error {
 		inv.Lines = append(inv.Lines, invoice.InvoiceLine{
 			ProductID: ol.ProductID,
 			Quantity:  ol.Quantity,
-			PriceEach: ol.PriceEach,
+			PriceEach: int64(ol.PriceEach*100.0 + 0.5), // Cents
 		})
 	}
 

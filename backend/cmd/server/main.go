@@ -122,7 +122,7 @@ func main() {
 
 	// Payment Module
 	paymentRepo := payment.NewRepository(db)
-	paymentSvc := payment.NewService(paymentRepo, invoiceRepo)
+	paymentSvc := payment.NewService(db, paymentRepo, invoiceRepo)
 	paymentHandler := payment.NewHandler(paymentSvc)
 	paymentHandler.RegisterRoutes(mux)
 
