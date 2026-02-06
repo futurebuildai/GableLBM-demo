@@ -9,6 +9,8 @@ import (
 type Config struct {
 	Port        string
 	DatabaseURL string
+	JWKSURL     string
+	AuthIssuer  string
 }
 
 func Load() *Config {
@@ -17,6 +19,8 @@ func Load() *Config {
 	return &Config{
 		Port:        getEnv("PORT", "8080"),
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://gable_user:gable_password@localhost:5434/gable_db?sslmode=disable"),
+		JWKSURL:     getEnv("JWKS_URL", ""),
+		AuthIssuer:  getEnv("AUTH_ISSUER", ""),
 	}
 }
 

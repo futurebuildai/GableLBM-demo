@@ -1,19 +1,20 @@
-import { Routes, Route } from 'react-router-dom'
-import { AppShell } from './components/layout/AppShell'
-import { Dashboard } from './pages/Dashboard'
-import { Inventory } from './pages/Inventory'
-import { Locations } from './pages/Locations'
+import { BrowserRouter, Route, Routes, Outlet } from "react-router-dom";
+import { AppShell } from "./components/layout/AppShell";
+import { Inventory } from "./pages/Inventory";
+import { QuoteBuilder } from "./pages/QuoteBuilder";
 
 function App() {
   return (
-    <AppShell>
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/locations" element={<Locations />} />
+        <Route path="/" element={<AppShell><Outlet /></AppShell>}>
+          <Route index element={<div className="p-8 text-white">Dashboard Placeholder</div>} />
+          <Route path="inventory" element={<Inventory />} />
+          <Route path="quotes/new" element={<QuoteBuilder />} />
+        </Route>
       </Routes>
-    </AppShell>
-  )
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
