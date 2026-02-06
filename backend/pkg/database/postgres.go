@@ -40,3 +40,25 @@ func Connect(connString string) (*DB, error) {
 func (db *DB) Close() {
 	db.Pool.Close()
 }
+
+// RunInTx executes a function within a database transaction.
+func (db *DB) RunInTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	tx, err := db.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback(ctx)
+			panic(p)
+		} else if err != nil {
+			_ = tx.Rollback(ctx)
+		} else {
+			err = tx.Commit(ctx)
+		}
+	}()
+
+	err = fn(ctx)
+	return err
+}

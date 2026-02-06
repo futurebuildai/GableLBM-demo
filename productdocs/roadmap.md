@@ -51,7 +51,8 @@
 1.  **Integrations**:
     *   General Ledger (QuickBooks/NetSuite) Sync.
     *   Vendor EDI (Purchasing).
-2.  **Advanced Components**:
+2.  **Advanced Logistics & Operations**:
+    *   Inventory Transfers (Multi-Location Sync).
     *   Millwork Configurator (Doors/Windows).
     *   Dispatch Route Optimization.
 3.  **Governance**:

@@ -24,6 +24,7 @@
 ### Tier 1: "Starter Yard" (The 5-10 Person Team)
 *   **Price**: **$950 / month**
 *   **Limit**: Up to 10 Users.
+*   **Locations**: **1 Yard Included**.
 *   **Infrastructure**: Low-Cost Config (~$110 cost).
 *   **Target**: Small independent yards, hardware stores.
 *   **Psychology**: "Under $1k" is an easy credit card swipe.
@@ -32,6 +33,7 @@
 ### Tier 2: "Growth Yard" (The 20-50 Person Team) -> **SWEET SPOT**
 *   **Price**: **$2,500 / month**
 *   **Limit**: Up to 50 Users.
+*   **Locations**: **Up to 3 Yards Included**.
 *   **Infrastructure**: High-Performance Config (4 ACU Aurora, ~$400 cost).
 *   **Target**: The typical multi-generation family lumber yard.
 *   **Value**: "For less than the cost of one yard guy, you run your whole business."
@@ -40,6 +42,7 @@
 ### Tier 3: "High Volume" (The 100+ Person Team)
 *   **Price**: **$6,000+ / month** (Custom Quote)
 *   **Limit**: Unlimited Users / Multiple Locations.
+*   **Locations**: **Unlimited**.
 *   **Infrastructure**: Dedicated Cluster (Auto-scaling to max).
 *   **Includes**: Priority Support SLA, Dedicated Account Manager.
 *   **Target**: Regional chains.
