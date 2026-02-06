@@ -14,6 +14,7 @@ import (
 
 	"github.com/gablelbm/gable/internal/config"
 	"github.com/gablelbm/gable/internal/customer"
+	"github.com/gablelbm/gable/internal/delivery"
 	"github.com/gablelbm/gable/internal/document"
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
@@ -131,6 +132,12 @@ func main() {
 	reportingSvc := reporting.NewService(reportingRepo)
 	reportingHandler := reporting.NewHandler(reportingSvc)
 	reportingHandler.RegisterRoutes(mux)
+
+	// Delivery Module
+	deliveryRepo := delivery.NewRepository(db)
+	deliverySvc := delivery.NewService(deliveryRepo)
+	deliveryHandler := delivery.NewHandler(deliverySvc)
+	deliveryHandler.RegisterRoutes(mux)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

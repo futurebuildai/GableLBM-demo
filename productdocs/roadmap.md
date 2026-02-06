@@ -40,7 +40,7 @@
     *   [x] Sales Summary Reporting.
 3.  **Logistics Lite**:
     *   [x] Pick Ticket Printing.
-    *   [ ] Basic Delivery Scheduling.
+    *   [x] Basic Delivery Scheduling.
 
 ## Phase 3: General Availability (The "Ecosystem")
 **Goal**: Enterprise-ready features and external integrations.
