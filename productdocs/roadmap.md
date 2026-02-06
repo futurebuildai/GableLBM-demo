@@ -17,26 +17,29 @@
     *   [x] Simple Receipt (Add stock).
     *   [x] Simple Count (Adjust stock).
 
-## Phase 2: Beta (The "Transaction Engine")
-**Current Focus**: Executing (Sprint 5/6).
+## Phase 2: Beta (The "Transaction Engine") - [DEMO READY MILESTONE]
+**Current Focus**: Executing Fulfillment & Financials (Sprint 6/7).
 **Goal**: Enable a full "Quote-to-Cash" workflow for a live counter sale.
 **Target User**: Counter Sales Rep.
-**Timeline estimate**: Q3 2026.
+**Timeline estimate**: Q3 2026 (Demo Ready by end of Sprint 7).
 
 ### Objectives
 1.  **Sales Order Processing**:
     *   [x] Order Engine (Backend Service & Schema).
     *   [x] Inventory Allocation (Soft Lock).
+    *   [x] Inventory Fulfillment (Hard Deduct).
     *   [ ] Quick Quote UI (< 3 clicks).
     *   [ ] Customer Contract Pricing (Tiered Logic).
     *   [ ] Credit Limit Checks.
 2.  **Financials Lite**:
-    *   Invoicing (Generate PDF).
-    *   Payment Collection (Stripe/Manual Entry).
-    *   Daily Till Reconciliation.
+    *   [x] Invoice Engine (Backend & Schema).
+    *   [ ] Invoice UI (List & Detail).
+    *   [ ] Invoicing (Generate PDF).
+    *   [ ] Payment Collection (Stripe/Manual Entry).
+    *   [ ] Daily Till Reconciliation.
 3.  **Logistics Lite**:
-    *   Pick Ticket Printing.
-    *   Basic Delivery Scheduling.
+    *   [ ] Pick Ticket Printing.
+    *   [ ] Basic Delivery Scheduling.
 
 ## Phase 3: General Availability (The "Ecosystem")
 **Goal**: Enterprise-ready features and external integrations.
