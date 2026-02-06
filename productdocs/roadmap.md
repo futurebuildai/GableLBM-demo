@@ -12,21 +12,24 @@
 2.  **Core Inventory**:
     *   [x] SKU Management (Lumber specific: Grade, Species, Dim).
     *   [x] Multi-UOM Support (MBF <-> Piece <-> LF conversions).
-    *   [ ] Location Tracking (Bin/Row).
+    *   [x] Location Tracking (Bin/Row).
 3.  **Basic "In/Out"**:
-    *   Simple Receipt (Add stock).
-    *   Simple Count (Adjust stock).
+    *   [x] Simple Receipt (Add stock).
+    *   [x] Simple Count (Adjust stock).
 
 ## Phase 2: Beta (The "Transaction Engine")
+**Current Focus**: Executing (Sprint 5/6).
 **Goal**: Enable a full "Quote-to-Cash" workflow for a live counter sale.
 **Target User**: Counter Sales Rep.
 **Timeline estimate**: Q3 2026.
 
 ### Objectives
 1.  **Sales Order Processing**:
-    *   Quick Quote UI (< 3 clicks).
-    *   Customer Contract Pricing (Tiered Logic).
-    *   Credit Limit Checks.
+    *   [x] Order Engine (Backend Service & Schema).
+    *   [x] Inventory Allocation (Soft Lock).
+    *   [ ] Quick Quote UI (< 3 clicks).
+    *   [ ] Customer Contract Pricing (Tiered Logic).
+    *   [ ] Credit Limit Checks.
 2.  **Financials Lite**:
     *   Invoicing (Generate PDF).
     *   Payment Collection (Stripe/Manual Entry).
