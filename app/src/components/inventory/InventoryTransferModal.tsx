@@ -2,26 +2,14 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { InventoryService } from "../../services/InventoryService";
 import { LocationService } from "../../services/LocationService";
-import type { Product } from "../../types/product";
+import type { Product, Inventory } from "../../types/product";
+import type { Location } from "../../types/location";
 
 interface InventoryTransferModalProps {
     isOpen: boolean;
     onClose: () => void;
     product: Product | null;
     onSuccess: () => void;
-}
-
-interface InventoryItem {
-    id: string;
-    location_id: string;
-    location_name: string;
-    quantity: number;
-}
-
-interface Location {
-    id: string;
-    name: string;
-    path: string;
 }
 
 export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: InventoryTransferModalProps) {
@@ -31,7 +19,7 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
     const [reason, setReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [inventory, setInventory] = useState<InventoryItem[]>([]);
+    const [inventory, setInventory] = useState<Inventory[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
 
     useEffect(() => {
@@ -39,7 +27,10 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
             // Load current inventory for source options
             InventoryService.getInventoryByProduct(product.id).then((data) => {
                 setInventory(data);
-                if (data.length > 0) setFromLoc(data[0].location_id);
+                if (data.length > 0) {
+                    // Fallback to location if location_id missing
+                    setFromLoc(data[0].location_id || data[0].location || "");
+                }
             });
 
             // Load all locations for dest options
@@ -78,7 +69,7 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
     if (!isOpen || !product) return null;
 
     // Find max quantity for selected source
-    const sourceItem = inventory.find(i => i.location_id === fromLoc);
+    const sourceItem = inventory.find(i => (i.location_id || i.location) === fromLoc);
     const maxQty = sourceItem ? sourceItem.quantity : 0;
 
     return (
@@ -107,8 +98,8 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
                             >
                                 <option value="">Select Source...</option>
                                 {inventory.map(i => (
-                                    <option key={i.id} value={i.location_id}>
-                                        {i.location_name} ({i.quantity})
+                                    <option key={i.id} value={i.location_id || i.location}>
+                                        {i.location_name || i.location} ({i.quantity})
                                     </option>
                                 ))}
                             </select>
@@ -126,7 +117,7 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
                                 {locations
                                     .filter(l => l.id !== fromLoc)
                                     .map(l => (
-                                        <option key={l.id} value={l.id}>{l.path || l.name}</option>
+                                        <option key={l.id} value={l.id}>{l.path || l.code}</option>
                                     ))}
                             </select>
                         </div>

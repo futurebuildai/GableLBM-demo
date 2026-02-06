@@ -13,6 +13,7 @@ import (
 type Repository interface {
 	CreateCustomer(ctx context.Context, c *Customer) error
 	GetCustomer(ctx context.Context, id uuid.UUID) (*Customer, error)
+	GetCustomerByEmail(ctx context.Context, email string) (*Customer, error)
 	ListCustomers(ctx context.Context) ([]Customer, error)
 
 	ListPriceLevels(ctx context.Context) ([]PriceLevel, error)
@@ -91,6 +92,53 @@ func (r *PostgresRepository) GetCustomer(ctx context.Context, id uuid.UUID) (*Cu
 			return nil, fmt.Errorf("customer not found")
 		}
 		return nil, fmt.Errorf("failed to get customer: %w", err)
+	}
+
+	if plID != nil {
+		pl.ID = *plID
+		if plName != nil {
+			pl.Name = *plName
+		}
+		if plMult != nil {
+			pl.Multiplier = *plMult
+		}
+		c.PriceLevel = &pl
+	}
+
+	return &c, nil
+}
+
+func (r *PostgresRepository) GetCustomerByEmail(ctx context.Context, email string) (*Customer, error) {
+	query := `
+		SELECT 
+			c.id, c.name, c.account_number, c.email, c.phone, c.address, 
+			c.price_level_id, c.credit_limit, c.balance_due, c.is_active, 
+			c.tier,
+			c.created_at, c.updated_at,
+			pl.id, pl.name, pl.multiplier
+		FROM customers c
+		LEFT JOIN price_levels pl ON c.price_level_id = pl.id
+		WHERE c.email = $1
+	`
+
+	var c Customer
+	var pl PriceLevel
+	var plID *uuid.UUID
+	var plName *string
+	var plMult *float64
+
+	err := r.db.Pool.QueryRow(ctx, query, email).Scan(
+		&c.ID, &c.Name, &c.AccountNumber, &c.Email, &c.Phone, &c.Address,
+		&c.PriceLevelID, &c.CreditLimit, &c.BalanceDue, &c.IsActive,
+		&c.Tier,
+		&c.CreatedAt, &c.UpdatedAt,
+		&plID, &plName, &plMult,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("customer not found")
+		}
+		return nil, fmt.Errorf("failed to get customer by email: %w", err)
 	}
 
 	if plID != nil {

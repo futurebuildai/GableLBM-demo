@@ -49,12 +49,12 @@
 
 ### Objectives
 1.  **Integrations**:
-    *   General Ledger (QuickBooks/NetSuite) Sync.
-    *   Vendor EDI (Purchasing).
+    *   [x] General Ledger (QuickBooks/NetSuite) Sync (Foundation/Arch).
+    *   [x] Vendor EDI (Purchasing - 850 Logic).
 2.  **Advanced Logistics & Operations**:
     *   [x] Inventory Transfers (Multi-Location Sync).
-    *   Millwork Configurator (Doors/Windows).
+    *   [x] Millwork Configurator (Doors/Windows).
     *   [x] Dispatch Route Optimization (Stop Reordering & Driver App).
 3.  **Governance**:
-    *   Partner Portal (Co-op management).
+    *   [x] Partner Portal (Co-op management - Sprint 13).
     *   AI Governance Layer (RFC generation).

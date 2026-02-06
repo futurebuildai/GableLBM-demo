@@ -16,12 +16,16 @@ import (
 	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/delivery"
 	"github.com/gablelbm/gable/internal/document"
+	"github.com/gablelbm/gable/internal/edi"
+	"github.com/gablelbm/gable/internal/gl"
+	glint "github.com/gablelbm/gable/internal/integrations/gl"
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
 	"github.com/gablelbm/gable/internal/location"
 	"github.com/gablelbm/gable/internal/millwork"
 	"github.com/gablelbm/gable/internal/notification"
 	"github.com/gablelbm/gable/internal/order"
+	"github.com/gablelbm/gable/internal/partner"
 	"github.com/gablelbm/gable/internal/payment"
 	"github.com/gablelbm/gable/internal/pricing"
 	"github.com/gablelbm/gable/internal/product"
@@ -95,12 +99,17 @@ func main() {
 	customerHandler := customer.NewHandler(customerSvc)
 	customerHandler.RegisterRoutes(mux)
 
-	quoteHandler := quote.NewHandler(quote.NewService(quote.NewRepository(db)))
+	quoteRepo := quote.NewRepository(db)
+	quoteHandler := quote.NewHandler(quote.NewService(quoteRepo))
 	quoteHandler.RegisterRoutes(mux)
+
+	// GL Module
+	glAdapter := glint.NewMockGLAdapter()
+	glSvc := gl.NewService(glAdapter, logger)
 
 	// Invoice Module
 	invoiceRepo := invoice.NewRepository(db)
-	invoiceSvc := invoice.NewService(invoiceRepo)
+	invoiceSvc := invoice.NewService(invoiceRepo, glSvc)
 	invoiceHandler := invoice.NewHandler(invoiceSvc)
 	invoiceHandler.RegisterRoutes(mux)
 
@@ -113,7 +122,11 @@ func main() {
 	// Order Module - injected with InventoryService and InvoiceService
 	orderRepo := order.NewRepository(db)
 	poRepo := purchase_order.NewRepository(db)
-	poSvc := purchase_order.NewService(poRepo)
+
+	// EDI Module
+	ediSvc := edi.NewService("./edi_out", logger) // Stub output dir
+
+	poSvc := purchase_order.NewService(poRepo, ediSvc)
 	orderSvc := order.NewService(orderRepo, inventorySvc, invoiceSvc, customerSvc, poSvc)
 	orderHandler := order.NewHandler(orderSvc)
 	orderHandler.RegisterRoutes(mux)
@@ -149,6 +162,12 @@ func main() {
 	millworkSvc := millwork.NewService(millworkRepo)
 	millworkHandler := millwork.NewHandler(millworkSvc)
 	millworkHandler.RegisterRoutes(mux)
+
+	// Partner Module
+	partnerSvc := partner.NewService(customerRepo, quoteRepo, logger)
+	partnerHandler := partner.NewHandler(partnerSvc)
+	partnerAuthMw := middleware.NewPartnerAuthMiddleware(customerRepo, logger)
+	partnerHandler.RegisterRoutes(mux, partnerAuthMw.Handler)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

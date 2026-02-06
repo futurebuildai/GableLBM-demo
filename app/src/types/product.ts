@@ -31,7 +31,9 @@ export interface Product {
 export interface Inventory {
     id: string;
     product_id: string;
-    location: string;
+    location: string; // Deprecated? Or just path?
+    location_id?: string;
+    location_name?: string;
     quantity: number;
     allocated?: number;
     updated_at: string;

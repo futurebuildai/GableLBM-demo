@@ -15,6 +15,7 @@ type Repository interface {
 	GetQuote(ctx context.Context, id uuid.UUID) (*Quote, error)
 	// AddLine(ctx context.Context, line *QuoteLine) error // Can be part of update
 	UpdateQuote(ctx context.Context, q *Quote) error
+	ListQuotesByCustomer(ctx context.Context, customerID uuid.UUID) ([]Quote, error)
 }
 
 type PostgresRepository struct {
@@ -157,4 +158,30 @@ func (r *PostgresRepository) UpdateQuote(ctx context.Context, q *Quote) error {
 
 	// TODO: Handle lines update if needed
 	return nil
+}
+
+func (r *PostgresRepository) ListQuotesByCustomer(ctx context.Context, customerID uuid.UUID) ([]Quote, error) {
+	query := `
+		SELECT id, customer_id, job_id, state, total_amount, expires_at, created_at, updated_at
+		FROM quotes
+		WHERE customer_id = $1
+		ORDER BY created_at DESC
+	`
+	rows, err := r.db.Pool.Query(ctx, query, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list quotes: %w", err)
+	}
+	defer rows.Close()
+
+	var quotes []Quote
+	for rows.Next() {
+		var q Quote
+		if err := rows.Scan(
+			&q.ID, &q.CustomerID, &q.JobID, &q.State, &q.TotalAmount, &q.ExpiresAt, &q.CreatedAt, &q.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan quote: %w", err)
+		}
+		quotes = append(quotes, q)
+	}
+	return quotes, nil
 }

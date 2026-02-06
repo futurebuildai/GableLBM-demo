@@ -13,6 +13,10 @@ import { RouteList } from "./pages/driver/RouteList";
 import { StopList } from "./pages/driver/StopList";
 import { DeliveryDetail } from "./pages/driver/DeliveryDetail";
 import { DoorConfigurator } from "./pages/millwork/DoorConfigurator";
+import { PartnerLayout } from "./components/layout/PartnerLayout";
+import { PartnerDashboard } from "./pages/partner/Dashboard";
+import { ProjectList } from "./pages/partner/ProjectList";
+import { PartnerInvoiceList } from "./pages/partner/InvoiceList";
 
 function App() {
   return (
@@ -36,6 +40,13 @@ function App() {
           <Route index element={<RouteList />} />
           <Route path="routes/:id" element={<StopList />} />
           <Route path="deliveries/:id" element={<DeliveryDetail />} />
+        </Route>
+
+        {/* Partner Portal */}
+        <Route path="/partner" element={<PartnerLayout />}>
+          <Route index element={<PartnerDashboard />} />
+          <Route path="projects" element={<ProjectList />} />
+          <Route path="invoices" element={<PartnerInvoiceList />} />
         </Route>
       </Routes>
     </BrowserRouter>
