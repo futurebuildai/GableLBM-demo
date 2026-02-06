@@ -19,6 +19,7 @@ import (
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
 	"github.com/gablelbm/gable/internal/location"
+	"github.com/gablelbm/gable/internal/millwork"
 	"github.com/gablelbm/gable/internal/notification"
 	"github.com/gablelbm/gable/internal/order"
 	"github.com/gablelbm/gable/internal/payment"
@@ -139,6 +140,12 @@ func main() {
 	deliverySvc := delivery.NewService(deliveryRepo)
 	deliveryHandler := delivery.NewHandler(deliverySvc)
 	deliveryHandler.RegisterRoutes(mux)
+
+	// Millwork Module
+	millworkRepo := millwork.NewRepository(db)
+	millworkSvc := millwork.NewService(millworkRepo)
+	millworkHandler := millwork.NewHandler(millworkSvc)
+	millworkHandler.RegisterRoutes(mux)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

@@ -31,7 +31,7 @@ export function RouteList() {
                     className="w-full bg-[#0A0B10] border border-white/20 p-3 rounded text-white focus:outline-none focus:border-[#00FFA3]"
                 >
                     <option value="">Select your name...</option>
-                    {drivers.map(d => (
+                    {drivers && drivers.map(d => (
                         <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                 </select>
@@ -49,8 +49,8 @@ export function RouteList() {
                                 {new Date(route.scheduled_date).toLocaleDateString()}
                             </span>
                             <span className={`text-xs px-2 py-1 rounded font-bold ${route.status === 'IN_TRANSIT' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                    route.status === 'COMPLETED' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                        'bg-gray-700/50 text-gray-300 border border-white/10'
+                                route.status === 'COMPLETED' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                    'bg-gray-700/50 text-gray-300 border border-white/10'
                                 }`}>
                                 {route.status}
                             </span>
