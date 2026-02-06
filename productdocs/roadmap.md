@@ -35,8 +35,9 @@
     *   [x] Invoice Engine (Backend & Schema).
     *   [x] Invoice UI (List & Detail).
     *   [x] Invoicing (Generate PDF).
-    *   [ ] Payment Collection (Stripe/Manual Entry).
-    *   [ ] Daily Till Reconciliation.
+    *   [x] Payment Collection (Stripe/Manual Entry).
+    *   [x] Daily Till Reconciliation.
+    *   [x] Sales Summary Reporting.
 3.  **Logistics Lite**:
     *   [x] Pick Ticket Printing.
     *   [ ] Basic Delivery Scheduling.

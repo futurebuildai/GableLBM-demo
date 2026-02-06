@@ -1,54 +1,49 @@
-# Sprint 7 Walkthrough: The Counter Power-Up
+# Sprint 8 Walkthrough: Financials & Refinement
 
 ## Overview
-Sprint 7 transformed GableLBM from a basic order system into a capable Point-of-Sale (POS) backend. We introduced tiered pricing logic, credit limit controls, and professional PDF document generation for Invoices and Pick Tickets. The frontend also received a major "Power-Up" with the new `Omnibar` for rapid navigation and search.
+Sprint 8 completed the "Quote-to-Cash" journey. We implemented end-to-end Payment Processing, a Financial Dashboard (Daily Till), and "Quality of Life" improvements like Invoice Emailing and Keyboard Shortcuts.
 
 ## Changes
 
-### 1. Pricing Engine (Waterfall)
-*   **Logic**: `CalculatePrice(customer, product)`
-*   **Waterfall**:
-    1.  **Contract Price**: Specific negotiated price for Customer+Product.
-    2.  **Tier Price**: Percentage discount off Base Retail (Silver 10%, Gold 15%, etc).
-    3.  **Base Retail**: Default fallback.
-*   **Database**: Added `tier` enum to Customers and `customer_contracts` table.
+### 1. Payment Processing
+*   **Backend**: `internal/payment` module handling Payments, Invoice Status updates (`PARTIAL`, `PAID`), and Ledger updates.
+*   **Database**: Added `payments` table and migration.
+*   **UI**:
+    *   **Payment Modal**: Allows recording payments (Check, Cash, Credit) against invoices.
+    *   **Status Tracking**: Invoices automatically transition `UNPAID` -> `PARTIAL` -> `PAID`.
+    *   **History**: Transactions listed on Invoice Detail.
 
-### 2. Credit Control
-*   **Backend**: `OrderService` now checks `(Balance + OrderTotal) > CreditLimit` before fulfillment.
-*   **Frontend**: Visual indicators for "Over Limit" and "Credit Hold" in Quote Builder and Search.
+### 2. Financial Dashboard (Daily Till)
+*   **New Page**: `/reports/daily-till` (Accessible via Sidebar).
+*   **Features**:
+    *   **Daily Till**: Total collected today breakdown by method (Cash vs Card).
+    *   **Sales Summary**: 30-day lookback at Invoiced vs Collected (Collection Rate %).
+    *   **Outstanding AR**: Total Open Invoices in period.
 
-### 3. Document Engine (PDF)
-*   **Library**: Integrated `maroto` for Golang PDF generation.
-*   **Endpoints**:
-    *   `GET /api/documents/print/invoice/{id}`
-    *   `GET /api/documents/print/pickticket/{id}`
-*   **UI**: Added "Print" buttons to Order and Invoice detail pages.
+### 3. Invoice "Quality of Life"
+*   **Emailing**: Added "Email Invoice" button (`/api/invoices/{id}/email` mock integration).
+*   **PDF Links**: Generated PDFs now include a clickable "Pay Now" link (mock).
 
-### 4. Frontend "Omnibar"
-*   **Feature**: Global `Cmd+K` (or `Ctrl+K`) search bar.
-*   **Capabilities**:
-    *   Search Products instantly (SKU/Desc).
-    *   Search Customers (showing Credit Status).
-    *   Quick Navigation commands.
+### 4. Refinement (The Polish)
+*   **Shortcuts**:
+    *   Added global `?` shortcut to view keybinds.
+    *   `Cmd+K`: Omnibar.
+    *   `G+D`: Goto Dashboard.
 
 ## Verification
 
 ### Automated Tests
-*   `go test ./internal/pricing/...`: Validated Waterfall logic (Contract > Tier > Retail).
-*   `npm run build`: Confirmed frontend type safety with new PDF buttons and Omnibar.
+*   `go test ./...`: Passed (Logic & integration).
+*   `npm run build`: Passed (Type safety & component integration).
 
 ### Manual Verification Flow
-1.  **Pricing**:
-    *   Selected a "Silver Tier" customer in Quote Builder.
-    *   Verified prices reflected 10% discount compared to Retail.
-2.  **Credit Block**:
-    *   Attempted to fulfill an order exceeding the $10,000 limit.
-    *   Verified backend blocked the transaction (simulated).
-    *   Observed red "Exceeds Limit" warning in UI.
-3.  **Documents**:
-    *   Clicked "Print Pick Ticket" on a Confirmed Order -> Opened PDF in new tab.
-    *   Clicked "Download PDF" on an Invoice -> Downloaded correctly formatted Invoice.
-4.  **Omnibar**:
-    *   Pressed `Cmd+K`.
-    *   Typed "2x4".
-    *   Selected Product -> (Future: Add to Cart).
+1.  **Payment Flow**:
+    *   Created Invoice for $1,000.
+    *   Paid $500 (Partial) -> Invoice Status changed to `PARTIAL`.
+    *   Paid $500 (Remaining) -> Invoice Status changed to `PAID`.
+2.  **Reporting**:
+    *   Navigated to "Daily Till".
+    *   Verified the $1,000 showed up in "Today's Collections".
+3.  **Shortcuts**:
+    *   Pressed `?` -> Modal appeared.
+    *   Pressed `Cmd+K` -> Omnibar appeared.

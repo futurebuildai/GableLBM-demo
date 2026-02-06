@@ -45,7 +45,7 @@ export const Omnibar = () => {
                 <div className="flex items-center px-4 border-b border-white/5">
                     <Command.Input
                         className="w-full bg-transparent border-none outline-none py-4 text-white placeholder-white/50 font-mono"
-                        placeholder="Search customers, products, or commands..."
+                        placeholder="Search customers, products, or commands... (cmd+k)"
                     />
                 </div>
 

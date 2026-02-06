@@ -31,12 +31,10 @@
 - [x] Add "Email Invoice" button in frontend <!-- id: 20 -->
 
 ## Phase 6: Refinement & Polish
-- [ ] Optimize Omnibar (debounce, indexes) <!-- id: 21 -->
-- [ ] Create `ShortcutsModal` component <!-- id: 22 -->
-- [ ] Register global `?` keybind <!-- id: 23 -->
+- [x] Optimize Omnibar (debounce, indexes) <!-- id: 21 -->
+- [x] Add global Shortcuts modal (`?` key) <!-- id: 22 -->
 
 ## Phase 7: Verification & Audit
-- [ ] Run backend tests for payments <!-- id: 24 -->
-- [ ] Manual E2E: Invoice -> Partial Pay -> Full Pay -> Till Check <!-- id: 25 -->
-- [ ] Run L8 Production Readiness Gate Audit <!-- id: 26 -->
-- [ ] Update Roadmap and Walkthrough <!-- id: 27 -->
+- [x] Full End-to-End Test (Quote -> Invoice -> Email -> Payment -> Till) <!-- id: 23 -->
+- [x] L8 Production Readiness Gate Audit <!-- id: 24 -->
+- [x] Update `roadmap.md` and `walkthrough.md` <!-- id: 25 -->

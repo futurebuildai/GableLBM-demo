@@ -3,10 +3,25 @@ import { cn } from '../../lib/utils';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Omnibar } from '../ui/Omnibar';
+import { ShortcutsModal } from '../ui/ShortcutsModal';
+import { useEffect } from 'react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const location = useLocation();
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === '?' && !e.metaKey && !e.ctrlKey && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+                e.preventDefault();
+                setShortcutsOpen(true);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     return (
         <div className="min-h-screen bg-deep-space text-foreground flex">
@@ -122,6 +137,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
             </main>
             <Omnibar />
+            <ShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
         </div>
     );
 }
