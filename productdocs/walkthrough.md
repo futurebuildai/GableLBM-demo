@@ -1,49 +1,36 @@
-# Sprint 8 Walkthrough: Financials & Refinement
+# Walkthrough: AI Governance Layer (Sprint 14)
 
 ## Overview
-Sprint 8 completed the "Quote-to-Cash" journey. We implemented end-to-end Payment Processing, a Financial Dashboard (Daily Till), and "Quality of Life" improvements like Invoice Emailing and Keyboard Shortcuts.
+Implemented the AI Governance Layer to allow automated generation of RFCs. This feature empowers technical leadership to draft architectural decisions rapidly.
 
-## Changes
+## Features
 
-### 1. Payment Processing
-*   **Backend**: `internal/payment` module handling Payments, Invoice Status updates (`PARTIAL`, `PAID`), and Ledger updates.
-*   **Database**: Added `payments` table and migration.
-*   **UI**:
-    *   **Payment Modal**: Allows recording payments (Check, Cash, Credit) against invoices.
-    *   **Status Tracking**: Invoices automatically transition `UNPAID` -> `PARTIAL` -> `PAID`.
-    *   **History**: Transactions listed on Invoice Detail.
+### 1. RFC Dashboard
+- **Path**: `/governance`
+- **Function**: Lists all RFCs with status indicators (Draft, Review, Approved, Rejected).
+- **Design**: Uses "Industrial Dark" table component.
 
-### 2. Financial Dashboard (Daily Till)
-*   **New Page**: `/reports/daily-till` (Accessible via Sidebar).
-*   **Features**:
-    *   **Daily Till**: Total collected today breakdown by method (Cash vs Card).
-    *   **Sales Summary**: 30-day lookback at Invoiced vs Collected (Collection Rate %).
-    *   **Outstanding AR**: Total Open Invoices in period.
+### 2. New RFC Wizard
+- **Path**: `/governance/new`
+- **Function**: Users input "Problem Statement" and "Proposed Solution".
+- **AI Action**: The backend generates a structured Markdown RFC using the `AIProvider`.
 
-### 3. Invoice "Quality of Life"
-*   **Emailing**: Added "Email Invoice" button (`/api/invoices/{id}/email` mock integration).
-*   **PDF Links**: Generated PDFs now include a clickable "Pay Now" link (mock).
+### 3. Detail View
+- **Path**: `/governance/:id`
+- **Function**: Renders the generated Markdown content for review.
 
-### 4. Refinement (The Polish)
-*   **Shortcuts**:
-    *   Added global `?` shortcut to view keybinds.
-    *   `Cmd+K`: Omnibar.
-    *   `G+D`: Goto Dashboard.
+## Technical Implementation
 
-## Verification
+### Backend
+- **Package**: `internal/governance`
+- **Database**: `rfcs` table (UUID, Title, Status, Content, AuthorID).
+- **AI Interface**: `AIProvider` interface allows swapping the current Template-based generator with OpenAI/Anthropic in the future.
 
-### Automated Tests
-*   `go test ./...`: Passed (Logic & integration).
-*   `npm run build`: Passed (Type safety & component integration).
+### Frontend
+- **Service**: `GovernanceService` connects to `/api/v1/governance/rfcs`.
+- **UX**: Follows GableLBM Design System (Inter font, Green accents).
 
-### Manual Verification Flow
-1.  **Payment Flow**:
-    *   Created Invoice for $1,000.
-    *   Paid $500 (Partial) -> Invoice Status changed to `PARTIAL`.
-    *   Paid $500 (Remaining) -> Invoice Status changed to `PAID`.
-2.  **Reporting**:
-    *   Navigated to "Daily Till".
-    *   Verified the $1,000 showed up in "Today's Collections".
-3.  **Shortcuts**:
-    *   Pressed `?` -> Modal appeared.
-    *   Pressed `Cmd+K` -> Omnibar appeared.
+## Verification Results
+- **Build**: Backend and Frontend builds passed successfully.
+- **Migration**: `012_create_rfcs_table.sql` applied without errors.
+- **Security**: Routes protected by configured Auth Middleware.

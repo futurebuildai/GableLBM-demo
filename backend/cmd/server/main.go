@@ -18,6 +18,7 @@ import (
 	"github.com/gablelbm/gable/internal/document"
 	"github.com/gablelbm/gable/internal/edi"
 	"github.com/gablelbm/gable/internal/gl"
+	"github.com/gablelbm/gable/internal/governance"
 	glint "github.com/gablelbm/gable/internal/integrations/gl"
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
@@ -162,6 +163,13 @@ func main() {
 	millworkSvc := millwork.NewService(millworkRepo)
 	millworkHandler := millwork.NewHandler(millworkSvc)
 	millworkHandler.RegisterRoutes(mux)
+
+	// Governance Module
+	governanceRepo := governance.NewRepository(db)
+	aiProvider := governance.NewTemplateAIProvider()
+	governanceSvc := governance.NewService(governanceRepo, aiProvider)
+	governanceHandler := governance.NewHandler(governanceSvc)
+	governanceHandler.RegisterRoutes(mux)
 
 	// Partner Module
 	partnerSvc := partner.NewService(customerRepo, quoteRepo, logger)

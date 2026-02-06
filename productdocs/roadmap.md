@@ -57,4 +57,4 @@
     *   [x] Dispatch Route Optimization (Stop Reordering & Driver App).
 3.  **Governance**:
     *   [x] Partner Portal (Co-op management - Sprint 13).
-    *   AI Governance Layer (RFC generation).
+    *   [x] AI Governance Layer (RFC generation - Sprint 14).

@@ -17,6 +17,9 @@ import { PartnerLayout } from "./components/layout/PartnerLayout";
 import { PartnerDashboard } from "./pages/partner/Dashboard";
 import { ProjectList } from "./pages/partner/ProjectList";
 import { PartnerInvoiceList } from "./pages/partner/InvoiceList";
+import { RFCDashboard } from "./pages/governance/RFCDashboard";
+import { NewRFC } from "./pages/governance/NewRFC";
+import { RFCDetail } from "./pages/governance/RFCDetail";
 
 function App() {
   return (
@@ -33,6 +36,11 @@ function App() {
           <Route path="reports/daily-till" element={<DailyTill />} />
           <Route path="dispatch" element={<DispatchBoard />} />
           <Route path="millwork/configure" element={<DoorConfigurator />} />
+          <Route path="governance">
+            <Route index element={<RFCDashboard />} />
+            <Route path="new" element={<NewRFC />} />
+            <Route path=":id" element={<RFCDetail />} />
+          </Route>
         </Route>
 
         {/* Mobile Driver App */}
