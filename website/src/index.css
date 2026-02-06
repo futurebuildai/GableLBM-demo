@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gable-green: #00FFA3;
+  --gable-bg: #0A0B10;
+  --gable-surface: #161821;
+  --gable-text-main: #E2E8F0;
+  --gable-font-ui: 'Inter', system-ui;
+  --gable-font-data: 'JetBrains Mono', monospace;
+  --gable-glass: rgba(255, 255, 255, 0.05);
+  --gable-blur: blur(12px);
+}
+
+@layer base {
+  body {
+    @apply bg-gable-bg text-slate-200 font-sans antialiased selection:bg-gable-green/30;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-bold tracking-tight text-white;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-gable-surface/50 border border-white/5 backdrop-blur-xl rounded-2xl;
+  }
+
+  .electric-glow {
+    box-shadow: 0 0 20px rgba(0, 255, 163, 0.1);
+  }
+
+  .industrial-button {
+    @apply relative inline-flex items-center justify-center px-6 py-3 font-medium transition-all duration-200 active:scale-95;
+  }
+}
+
+/* Micro-animations */
+.hover-depth {
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.hover-depth:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(0, 255, 163, 0.2);
+}
+
+.pulse-glow:hover {
+  animation: pulse-glow-animation 2s infinite;
+}
+
+@keyframes pulse-glow-animation {
+  0% { box-shadow: 0 0 0 0 rgba(0, 255, 163, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(0, 255, 163, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 255, 163, 0); }
+}
