@@ -3,6 +3,8 @@ package inventory
 import (
 	"context"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -86,6 +88,47 @@ func (s *Service) MoveStock(ctx context.Context, req StockMovementRequest) error
 	}
 
 	return nil
+}
+
+// Allocate reserves stock for a product.
+// For MVP, it picks the first available inventory record (or largest).
+// In reality, this should be smarter or explicit.
+func (s *Service) Allocate(ctx context.Context, productID uuid.UUID, quantity float64) error {
+	if quantity <= 0 {
+		return fmt.Errorf("allocation quantity must be positive")
+	}
+
+	// 1. Find inventory with enough stock? Or just any stock.
+	// Simple strategy: Get all locations, pick one with most stock.
+
+	items, err := s.repo.ListInventoryByProduct(ctx, productID)
+	if err != nil {
+		return fmt.Errorf("failed to list inventory: %w", err)
+	}
+
+	if len(items) == 0 {
+		return fmt.Errorf("no inventory found for product %s", productID)
+	}
+
+	// Strategy: Pick the one with highest (Quantity - Allocated)
+	var best *Inventory
+	var maxAvail float64 = -1
+
+	for i := range items {
+		avail := items[i].Quantity - items[i].Allocated
+		if avail > maxAvail {
+			maxAvail = avail
+			best = &items[i]
+		}
+	}
+
+	if best == nil {
+		// Should not happen if list not empty
+		best = &items[0]
+	}
+
+	// 2. Update allocation
+	return s.repo.AllocateStock(ctx, best.ID, quantity)
 }
 
 func (s *Service) ListByProduct(ctx context.Context, productIDStr string) ([]Inventory, error) {

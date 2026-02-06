@@ -16,6 +16,7 @@ import (
 	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/location"
+	"github.com/gablelbm/gable/internal/order"
 	"github.com/gablelbm/gable/internal/product"
 	"github.com/gablelbm/gable/internal/quote"
 	"github.com/gablelbm/gable/pkg/database"
@@ -69,7 +70,10 @@ func main() {
 	locationHandler := location.NewHandler(location.NewService(location.NewRepository(db)))
 	locationHandler.RegisterRoutes(mux)
 
-	inventoryHandler := inventory.NewHandler(inventory.NewService(inventory.NewRepository(db)))
+	// Inventory Service needs to be shared to Order Service
+	inventoryRepo := inventory.NewRepository(db)
+	inventorySvc := inventory.NewService(inventoryRepo)
+	inventoryHandler := inventory.NewHandler(inventorySvc)
 	inventoryHandler.RegisterRoutes(mux)
 
 	customerHandler := customer.NewHandler(customer.NewService(customer.NewRepository(db)))
@@ -78,8 +82,11 @@ func main() {
 	quoteHandler := quote.NewHandler(quote.NewService(quote.NewRepository(db)))
 	quoteHandler.RegisterRoutes(mux)
 
+	// Order Module - injected with InventoryService
+	orderHandler := order.NewHandler(order.NewService(order.NewRepository(db), inventorySvc))
+	orderHandler.RegisterRoutes(mux)
+
 	// Health Check (Public?)
-	// For now, we attach it to the mux. If auth is enabled, it requires auth.
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		status := "ok"
 		dbStatus := "connected"
@@ -139,10 +146,7 @@ func RequestLogger(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		// Wrap writer to capture status if needed (omitted for brevity, assume 200/error handled)
-		// Usually we'd use a ResponseWriter wrapper.
-
 		next.ServeHTTP(w, r)
-
 		logger.Info("Request processed",
 			"method", r.Method,
 			"path", r.URL.Path,

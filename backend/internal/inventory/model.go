@@ -13,6 +13,7 @@ type Inventory struct {
 	LocationID *uuid.UUID `json:"location_id,omitempty"`
 	Location   string     `json:"location"` // Deprecated text field
 	Quantity   float64    `json:"quantity"`
+	Allocated  float64    `json:"allocated"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 }
 

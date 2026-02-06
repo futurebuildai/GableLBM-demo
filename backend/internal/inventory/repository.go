@@ -14,6 +14,7 @@ type Repository interface {
 	UpdateInventory(ctx context.Context, inv *Inventory) error
 	CreateInventory(ctx context.Context, inv *Inventory) error
 	ListInventoryByProduct(ctx context.Context, productID uuid.UUID) ([]Inventory, error)
+	AllocateStock(ctx context.Context, inventoryID uuid.UUID, delta float64) error
 }
 
 type PostgresRepository struct {
@@ -26,17 +27,10 @@ func NewRepository(db *database.DB) *PostgresRepository {
 
 func (r *PostgresRepository) GetInventory(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID) (*Inventory, error) {
 	query := `
-		SELECT id, product_id, location_id, location, quantity, updated_at
+		SELECT id, product_id, location_id, location, quantity, allocated, updated_at
 		FROM inventory
 		WHERE product_id = $1 AND (($2::uuid IS NULL AND location_id IS NULL) OR location_id = $2)
 	`
-	// Note: The query above handles null location_id checking.
-	// Simplifying assumption: location field (text) is ignored for lookup if location_id is used.
-
-	// Actually, we should allow lookup by location_id strictly.
-	// And for legacy, if location_id is null, we might check location text?
-	// For this Sprint, we focus on location_id.
-
 	var inv Inventory
 	err := r.db.Pool.QueryRow(ctx, query, productID, locationID).Scan(
 		&inv.ID,
@@ -44,12 +38,13 @@ func (r *PostgresRepository) GetInventory(ctx context.Context, productID uuid.UU
 		&inv.LocationID,
 		&inv.Location,
 		&inv.Quantity,
+		&inv.Allocated,
 		&inv.UpdatedAt,
 	)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, nil // Return nil if not found, let service handle create logic
+			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
@@ -59,12 +54,11 @@ func (r *PostgresRepository) GetInventory(ctx context.Context, productID uuid.UU
 
 func (r *PostgresRepository) CreateInventory(ctx context.Context, inv *Inventory) error {
 	query := `
-		INSERT INTO inventory (product_id, location_id, location, quantity)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO inventory (product_id, location_id, location, quantity, allocated)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, updated_at
 	`
-	// Ensure location text is populated if location_id is nil, or just empty string
-	err := r.db.Pool.QueryRow(ctx, query, inv.ProductID, inv.LocationID, inv.Location, inv.Quantity).Scan(
+	err := r.db.Pool.QueryRow(ctx, query, inv.ProductID, inv.LocationID, inv.Location, inv.Quantity, inv.Allocated).Scan(
 		&inv.ID,
 		&inv.UpdatedAt,
 	)
@@ -77,11 +71,11 @@ func (r *PostgresRepository) CreateInventory(ctx context.Context, inv *Inventory
 func (r *PostgresRepository) UpdateInventory(ctx context.Context, inv *Inventory) error {
 	query := `
 		UPDATE inventory
-		SET quantity = $1, updated_at = NOW()
-		WHERE id = $2
+		SET quantity = $1, allocated = $2, updated_at = NOW()
+		WHERE id = $3
 		RETURNING updated_at
 	`
-	err := r.db.Pool.QueryRow(ctx, query, inv.Quantity, inv.ID).Scan(&inv.UpdatedAt)
+	err := r.db.Pool.QueryRow(ctx, query, inv.Quantity, inv.Allocated, inv.ID).Scan(&inv.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
@@ -92,7 +86,7 @@ func (r *PostgresRepository) ListInventoryByProduct(ctx context.Context, product
 	query := `
         SELECT i.id, i.product_id, i.location_id, 
                COALESCE(l.path, i.location, '') as location_name, 
-               i.quantity, i.updated_at
+               i.quantity, i.allocated, i.updated_at
         FROM inventory i
         LEFT JOIN locations l ON i.location_id = l.id
         WHERE i.product_id = $1
@@ -106,10 +100,25 @@ func (r *PostgresRepository) ListInventoryByProduct(ctx context.Context, product
 	var items []Inventory
 	for rows.Next() {
 		var i Inventory
-		if err := rows.Scan(&i.ID, &i.ProductID, &i.LocationID, &i.Location, &i.Quantity, &i.UpdatedAt); err != nil {
+		if err := rows.Scan(&i.ID, &i.ProductID, &i.LocationID, &i.Location, &i.Quantity, &i.Allocated, &i.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
 	}
 	return items, nil
+}
+
+func (r *PostgresRepository) AllocateStock(ctx context.Context, inventoryID uuid.UUID, delta float64) error {
+	query := `
+		UPDATE inventory
+		SET allocated = allocated + $1, updated_at = NOW()
+		WHERE id = $2
+	`
+	// TODO: Add check to ensure allocated <= quantity? Or allow over-allocation?
+	// For now, allow it, but maybe warn.
+	_, err := r.db.Pool.Exec(ctx, query, delta, inventoryID)
+	if err != nil {
+		return fmt.Errorf("failed to allocate stock: %w", err)
+	}
+	return nil
 }
