@@ -44,7 +44,7 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
             });
 
             // Load all locations for dest options
-            LocationService.getLocations().then((data: any[]) => {
+            LocationService.listLocations().then((data: any[]) => {
                 setLocations(data);
             });
 
@@ -94,7 +94,7 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div className="text-sm text-gray-400 mb-4">
-                        Moving <span className="text-white font-bold">{product.sku}</span> - {product.name}
+                        Moving <span className="text-white font-bold">{product.sku}</span> - {product.description}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

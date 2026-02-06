@@ -38,7 +38,7 @@ export function RouteList() {
             </div>
 
             <div className="space-y-3 px-4">
-                {routes.map(route => (
+                {routes && routes.map(route => (
                     <div
                         key={route.id}
                         onClick={() => navigate(`/driver/routes/${route.id}`)}

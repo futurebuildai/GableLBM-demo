@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Truck, FileText, Settings, Menu } from 'lucide-react';
+import { LayoutDashboard, Package, Truck, FileText, Settings, Menu, Hammer } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -59,6 +59,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         label="Locations"
                         isOpen={sidebarOpen}
                         active={location.pathname.startsWith('/locations')}
+                    />
+                    <NavItem
+                        to="/millwork/configure"
+                        icon={<Hammer size={20} />}
+                        label="Millwork"
+                        isOpen={sidebarOpen}
+                        active={location.pathname.startsWith('/millwork')}
                     />
                     <NavItem
                         to="/sales"

@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { deliveryService } from "../../services/deliveryService";
-import type { Delivery, Route } from "../../types/delivery";
+import type { Delivery } from "../../types/delivery";
 
 export function StopList() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-    const [route, setRoute] = useState<Route | null>(null);
 
     useEffect(() => {
         if (id) {
@@ -36,19 +35,19 @@ export function StopList() {
             <div className="space-y-3">
                 {deliveries.length === 0 && <div className="text-gray-500 text-center py-8">No stops on this route.</div>}
 
-                {deliveries.map((d, index) => (
+                {deliveries.map((d) => (
                     <div
                         key={d.id}
                         onClick={() => navigate(`/driver/deliveries/${d.id}`)}
                         className={`p-4 rounded-lg border flex items-center gap-4 transition-all active:scale-98 relative overflow-hidden ${d.status === 'DELIVERED' ? 'bg-[#161821]/50 border-green-500/20 opacity-75' :
-                                d.status === 'FAILED' ? 'bg-red-500/10 border-red-500/20' :
-                                    d.stop_sequence === 1 && d.status === 'PENDING' ? 'bg-[#161821] border-[#00FFA3] shadow-[0_0_15px_rgba(0,255,163,0.1)]' :
-                                        'bg-[#161821] border-white/10'
+                            d.status === 'FAILED' ? 'bg-red-500/10 border-red-500/20' :
+                                d.stop_sequence === 1 && d.status === 'PENDING' ? 'bg-[#161821] border-[#00FFA3] shadow-[0_0_15px_rgba(0,255,163,0.1)]' :
+                                    'bg-[#161821] border-white/10'
                             }`}
                     >
                         {/* Sequence Badge */}
                         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold font-mono ${d.status === 'DELIVERED' ? 'bg-green-500/20 text-green-500' :
-                                'bg-white/10 text-white'
+                            'bg-white/10 text-white'
                             }`}>
                             {d.stop_sequence}
                         </div>

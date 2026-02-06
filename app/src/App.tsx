@@ -12,6 +12,7 @@ import { DriverLayout } from "./pages/driver/DriverLayout";
 import { RouteList } from "./pages/driver/RouteList";
 import { StopList } from "./pages/driver/StopList";
 import { DeliveryDetail } from "./pages/driver/DeliveryDetail";
+import { DoorConfigurator } from "./pages/millwork/DoorConfigurator";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="invoices/:id" element={<InvoiceDetail />} />
           <Route path="reports/daily-till" element={<DailyTill />} />
           <Route path="dispatch" element={<DispatchBoard />} />
+          <Route path="millwork/configure" element={<DoorConfigurator />} />
         </Route>
 
         {/* Mobile Driver App */}
