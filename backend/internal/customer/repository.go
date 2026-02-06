@@ -17,6 +17,8 @@ type Repository interface {
 
 	ListPriceLevels(ctx context.Context) ([]PriceLevel, error)
 	GetPriceLevel(ctx context.Context, id uuid.UUID) (*PriceLevel, error)
+
+	UpdateBalance(ctx context.Context, id uuid.UUID, delta float64) error
 }
 
 type PostgresRepository struct {
@@ -42,12 +44,14 @@ func (r *PostgresRepository) CreateCustomer(ctx context.Context, c *Customer) er
 		INSERT INTO customers (
 			id, name, account_number, email, phone, address, 
 			price_level_id, credit_limit, balance_due, is_active, 
+			tier,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	`
 	_, err := r.db.Pool.Exec(ctx, query,
 		c.ID, c.Name, c.AccountNumber, c.Email, c.Phone, c.Address,
 		c.PriceLevelID, c.CreditLimit, c.BalanceDue, c.IsActive,
+		c.Tier,
 		c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
@@ -61,6 +65,7 @@ func (r *PostgresRepository) GetCustomer(ctx context.Context, id uuid.UUID) (*Cu
 		SELECT 
 			c.id, c.name, c.account_number, c.email, c.phone, c.address, 
 			c.price_level_id, c.credit_limit, c.balance_due, c.is_active, 
+			c.tier,
 			c.created_at, c.updated_at,
 			pl.id, pl.name, pl.multiplier
 		FROM customers c
@@ -77,6 +82,7 @@ func (r *PostgresRepository) GetCustomer(ctx context.Context, id uuid.UUID) (*Cu
 	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
 		&c.ID, &c.Name, &c.AccountNumber, &c.Email, &c.Phone, &c.Address,
 		&c.PriceLevelID, &c.CreditLimit, &c.BalanceDue, &c.IsActive,
+		&c.Tier,
 		&c.CreatedAt, &c.UpdatedAt,
 		&plID, &plName, &plMult,
 	)
@@ -106,6 +112,7 @@ func (r *PostgresRepository) ListCustomers(ctx context.Context) ([]Customer, err
 		SELECT 
 			c.id, c.name, c.account_number, c.email, c.phone, c.address, 
 			c.price_level_id, c.credit_limit, c.balance_due, c.is_active, 
+			c.tier,
 			c.created_at, c.updated_at,
 			pl.id, pl.name, pl.multiplier
 		FROM customers c
@@ -130,6 +137,7 @@ func (r *PostgresRepository) ListCustomers(ctx context.Context) ([]Customer, err
 		if err := rows.Scan(
 			&c.ID, &c.Name, &c.AccountNumber, &c.Email, &c.Phone, &c.Address,
 			&c.PriceLevelID, &c.CreditLimit, &c.BalanceDue, &c.IsActive,
+			&c.Tier,
 			&c.CreatedAt, &c.UpdatedAt,
 			&plID, &plName, &plMult,
 		); err != nil {
@@ -182,4 +190,16 @@ func (r *PostgresRepository) GetPriceLevel(ctx context.Context, id uuid.UUID) (*
 		return nil, fmt.Errorf("failed to get price level: %w", err)
 	}
 	return &l, nil
+}
+
+func (r *PostgresRepository) UpdateBalance(ctx context.Context, id uuid.UUID, delta float64) error {
+	query := `UPDATE customers SET balance_due = balance_due + $1, updated_at = NOW() WHERE id = $2`
+	tag, err := r.db.Pool.Exec(ctx, query, delta, id)
+	if err != nil {
+		return fmt.Errorf("failed to update balance: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("customer not found")
+	}
+	return nil
 }

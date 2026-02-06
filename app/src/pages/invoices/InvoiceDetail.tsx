@@ -4,6 +4,8 @@ import { InvoiceService } from '../../services/InvoiceService';
 import type { Invoice } from '../../types/invoice';
 import { Download } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 export default function InvoiceDetail() {
     const { id } = useParams();
     const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -34,7 +36,10 @@ export default function InvoiceDetail() {
                     <p className="text-muted-foreground mt-1">Order Ref: <span className="font-mono text-zinc-400">{invoice.order_id.slice(0, 8)}</span></p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="bg-white/10 text-white hover:bg-white/20 px-4 py-2 rounded flex items-center gap-2 transition-colors">
+                    <button
+                        onClick={() => window.open(`${API_URL}/documents/print/invoice/${invoice.id}`, '_blank')}
+                        className="bg-white/10 text-white hover:bg-white/20 px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                    >
                         <Download size={18} /> Download PDF
                     </button>
                     {/* Placeholder for Pay Now */}

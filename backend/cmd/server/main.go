@@ -14,10 +14,12 @@ import (
 
 	"github.com/gablelbm/gable/internal/config"
 	"github.com/gablelbm/gable/internal/customer"
+	"github.com/gablelbm/gable/internal/document"
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
 	"github.com/gablelbm/gable/internal/location"
 	"github.com/gablelbm/gable/internal/order"
+	"github.com/gablelbm/gable/internal/pricing"
 	"github.com/gablelbm/gable/internal/product"
 	"github.com/gablelbm/gable/internal/quote"
 	"github.com/gablelbm/gable/pkg/database"
@@ -65,7 +67,11 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Initialize Modules
-	productHandler := product.NewHandler(product.NewService(product.NewRepository(db)))
+
+	// Product Module
+	productRepo := product.NewRepository(db)
+	productSvc := product.NewService(productRepo)
+	productHandler := product.NewHandler(productSvc)
 	productHandler.RegisterRoutes(mux)
 
 	locationHandler := location.NewHandler(location.NewService(location.NewRepository(db)))
@@ -77,7 +83,9 @@ func main() {
 	inventoryHandler := inventory.NewHandler(inventorySvc)
 	inventoryHandler.RegisterRoutes(mux)
 
-	customerHandler := customer.NewHandler(customer.NewService(customer.NewRepository(db)))
+	customerRepo := customer.NewRepository(db)
+	customerSvc := customer.NewService(customerRepo)
+	customerHandler := customer.NewHandler(customerSvc)
 	customerHandler.RegisterRoutes(mux)
 
 	quoteHandler := quote.NewHandler(quote.NewService(quote.NewRepository(db)))
@@ -89,9 +97,22 @@ func main() {
 	invoiceHandler := invoice.NewHandler(invoiceSvc)
 	invoiceHandler.RegisterRoutes(mux)
 
+	// Pricing Module
+	pricingRepo := pricing.NewRepository(db)
+	pricingSvc := pricing.NewService(pricingRepo)
+	pricingHandler := pricing.NewHandler(pricingSvc, customerSvc, productSvc)
+	pricingHandler.RegisterRoutes(mux)
+
 	// Order Module - injected with InventoryService and InvoiceService
-	orderHandler := order.NewHandler(order.NewService(order.NewRepository(db), inventorySvc, invoiceSvc))
+	orderRepo := order.NewRepository(db)
+	orderSvc := order.NewService(orderRepo, inventorySvc, invoiceSvc, customerSvc)
+	orderHandler := order.NewHandler(orderSvc)
 	orderHandler.RegisterRoutes(mux)
+
+	// Document Module
+	docSvc := document.NewService(productRepo)
+	docHandler := document.NewHandler(docSvc, orderSvc, invoiceSvc, customerSvc)
+	docHandler.RegisterRoutes(mux)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

@@ -2,6 +2,7 @@ import { LayoutDashboard, Package, Truck, FileText, Settings, Menu } from 'lucid
 import { cn } from '../../lib/utils';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Omnibar } from '../ui/Omnibar';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -99,6 +100,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <Menu size={20} />
                     </button>
                     <div className="flex items-center gap-4">
+                        <div className="text-xs text-muted-foreground hidden lg:block">
+                            Press <span className="font-mono bg-white/10 px-1 rounded">⌘K</span> to search
+                        </div>
                         <div className="h-8 w-8 rounded-full bg-gable-green/20 border border-gable-green/50 flex items-center justify-center text-xs font-mono text-gable-green">
                             AD
                         </div>
@@ -110,6 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     {children}
                 </div>
             </main>
+            <Omnibar />
         </div>
     );
 }

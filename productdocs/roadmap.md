@@ -28,17 +28,17 @@
     *   [x] Order Engine (Backend Service & Schema).
     *   [x] Inventory Allocation (Soft Lock).
     *   [x] Inventory Fulfillment (Hard Deduct).
-    *   [ ] Quick Quote UI (< 3 clicks).
-    *   [ ] Customer Contract Pricing (Tiered Logic).
-    *   [ ] Credit Limit Checks.
+    *   [x] Quick Quote UI (< 3 clicks).
+    *   [x] Customer Contract Pricing (Tiered Logic).
+    *   [x] Credit Limit Checks.
 2.  **Financials Lite**:
     *   [x] Invoice Engine (Backend & Schema).
-    *   [ ] Invoice UI (List & Detail).
-    *   [ ] Invoicing (Generate PDF).
+    *   [x] Invoice UI (List & Detail).
+    *   [x] Invoicing (Generate PDF).
     *   [ ] Payment Collection (Stripe/Manual Entry).
     *   [ ] Daily Till Reconciliation.
 3.  **Logistics Lite**:
-    *   [ ] Pick Ticket Printing.
+    *   [x] Pick Ticket Printing.
     *   [ ] Basic Delivery Scheduling.
 
 ## Phase 3: General Availability (The "Ecosystem")

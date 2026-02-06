@@ -3,6 +3,8 @@ package product
 import (
 	"context"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 // Service defines the business logic for products
@@ -31,4 +33,9 @@ func (s *Service) CreateProduct(ctx context.Context, p *Product) error {
 // ListProducts returns all products
 func (s *Service) ListProducts(ctx context.Context) ([]Product, error) {
 	return s.repo.ListProducts(ctx)
+}
+
+// GetProduct retrieves a product by its ID
+func (s *Service) GetProduct(ctx context.Context, id uuid.UUID) (*Product, error) {
+	return s.repo.GetProduct(ctx, id)
 }

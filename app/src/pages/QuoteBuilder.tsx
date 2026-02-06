@@ -105,9 +105,25 @@ export const QuoteBuilder = () => {
                                     <span className="text-[#00FFA3]">{customer.price_level?.name || 'Retail'}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Credit Limit</span>
                                     <span className="font-mono">${customer.credit_limit?.toLocaleString() || '0.00'}</span>
                                 </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Balance Due</span>
+                                    <span className={`font-mono ${customer.balance_due > customer.credit_limit ? 'text-red-500 font-bold' : ''}`}>
+                                        ${customer.balance_due.toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between border-t border-white/5 pt-2 mt-2">
+                                    <span className="text-gray-400">Available</span>
+                                    <span className={`font-mono ${(customer.credit_limit - customer.balance_due) < 0 ? 'text-red-500' : 'text-[#00FFA3]'}`}>
+                                        ${(customer.credit_limit - customer.balance_due).toLocaleString()}
+                                    </span>
+                                </div>
+                                {(customer.credit_limit > 0 && (customer.balance_due + totalAmount) > customer.credit_limit) && (
+                                    <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-xs p-2 rounded mt-2">
+                                        ⚠️ Exceeds Credit Limit
+                                    </div>
+                                )}
                             </div>
                         )}
                     </section>
@@ -118,7 +134,7 @@ export const QuoteBuilder = () => {
                     <section className="bg-[#161821] border border-white/10 rounded-xl p-6 min-h-[600px]">
                         <h2 className="text-lg font-medium mb-4">Line Items</h2>
 
-                        <LineItemEditor products={products} onAddLine={handleAddLine} />
+                        <LineItemEditor products={products} customerId={customer?.id} onAddLine={handleAddLine} />
 
                         {/* Lines Table */}
                         <div className="mt-6 overflow-hidden border border-white/10 rounded-lg">

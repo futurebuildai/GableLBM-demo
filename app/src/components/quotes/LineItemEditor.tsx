@@ -2,29 +2,48 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Product } from '../../types/product';
 
+import { PricingService } from '../../services/pricing.service';
+import type { CalculatedPrice } from '../../types/pricing';
+
 interface LineItemEditorProps {
     products: Product[];
+    customerId?: string;
     onAddLine: (product: Product, quantity: number, unitPrice: number) => void;
 }
 
-export const LineItemEditor = ({ products, onAddLine }: LineItemEditorProps) => {
+export const LineItemEditor = ({ products, customerId, onAddLine }: LineItemEditorProps) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [quantity, setQuantity] = useState<number>(1);
     const [price, setPrice] = useState<number>(0);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+    const [priceDetails, setPriceDetails] = useState<CalculatedPrice | null>(null);
+
     const filteredProducts = products.filter(p =>
         p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.description.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleSelectProduct = (p: Product) => {
+    const handleSelectProduct = async (p: Product) => {
         setSelectedProduct(p);
         setSearchTerm(p.sku);
         setIsSearchOpen(false);
-        // Default price logic? Mock for now or 0
-        setPrice(10.00);
+
+        if (customerId) {
+            try {
+                const pricing = await PricingService.calculatePrice(customerId, p.id);
+                setPrice(pricing.final_price);
+                setPriceDetails(pricing);
+            } catch (err) {
+                console.error("Failed to fetch price", err);
+                setPrice(p.base_price || 0);
+                setPriceDetails(null);
+            }
+        } else {
+            setPrice(p.base_price || 0);
+            setPriceDetails(null);
+        }
     };
 
     const handleAdd = () => {
@@ -35,6 +54,7 @@ export const LineItemEditor = ({ products, onAddLine }: LineItemEditorProps) => 
             setSearchTerm('');
             setQuantity(1);
             setPrice(0);
+            setPriceDetails(null);
         }
     };
 
@@ -102,6 +122,11 @@ export const LineItemEditor = ({ products, onAddLine }: LineItemEditorProps) => 
                         onChange={(e) => setPrice(Number(e.target.value))}
                         step="0.01"
                     />
+                    {priceDetails && priceDetails.source !== 'RETAIL' && (
+                        <div className="absolute right-0 -bottom-5 text-[10px] text-[#00FFA3] whitespace-nowrap">
+                            {priceDetails.details}
+                        </div>
+                    )}
                 </div>
 
                 {/* Add Button */}

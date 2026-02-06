@@ -1,26 +1,33 @@
-# Sprint 5: Order Engine Tasks
+# Sprint 07 Task List
 
-## Database
-- [x] Create migration `004_create_orders.sql` (Tables: orders, order_lines; Col: inventory.allocated) <!-- id: 0 -->
+## Phase 1: Context & Database
+- [x] Create migration `006_pricing_and_credit.sql` <!-- id: 0 -->
 - [x] Apply migration locally <!-- id: 1 -->
+- [x] Create migration `007_add_product_price.sql` (Fix: Missing base price) <!-- id: 20 -->
+- [x] Apply migration 007 <!-- id: 21 -->
 
-## Backend Implementation
-- [x] `internal/order/model.go` (Structs for Order, OrderLine, Status Enum) <!-- id: 2 -->
-- [x] `internal/order/repository.go` (CRUD, Transaction support) <!-- id: 3 -->
-- [x] `internal/inventory/service.go` (Add `AllocateStock` and `ReleaseStock` methods) <!-- id: 4 -->
-- [x] `internal/order/service.go` (Business Logic: Create, ConvertQuote, UpdateStatus) <!-- id: 5 -->
-- [x] `internal/order/handler.go` (HTTP Endpoints) <!-- id: 6 -->
-- [x] Register Order routes in `cmd/api/main.go` <!-- id: 7 -->
+## Phase 2: Backend Pricing & Credit
+- [x] Implement `internal/pricing` model and repository <!-- id: 2 -->
+- [x] Implement `internal/pricing` service (Waterfall logic) <!-- id: 3 -->
+- [x] Update `internal/order` service to include credit limit checks <!-- id: 4 -->
+- [x] Implement `internal/customer` updates for credit limit/tier <!-- id: 5 -->
 
-## Frontend Implementation
-- [x] `src/types/order.ts` (TS Interfaces) <!-- id: 8 -->
-- [x] `src/services/order.service.ts` (API Client) <!-- id: 9 -->
-- [x] `src/pages/orders/OrderList.tsx` (Table view of active orders) <!-- id: 10 -->
-- [x] `src/pages/orders/OrderDetail.tsx` (View order details, status) <!-- id: 11 -->
-- [ ] `src/pages/quotes/QuoteDetail.tsx` (Add "Convert to Order" button) <!-- id: 12 -->
+## Phase 3: Document Engine (PDFs)
+- [x] Setup PDF generation library in backend <!-- id: 6 -->
+- [x] Implement Pick Ticket PDF template <!-- id: 7 -->
+- [x] Implement Invoice PDF template <!-- id: 8 -->
+- [x] Add `/api/documents/print/{type}/{id}` endpoint <!-- id: 9 -->
 
-## Verification
-- [x] Verify Database Schema (psql) <!-- id: 13 -->
-- [x] Verify API: Create Order via Curl <!-- id: 14 -->
-- [x] Verify UI: Quote -> Order Flow <!-- id: 15 -->
-- [x] Verify Inventory: Allocation updates "Available" count <!-- id: 16 -->
+## Phase 4: Frontend Counter Power-Up
+- [x] Implement `Omnibar` (Global Cmd+K search) <!-- id: 10 -->
+- [x] Refactor `QuoteBuilder` for keyboard-first entry <!-- id: 11 --> 
+- [x] Add Pricing visibility to `QuoteBuilder` line items <!-- id: 12 -->
+- [x] Add "Print" buttons to `OrderDetail` and `InvoiceDetail` <!-- id: 13 -->
+- [x] Implement Credit Hold visual indicators <!-- id: 14 -->
+
+## Phase 5: Verification & L8 Audit
+- [ ] Run backend tests for pricing logic <!-- id: 15 -->
+- [ ] Verify PDF generation output <!-- id: 16 -->
+- [ ] Manual E2E test: Quote -> Pricing -> Order -> Credit Block -> Fulfill -> PDF <!-- id: 17 -->
+- [ ] Run L8 Production Readiness Gate Audit <!-- id: 18 -->
+- [ ] Update Roadmap and Walkthrough <!-- id: 19 -->

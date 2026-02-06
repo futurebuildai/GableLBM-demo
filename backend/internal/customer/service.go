@@ -29,3 +29,7 @@ func (s *Service) ListCustomers(ctx context.Context) ([]Customer, error) {
 func (s *Service) ListPriceLevels(ctx context.Context) ([]PriceLevel, error) {
 	return s.repo.ListPriceLevels(ctx)
 }
+
+func (s *Service) UpdateBalance(ctx context.Context, id uuid.UUID, delta float64) error {
+	return s.repo.UpdateBalance(ctx, id, delta)
+}

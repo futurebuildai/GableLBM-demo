@@ -1,54 +1,54 @@
-# Sprint 5 Walkthrough: The Order Engine
+# Sprint 7 Walkthrough: The Counter Power-Up
 
 ## Overview
-Sprint 5 focused on implementing the "Order Engine", enabling the transition from Quotes to confirmed Sales Orders. This introduced the concept of "Inventory Allocation", where stock is reserved (Soft Lock) before being fulfilled (Hard Deduct).
+Sprint 7 transformed GableLBM from a basic order system into a capable Point-of-Sale (POS) backend. We introduced tiered pricing logic, credit limit controls, and professional PDF document generation for Invoices and Pick Tickets. The frontend also received a major "Power-Up" with the new `Omnibar` for rapid navigation and search.
 
 ## Changes
 
-### Database Schema
-*   **New Tables**:
-    *   `orders`: Tracks the header status (DRAFT, CONFIRMED, FULFILLED).
-    *   `order_lines`: Snapshot of product/price at time of order.
-*   **Inventory Update**:
-    *   Added `allocated` (numeric) column to `inventory`.
-    *   `Available Quantity` is now calculated as `Quantity - Allocated`.
+### 1. Pricing Engine (Waterfall)
+*   **Logic**: `CalculatePrice(customer, product)`
+*   **Waterfall**:
+    1.  **Contract Price**: Specific negotiated price for Customer+Product.
+    2.  **Tier Price**: Percentage discount off Base Retail (Silver 10%, Gold 15%, etc).
+    3.  **Base Retail**: Default fallback.
+*   **Database**: Added `tier` enum to Customers and `customer_contracts` table.
 
-```sql
--- Migration: 004_create_orders.sql
-CREATE TABLE orders (...);
-ALTER TABLE inventory ADD COLUMN allocated ...;
-```
+### 2. Credit Control
+*   **Backend**: `OrderService` now checks `(Balance + OrderTotal) > CreditLimit` before fulfillment.
+*   **Frontend**: Visual indicators for "Over Limit" and "Credit Hold" in Quote Builder and Search.
 
-### Backend (Go)
-*   **Module**: `internal/order`
-    *   `Service`: Handles creation and the `ConfirmOrder` logic.
-    *   `Repository`: Transactional inserts for header/lines.
-*   **Inventory Integration**:
-    *   `InventoryService.Allocate(productID, qty)`: Finds the best location and increments the `allocated` counter.
-    *   Used by `OrderService.ConfirmOrder` to lock stock.
+### 3. Document Engine (PDF)
+*   **Library**: Integrated `maroto` for Golang PDF generation.
+*   **Endpoints**:
+    *   `GET /api/documents/print/invoice/{id}`
+    *   `GET /api/documents/print/pickticket/{id}`
+*   **UI**: Added "Print" buttons to Order and Invoice detail pages.
 
-### Frontend (React)
-*   **New Pages**:
-    *   `Orders/OrderList`: Dashboard of all active orders.
-    *   `Orders/OrderDetail`: Detailed view allowing "Confirm" and "Dispatch" actions.
-*   **Navigation**: Added "Orders" to the prompt sidebar.
+### 4. Frontend "Omnibar"
+*   **Feature**: Global `Cmd+K` (or `Ctrl+K`) search bar.
+*   **Capabilities**:
+    *   Search Products instantly (SKU/Desc).
+    *   Search Customers (showing Credit Status).
+    *   Quick Navigation commands.
 
 ## Verification
 
 ### Automated Tests
-*   `go build ./...` passed.
-*   `npm run build` passed.
+*   `go test ./internal/pricing/...`: Validated Waterfall logic (Contract > Tier > Retail).
+*   `npm run build`: Confirmed frontend type safety with new PDF buttons and Omnibar.
 
-### Manual Verification Steps
-1.  **Schema Check**:
-    *   Verified `orders` table exists via `psql`.
-    *   Verified `inventory.allocated` column exists.
-2.  **Order Flow**:
-    *   Navigate to `/orders`.
-    *   (Future) Click "Convert to Order" from a Quote.
-    *   View Order Detail.
-    *   Click "Confirm Order" -> Status changes to `CONFIRMED`.
-    *   (Backend) Verify `inventory.allocated` increases.
-
-## Screenshots
-> *Placeholder for UI screenshots of Order List and Detail pages.*
+### Manual Verification Flow
+1.  **Pricing**:
+    *   Selected a "Silver Tier" customer in Quote Builder.
+    *   Verified prices reflected 10% discount compared to Retail.
+2.  **Credit Block**:
+    *   Attempted to fulfill an order exceeding the $10,000 limit.
+    *   Verified backend blocked the transaction (simulated).
+    *   Observed red "Exceeds Limit" warning in UI.
+3.  **Documents**:
+    *   Clicked "Print Pick Ticket" on a Confirmed Order -> Opened PDF in new tab.
+    *   Clicked "Download PDF" on an Invoice -> Downloaded correctly formatted Invoice.
+4.  **Omnibar**:
+    *   Pressed `Cmd+K`.
+    *   Typed "2x4".
+    *   Selected Product -> (Future: Add to Cart).

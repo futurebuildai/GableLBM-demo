@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
 	"github.com/google/uuid"
@@ -13,13 +14,15 @@ type Service struct {
 	repo         Repository
 	inventorySvc *inventory.Service
 	invoiceSvc   *invoice.Service
+	customerSvc  *customer.Service
 }
 
-func NewService(repo Repository, inventorySvc *inventory.Service, invoiceSvc *invoice.Service) *Service {
+func NewService(repo Repository, inventorySvc *inventory.Service, invoiceSvc *invoice.Service, customerSvc *customer.Service) *Service {
 	return &Service{
 		repo:         repo,
 		inventorySvc: inventorySvc,
 		invoiceSvc:   invoiceSvc,
+		customerSvc:  customerSvc,
 	}
 }
 
@@ -127,6 +130,15 @@ func (s *Service) FulfillOrder(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("cannot fulfill order in status %s (must be CONFIRMED)", o.Status)
 	}
 
+	// 1.5 Check Credit Limit
+	cust, err := s.customerSvc.GetCustomer(ctx, o.CustomerID)
+	if err != nil {
+		return fmt.Errorf("failed to get customer: %w", err)
+	}
+	if cust.CreditLimit > 0 && (cust.BalanceDue+o.TotalAmount) > cust.CreditLimit {
+		return fmt.Errorf("credit limit exceeded: balance %.2f + order %.2f > limit %.2f", cust.BalanceDue, o.TotalAmount, cust.CreditLimit)
+	}
+
 	// 2. Fulfill Inventory (with Rollback)
 	var fulfilled []OrderLine
 
@@ -163,6 +175,13 @@ func (s *Service) FulfillOrder(ctx context.Context, id uuid.UUID) error {
 			_ = s.inventorySvc.RevertFulfillment(ctx, prev.ProductID, prev.Quantity)
 		}
 		return fmt.Errorf("failed to create invoice: %w", err)
+	}
+
+	// 3.5 Update Customer Balance
+	if err := s.customerSvc.UpdateBalance(ctx, o.CustomerID, o.TotalAmount); err != nil {
+		// Severe error, but invoice created.
+		// For now log and return error
+		return fmt.Errorf("failed to update customer balance: %w", err)
 	}
 
 	// 4. Update Status

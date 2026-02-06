@@ -21,6 +21,7 @@ export interface Product {
     sku: string;
     description: string;
     uom_primary: UOM;
+    base_price: number;
     total_quantity?: number;
     total_allocated?: number;
     created_at: string;

@@ -11,7 +11,7 @@ export const LocationService = {
         return response.json();
     },
 
-    async createLocation(data: any): Promise<Location> {
+    async createLocation(data: Omit<Location, 'id' | 'created_at' | 'updated_at'>): Promise<Location> {
         const response = await fetch(`${API_URL}/locations`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

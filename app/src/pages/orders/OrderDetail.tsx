@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Truck, Check } from 'lucide-react';
+import { Truck, Check, Printer } from 'lucide-react';
 import { OrderService } from '../../services/OrderService';
 import { type Order, getStatusColor } from '../../types/order';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export default function OrderDetail() {
     const { id } = useParams();
@@ -88,6 +90,14 @@ export default function OrderDetail() {
                             className="bg-blue-500 text-white font-bold px-4 py-2 rounded hover:bg-blue-600 transition-colors flex items-center gap-2"
                         >
                             {processing ? 'Processing...' : <><Truck size={18} /> Fulfill & Invoice</>}
+                        </button>
+                    )}
+                    {(order.status === 'CONFIRMED' || order.status === 'FULFILLED') && (
+                        <button
+                            onClick={() => window.open(`${API_URL}/documents/print/pickticket/${order.id}`, '_blank')}
+                            className="bg-white/10 text-white font-bold px-4 py-2 rounded hover:bg-white/20 transition-colors flex items-center gap-2"
+                        >
+                            <Printer size={18} /> Pick Ticket
                         </button>
                     )}
                 </div>

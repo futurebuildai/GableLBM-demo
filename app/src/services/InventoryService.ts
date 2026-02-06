@@ -21,7 +21,8 @@ export const InventoryService = {
     },
 
     // Helper to get inventory for a product if we want to show it in the modal
-    async getInventoryByProduct(_productId: string): Promise<any[]> {
+    async getInventoryByProduct(productId: string): Promise<unknown[]> {
+        console.log("Fetching inventory for", productId);
         // TODO: Implement list endpoint in backend if not exists, 
         // or rely on the main product list to contain total if needed.
         // For Sprint 03, we rely on the main list or assume 0 start.

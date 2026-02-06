@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { LocationService } from '../../services/LocationService';
 import type { Location } from '../../types/location';
 
@@ -7,18 +7,19 @@ export const LocationManager: React.FC = () => {
     const [newCode, setNewCode] = useState('');
     const [newType, setNewType] = useState('ZONE');
 
-    useEffect(() => {
-        loadLocations();
-    }, []);
-
-    const loadLocations = async () => {
+    const loadLocations = useCallback(async () => {
         try {
             const data = await LocationService.listLocations();
             setLocations(data);
         } catch (error) {
             console.error(error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        // eslint-disable-next-line
+        loadLocations();
+    }, [loadLocations]);
 
     const handleCreate = async () => {
         try {
@@ -29,7 +30,7 @@ export const LocationManager: React.FC = () => {
             });
             setNewCode('');
             loadLocations();
-        } catch (error) {
+        } catch {
             alert('Failed to create location');
         }
     };

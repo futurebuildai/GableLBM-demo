@@ -6,6 +6,15 @@ import (
 	"github.com/google/uuid"
 )
 
+type CustomerTier string
+
+const (
+	TierRetail   CustomerTier = "RETAIL"
+	TierSilver   CustomerTier = "SILVER"
+	TierGold     CustomerTier = "GOLD"
+	TierPlatinum CustomerTier = "PLATINUM"
+)
+
 type PriceLevel struct {
 	ID         uuid.UUID `json:"id"`
 	Name       string    `json:"name"`
@@ -21,6 +30,8 @@ type Customer struct {
 	Email         string    `json:"email,omitempty"`
 	Phone         string    `json:"phone,omitempty"`
 	Address       string    `json:"address,omitempty"`
+
+	Tier CustomerTier `json:"tier"`
 
 	PriceLevelID *uuid.UUID  `json:"price_level_id,omitempty"`
 	PriceLevel   *PriceLevel `json:"price_level,omitempty"` // Joined
