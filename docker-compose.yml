@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gable_postgres
+    environment:
+      POSTGRES_USER: gable_user
+      POSTGRES_PASSWORD: gable_password
+      POSTGRES_DB: gable_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U gable_user -d gable_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:latest
+    container_name: gable_nats
+    command: "-js" # Enable JetStream
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats_data:/data
+
+volumes:
+  postgres_data:
+  nats_data:

@@ -8,11 +8,11 @@
 **Timeline estimate**: Q2 2026.
 
 ### Objectives
-1.  **Tech Foundation**: Go Backend + React Frontend + Postgres + NATS.
+1.  **Tech Foundation**: [x] Go Backend + React Frontend + Postgres + NATS.
 2.  **Core Inventory**:
-    *   SKU Management (Lumber specific: Grade, Species, Dim).
-    *   Multi-UOM Support (MBF <-> Piece <-> LF conversions).
-    *   Location Tracking (Bin/Row).
+    *   [x] SKU Management (Lumber specific: Grade, Species, Dim).
+    *   [x] Multi-UOM Support (MBF <-> Piece <-> LF conversions).
+    *   [ ] Location Tracking (Bin/Row).
 3.  **Basic "In/Out"**:
     *   Simple Receipt (Add stock).
     *   Simple Count (Adjust stock).
