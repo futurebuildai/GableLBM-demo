@@ -5,6 +5,7 @@ import (
 
 	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/invoice"
+	"github.com/gablelbm/gable/internal/notification"
 	"github.com/gablelbm/gable/internal/order"
 	"github.com/google/uuid"
 )
@@ -14,15 +15,17 @@ type Handler struct {
 	orderSvc    *order.Service
 	invoiceSvc  *invoice.Service
 	customerSvc *customer.Service
+	emailSvc    notification.EmailService
 }
 
-func NewHandler(d *Service, o *order.Service, i *invoice.Service, c *customer.Service) *Handler {
-	return &Handler{docSvc: d, orderSvc: o, invoiceSvc: i, customerSvc: c}
+func NewHandler(d *Service, o *order.Service, i *invoice.Service, c *customer.Service, e notification.EmailService) *Handler {
+	return &Handler{docSvc: d, orderSvc: o, invoiceSvc: i, customerSvc: c, emailSvc: e}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /documents/print/invoice/{id}", h.HandlePrintInvoice)
 	mux.HandleFunc("GET /documents/print/pickticket/{id}", h.HandlePrintPickTicket)
+	mux.HandleFunc("POST /api/invoices/{id}/email", h.HandleEmailInvoice)
 }
 
 func (h *Handler) HandlePrintInvoice(w http.ResponseWriter, r *http.Request) {
@@ -85,4 +88,41 @@ func (h *Handler) HandlePrintPickTicket(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", "inline; filename=pickticket.pdf")
 	w.Write(pdfBytes)
+}
+
+func (h *Handler) HandleEmailInvoice(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	inv, err := h.invoiceSvc.GetInvoice(r.Context(), id)
+	if err != nil {
+		http.Error(w, "invoice not found", http.StatusNotFound)
+		return
+	}
+
+	cust, err := h.customerSvc.GetCustomer(r.Context(), inv.CustomerID)
+	if err != nil {
+		http.Error(w, "customer not found", http.StatusNotFound)
+		return
+	}
+
+	pdfBytes, err := h.docSvc.GenerateInvoicePDF(r.Context(), inv, cust)
+	if err != nil {
+		http.Error(w, "failed to generate pdf", http.StatusInternalServerError)
+		return
+	}
+
+	// In real app, look up customer email. For now, mock or use a query param
+	email := "customer@example.com"
+	if err := h.emailSvc.SendInvoice(r.Context(), email, inv.ID.String(), pdfBytes); err != nil {
+		http.Error(w, "failed to send email", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"sent"}`))
 }

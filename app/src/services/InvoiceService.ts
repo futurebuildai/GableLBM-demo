@@ -17,5 +17,14 @@ export const InvoiceService = {
             throw new Error('Failed to fetch invoice');
         }
         return response.json();
+    },
+
+    async emailInvoice(id: string): Promise<void> {
+        const response = await fetch(`${API_URL}/api/invoices/${id}/email`, { // Note: /api/ prefix
+            method: 'POST'
+        });
+        if (!response.ok) {
+            throw new Error('Failed to email invoice');
+        }
     }
 };

@@ -74,6 +74,17 @@ func (s *Service) GenerateInvoicePDF(ctx context.Context, inv *invoice.Invoice, 
 		}),
 	)
 
+	// Mock "Pay Now" Link
+	m.AddRow(10,
+		text.NewCol(12, fmt.Sprintf("PAY ONLINE: https://app.gable.com/pay/%s", inv.ID), props.Text{
+			Top:   2,
+			Style: fontstyle.Italic,
+			Align: align.Center,
+			Size:  10,
+			Color: &props.Color{Red: 0, Green: 0, Blue: 255},
+		}),
+	)
+
 	doc, err := m.Generate()
 	if err != nil {
 		return nil, err

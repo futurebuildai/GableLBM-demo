@@ -18,6 +18,7 @@ import (
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
 	"github.com/gablelbm/gable/internal/location"
+	"github.com/gablelbm/gable/internal/notification"
 	"github.com/gablelbm/gable/internal/order"
 	"github.com/gablelbm/gable/internal/payment"
 	"github.com/gablelbm/gable/internal/pricing"
@@ -111,9 +112,12 @@ func main() {
 	orderHandler := order.NewHandler(orderSvc)
 	orderHandler.RegisterRoutes(mux)
 
+	// Notification Module
+	emailSvc := notification.NewLogEmailService(logger)
+
 	// Document Module
 	docSvc := document.NewService(productRepo)
-	docHandler := document.NewHandler(docSvc, orderSvc, invoiceSvc, customerSvc)
+	docHandler := document.NewHandler(docSvc, orderSvc, invoiceSvc, customerSvc, emailSvc)
 	docHandler.RegisterRoutes(mux)
 
 	// Payment Module

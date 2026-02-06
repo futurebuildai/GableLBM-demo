@@ -5,7 +5,7 @@ import { paymentService } from '../../services/paymentService';
 import { PaymentModal } from '../../components/invoices/PaymentModal';
 import type { Invoice } from '../../types/invoice';
 import type { Payment, CreatePaymentRequest } from '../../types/payment';
-import { Download, CreditCard } from 'lucide-react';
+import { Download, CreditCard, Mail } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -65,10 +65,24 @@ export default function InvoiceDetail() {
                 </div>
                 <div className="flex gap-3">
                     <button
+                        onClick={async () => {
+                            if (!invoice.id) return;
+                            try {
+                                await InvoiceService.emailInvoice(invoice.id);
+                                alert('Invoice emailed successfully!');
+                            } catch (e) {
+                                alert('Failed to email invoice');
+                            }
+                        }}
+                        className="bg-white/10 text-white hover:bg-white/20 px-4 py-2 rounded flex items-center gap-2 transition-colors border border-white/10"
+                    >
+                        <Mail size={18} /> Email
+                    </button>
+                    <button
                         onClick={() => window.open(`${API_URL}/documents/print/invoice/${invoice.id}`, '_blank')}
                         className="bg-white/10 text-white hover:bg-white/20 px-4 py-2 rounded flex items-center gap-2 transition-colors border border-white/10"
                     >
-                        <Download size={18} /> Download PDF
+                        <Download size={18} /> Download
                     </button>
 
                     {invoice.status !== 'PAID' && (
@@ -76,7 +90,7 @@ export default function InvoiceDetail() {
                             onClick={() => setIsPaymentModalOpen(true)}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded flex items-center gap-2 transition-colors font-medium shadow-lg shadow-emerald-900/20"
                         >
-                            <CreditCard size={18} /> Process Payment
+                            <CreditCard size={18} /> Pay
                         </button>
                     )}
                 </div>

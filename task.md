@@ -25,10 +25,10 @@
 - [x] Implement Sales Summary Report capability <!-- id: 16 -->
 
 ## Phase 5: Invoice Emailing & PDF Links
-- [ ] Setup simple SMTP/Mockmailer in backend <!-- id: 17 -->
-- [ ] Add "Pay Now" link generation in PDF template <!-- id: 18 -->
-- [ ] Implement `/api/invoices/{id}/email` endpoint <!-- id: 19 -->
-- [ ] Add "Email Invoice" button in frontend <!-- id: 20 -->
+- [x] Setup simple SMTP/Mockmailer in backend <!-- id: 17 -->
+- [x] Add "Pay Now" link generation in PDF template <!-- id: 18 -->
+- [x] Implement `/api/invoices/{id}/email` endpoint <!-- id: 19 -->
+- [x] Add "Email Invoice" button in frontend <!-- id: 20 -->
 
 ## Phase 6: Refinement & Polish
 - [ ] Optimize Omnibar (debounce, indexes) <!-- id: 21 -->
