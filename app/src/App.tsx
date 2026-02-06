@@ -6,6 +6,7 @@ import OrderList from "./pages/orders/OrderList";
 import OrderDetail from "./pages/orders/OrderDetail";
 import InvoiceList from "./pages/invoices/InvoiceList";
 import InvoiceDetail from "./pages/invoices/InvoiceDetail";
+import DailyTill from "./pages/DailyTill";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="orders/:id" element={<OrderDetail />} />
           <Route path="invoices" element={<InvoiceList />} />
           <Route path="invoices/:id" element={<InvoiceDetail />} />
+          <Route path="reports/daily-till" element={<DailyTill />} />
         </Route>
       </Routes>
     </BrowserRouter>

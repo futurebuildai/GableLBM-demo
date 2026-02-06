@@ -19,10 +19,10 @@
 - [x] Visual handling for Partial/Paid statuses <!-- id: 12 -->
 
 ## Phase 4: Financial Dashboard (Daily Till)
-- [ ] Implement backend `TillService` (aggregates daily payments) <!-- id: 13 -->
-- [ ] Create `/api/reports/daily-till` (or similar) <!-- id: 14 -->
-- [ ] Create `DailyTill` page in Frontend <!-- id: 15 -->
-- [ ] Implement Sales Summary Report capability <!-- id: 16 -->
+- [x] Implement backend `TillService` (aggregates daily payments) <!-- id: 13 -->
+- [x] Create `/api/reports/daily-till` endpoint <!-- id: 14 -->
+- [x] Create `DailyTill` page in Frontend <!-- id: 15 -->
+- [x] Implement Sales Summary Report capability <!-- id: 16 -->
 
 ## Phase 5: Invoice Emailing & PDF Links
 - [ ] Setup simple SMTP/Mockmailer in backend <!-- id: 17 -->

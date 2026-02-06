@@ -23,6 +23,7 @@ import (
 	"github.com/gablelbm/gable/internal/pricing"
 	"github.com/gablelbm/gable/internal/product"
 	"github.com/gablelbm/gable/internal/quote"
+	"github.com/gablelbm/gable/internal/reporting"
 	"github.com/gablelbm/gable/pkg/database"
 	"github.com/gablelbm/gable/pkg/middleware"
 )
@@ -120,6 +121,12 @@ func main() {
 	paymentSvc := payment.NewService(paymentRepo, invoiceRepo)
 	paymentHandler := payment.NewHandler(paymentSvc)
 	paymentHandler.RegisterRoutes(mux)
+
+	// Reporting Module
+	reportingRepo := reporting.NewRepository(db)
+	reportingSvc := reporting.NewService(reportingRepo)
+	reportingHandler := reporting.NewHandler(reportingSvc)
+	reportingHandler.RegisterRoutes(mux)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
