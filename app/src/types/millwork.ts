@@ -3,7 +3,7 @@ export interface MillworkOption {
     category: string;
     name: string;
     price_adjustment: number;
-    attributes: Record<string, any>;
+    attributes: Record<string, unknown>;
     created_at: string;
     updated_at: string;
 }
@@ -12,7 +12,7 @@ export interface CreateOptionRequest {
     category: string;
     name: string;
     price_adjustment: number;
-    attributes: Record<string, any>;
+    attributes: Record<string, unknown>;
 }
 
 export interface MillworkConfiguration {

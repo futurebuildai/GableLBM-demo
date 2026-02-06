@@ -7,6 +7,7 @@ import (
 	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
+	"github.com/gablelbm/gable/internal/purchase_order"
 	"github.com/google/uuid"
 )
 
@@ -15,14 +16,16 @@ type Service struct {
 	inventorySvc *inventory.Service
 	invoiceSvc   *invoice.Service
 	customerSvc  *customer.Service
+	poSvc        *purchase_order.Service
 }
 
-func NewService(repo Repository, inventorySvc *inventory.Service, invoiceSvc *invoice.Service, customerSvc *customer.Service) *Service {
+func NewService(repo Repository, inventorySvc *inventory.Service, invoiceSvc *invoice.Service, customerSvc *customer.Service, poSvc *purchase_order.Service) *Service {
 	return &Service{
 		repo:         repo,
 		inventorySvc: inventorySvc,
 		invoiceSvc:   invoiceSvc,
 		customerSvc:  customerSvc,
+		poSvc:        poSvc,
 	}
 }
 
@@ -52,9 +55,13 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*Ord
 		}
 
 		line := OrderLine{
-			ProductID: l.ProductID,
-			Quantity:  l.Quantity,
-			PriceEach: l.PriceEach,
+			ID:               uuid.New(), // Generate ID upfront for linking
+			ProductID:        l.ProductID,
+			Quantity:         l.Quantity,
+			PriceEach:        l.PriceEach,
+			IsSpecialOrder:   l.IsSpecialOrder,
+			VendorID:         l.VendorID,
+			SpecialOrderCost: l.SpecialOrderCost,
 		}
 		o.Lines = append(o.Lines, line)
 		total += l.Quantity * l.PriceEach
@@ -64,6 +71,22 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*Ord
 	// 2. Persist Order (Draft)
 	if err := s.repo.CreateOrder(ctx, o); err != nil {
 		return nil, fmt.Errorf("failed to create order: %w", err)
+	}
+
+	// 3. Handle Special Orders (Create POs)
+	// Note: In a real system, might do this async or transactionally.
+	// For MVP, we do it synchronously here.
+	for _, line := range o.Lines {
+		if line.IsSpecialOrder && line.VendorID != nil {
+			// Trigger PO creation
+			description := fmt.Sprintf("Special Order for Customer %s (Order %s)", o.CustomerID, o.ID)
+			if err := s.poSvc.CreateFromSOLine(ctx, line.ID, line.VendorID, description, line.Quantity, line.SpecialOrderCost); err != nil {
+				// Log error but don't fail the order placement?
+				// Or fail strict?
+				// L8 Strict: Fail safer to not lose the PO requirement.
+				return nil, fmt.Errorf("failed to create PO for special order line: %w", err)
+			}
+		}
 	}
 
 	return o, nil

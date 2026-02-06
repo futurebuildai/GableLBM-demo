@@ -16,7 +16,6 @@ export const DoorConfigurator = () => {
     });
 
     const [loading, setLoading] = useState(true);
-    const [basePrice] = useState(250.00); // Base price for a standard door slab
 
     useEffect(() => {
         const fetchOptions = async () => {
@@ -38,23 +37,8 @@ export const DoorConfigurator = () => {
         fetchOptions();
     }, []);
 
-    const calculatePrice = () => {
-        let price = basePrice;
-        if (config.doorType) price += config.doorType.price_adjustment;
-        if (config.material) price += config.material.price_adjustment;
-        if (config.glass) price += config.glass.price_adjustment;
-
-        // Simple dimension logic: +$10 for every inch over standard 36x80
-        const area = (config.width * config.height) / 144; // sq ft
-        const standardArea = (36 * 80) / 144;
-        if (area > standardArea) {
-            price += (area - standardArea) * 15; // $15 per extra sq ft
-        }
-
-        return price;
-    };
-
-    const currentPrice = calculatePrice();
+    const currentPrice = MillworkService.calculateDoorPrice(config);
+    const basePrice = 250.00; // Keep for display reference if needed, or fetch from config
 
     if (loading) return <div className="p-8 text-white">Loading Configurator...</div>;
 

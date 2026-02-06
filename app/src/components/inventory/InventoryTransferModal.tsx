@@ -37,14 +37,13 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
     useEffect(() => {
         if (isOpen && product) {
             // Load current inventory for source options
-            InventoryService.getInventoryByProduct(product.id).then((data: any[]) => {
+            InventoryService.getInventoryByProduct(product.id).then((data) => {
                 setInventory(data);
-                // Auto select first if available?
                 if (data.length > 0) setFromLoc(data[0].location_id);
             });
 
             // Load all locations for dest options
-            LocationService.listLocations().then((data: any[]) => {
+            LocationService.listLocations().then((data: Location[]) => {
                 setLocations(data);
             });
 
@@ -69,7 +68,7 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
             });
             onSuccess();
             onClose();
-        } catch (err) {
+        } catch {
             alert("Transfer failed");
         } finally {
             setIsSubmitting(false);

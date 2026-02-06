@@ -29,11 +29,14 @@ type Order struct {
 }
 
 type OrderLine struct {
-	ID        uuid.UUID `json:"id"`
-	OrderID   uuid.UUID `json:"order_id"`
-	ProductID uuid.UUID `json:"product_id"`
-	Quantity  float64   `json:"quantity"`
-	PriceEach float64   `json:"price_each"`
+	ID               uuid.UUID  `json:"id"`
+	OrderID          uuid.UUID  `json:"order_id"`
+	ProductID        uuid.UUID  `json:"product_id"`
+	Quantity         float64    `json:"quantity"`
+	PriceEach        float64    `json:"price_each"`
+	IsSpecialOrder   bool       `json:"is_special_order"`
+	VendorID         *uuid.UUID `json:"vendor_id,omitempty"`
+	SpecialOrderCost float64    `json:"special_order_cost,omitempty"`
 }
 
 type CreateOrderRequest struct {
@@ -43,9 +46,12 @@ type CreateOrderRequest struct {
 }
 
 type OrderLineRequest struct {
-	ProductID uuid.UUID `json:"product_id"`
-	Quantity  float64   `json:"quantity"`
-	PriceEach float64   `json:"price_each"`
+	ProductID        uuid.UUID  `json:"product_id"`
+	Quantity         float64    `json:"quantity"`
+	PriceEach        float64    `json:"price_each"`
+	IsSpecialOrder   bool       `json:"is_special_order"`
+	VendorID         *uuid.UUID `json:"vendor_id"`
+	SpecialOrderCost float64    `json:"special_order_cost"`
 }
 
 type UpdateStatusRequest struct {

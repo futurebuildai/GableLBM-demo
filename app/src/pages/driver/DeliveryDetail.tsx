@@ -25,7 +25,7 @@ export function DeliveryDetail() {
     }, [id]);
 
     // Canvas Logic
-    const startDrawing = (e: any) => {
+    const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -33,14 +33,25 @@ export function DeliveryDetail() {
 
         setIsDrawing(true);
         const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX || e.touches[0].clientX) - rect.left;
-        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+        // Handle both mouse and touch events
+        let clientX, clientY;
+        if ('touches' in e) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
 
         ctx.beginPath();
         ctx.moveTo(x, y);
     };
 
-    const draw = (e: any) => {
+    const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
         if (!isDrawing) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -48,8 +59,18 @@ export function DeliveryDetail() {
         if (!ctx) return;
 
         const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX || e.touches[0].clientX) - rect.left;
-        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+        let clientX, clientY;
+        if ('touches' in e) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
 
         ctx.lineTo(x, y);
         ctx.stroke();
@@ -100,7 +121,7 @@ export function DeliveryDetail() {
             // Refresh
             const updated = await deliveryService.getDelivery(delivery.id);
             setDelivery(updated);
-        } catch (err) {
+        } catch {
             alert("Failed to update status");
         } finally {
             setIsSubmitting(false);
@@ -137,7 +158,7 @@ export function DeliveryDetail() {
             <div className="bg-[#161821] p-6 rounded-lg border border-white/10 text-center">
                 <div className="text-sm text-gray-500 font-mono mb-2">CURRENT STATUS</div>
                 <div className={`text-2xl font-bold ${delivery.status === 'DELIVERED' ? 'text-green-500' :
-                        delivery.status === 'FAILED' ? 'text-red-500' : 'text-gray-300'
+                    delivery.status === 'FAILED' ? 'text-red-500' : 'text-gray-300'
                     }`}>
                     {delivery.status}
                 </div>
@@ -163,7 +184,7 @@ export function DeliveryDetail() {
                             <label className="block text-sm text-gray-400 mb-2">Status</label>
                             <select
                                 value={status}
-                                onChange={(e) => setStatus(e.target.value as any)}
+                                onChange={(e) => setStatus(e.target.value as DeliveryStatus)}
                                 className="w-full bg-[#0A0B10] p-3 rounded border border-white/20"
                             >
                                 <option value="DELIVERED">Delivered</option>

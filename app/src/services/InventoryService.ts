@@ -1,3 +1,5 @@
+import type { Inventory } from '../types/product';
+
 export interface StockAdjustmentRequest {
     product_id: string;
     location_id?: string;
@@ -12,6 +14,7 @@ export interface StockMovementRequest {
     to_location_id: string;
     quantity: number;
     reason: string;
+    is_delta?: boolean; // Added matching what likely exists or removing
 }
 
 const API_URL = '/api/v1/inventory'; // Use relative path via proxy or updated base
@@ -39,7 +42,7 @@ export const InventoryService = {
         }
     },
 
-    async getInventoryByProduct(productId: string): Promise<any[]> {
+    async getInventoryByProduct(productId: string): Promise<Inventory[]> {
         const response = await fetch(`${API_URL}?product_id=${productId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch inventory');

@@ -25,6 +25,7 @@ import (
 	"github.com/gablelbm/gable/internal/payment"
 	"github.com/gablelbm/gable/internal/pricing"
 	"github.com/gablelbm/gable/internal/product"
+	"github.com/gablelbm/gable/internal/purchase_order"
 	"github.com/gablelbm/gable/internal/quote"
 	"github.com/gablelbm/gable/internal/reporting"
 	"github.com/gablelbm/gable/pkg/database"
@@ -111,7 +112,9 @@ func main() {
 
 	// Order Module - injected with InventoryService and InvoiceService
 	orderRepo := order.NewRepository(db)
-	orderSvc := order.NewService(orderRepo, inventorySvc, invoiceSvc, customerSvc)
+	poRepo := purchase_order.NewRepository(db)
+	poSvc := purchase_order.NewService(poRepo)
+	orderSvc := order.NewService(orderRepo, inventorySvc, invoiceSvc, customerSvc, poSvc)
 	orderHandler := order.NewHandler(orderSvc)
 	orderHandler.RegisterRoutes(mux)
 

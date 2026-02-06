@@ -70,7 +70,7 @@ export default function InvoiceDetail() {
                             try {
                                 await InvoiceService.emailInvoice(invoice.id);
                                 alert('Invoice emailed successfully!');
-                            } catch (e) {
+                            } catch {
                                 alert('Failed to email invoice');
                             }
                         }}
@@ -163,44 +163,48 @@ export default function InvoiceDetail() {
             </div>
 
             {/* Payment History Section */}
-            {payments.length > 0 && (
-                <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
-                        <h3 className="text-zinc-100 font-bold">Payment History</h3>
-                        <span className="text-zinc-400 text-sm">Paid: <span className="text-green-400 font-mono">${totalPaid.toFixed(2)}</span></span>
-                    </div>
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-zinc-950 text-zinc-400 uppercase text-xs">
-                            <tr>
-                                <th className="px-6 py-4">Date</th>
-                                <th className="px-6 py-4">Method</th>
-                                <th className="px-6 py-4">Reference</th>
-                                <th className="px-6 py-4 text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-800">
-                            {payments.map(p => (
-                                <tr key={p.id}>
-                                    <td className="px-6 py-4 text-zinc-300">{new Date(p.created_at).toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-zinc-300 font-bold">{p.method}</td>
-                                    <td className="px-6 py-4 text-zinc-400 font-mono text-xs">{p.reference || '-'}</td>
-                                    <td className="px-6 py-4 text-right text-white font-mono font-bold">${p.amount.toFixed(2)}</td>
+            {
+                payments.length > 0 && (
+                    <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
+                            <h3 className="text-zinc-100 font-bold">Payment History</h3>
+                            <span className="text-zinc-400 text-sm">Paid: <span className="text-green-400 font-mono">${totalPaid.toFixed(2)}</span></span>
+                        </div>
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-zinc-950 text-zinc-400 uppercase text-xs">
+                                <tr>
+                                    <th className="px-6 py-4">Date</th>
+                                    <th className="px-6 py-4">Method</th>
+                                    <th className="px-6 py-4">Reference</th>
+                                    <th className="px-6 py-4 text-right">Amount</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                            </thead>
+                            <tbody className="divide-y divide-zinc-800">
+                                {payments.map(p => (
+                                    <tr key={p.id}>
+                                        <td className="px-6 py-4 text-zinc-300">{new Date(p.created_at).toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-zinc-300 font-bold">{p.method}</td>
+                                        <td className="px-6 py-4 text-zinc-400 font-mono text-xs">{p.reference || '-'}</td>
+                                        <td className="px-6 py-4 text-right text-white font-mono font-bold">${p.amount.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )
+            }
 
-            {invoice.id && (
-                <PaymentModal
-                    isOpen={isPaymentModalOpen}
-                    onClose={() => setIsPaymentModalOpen(false)}
-                    onSave={handlePayment}
-                    invoiceId={invoice.id}
-                    amountDue={amountDue > 0 ? amountDue : 0}
-                />
-            )}
-        </div>
+            {
+                invoice.id && (
+                    <PaymentModal
+                        isOpen={isPaymentModalOpen}
+                        onClose={() => setIsPaymentModalOpen(false)}
+                        onSave={handlePayment}
+                        invoiceId={invoice.id}
+                        amountDue={amountDue > 0 ? amountDue : 0}
+                    />
+                )
+            }
+        </div >
     );
 }

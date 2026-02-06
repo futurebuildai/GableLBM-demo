@@ -14,11 +14,15 @@ export function RouteList() {
     }, []);
 
     useEffect(() => {
+        let active = true;
         if (selectedDriver) {
-            deliveryService.listRoutes(undefined, selectedDriver).then(setRoutes);
+            deliveryService.listRoutes(undefined, selectedDriver).then(data => {
+                if (active) setRoutes(data);
+            });
         } else {
-            setRoutes([]);
+            setRoutes([]); // eslint-disable-line react-hooks/set-state-in-effect
         }
+        return () => { active = false; };
     }, [selectedDriver]);
 
     return (
