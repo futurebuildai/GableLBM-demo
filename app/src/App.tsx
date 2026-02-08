@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes, Outlet } from "react-router-dom";
 import { AppShell } from "./components/layout/AppShell";
+import { Dashboard } from "./pages/Dashboard";
 import { Inventory } from "./pages/Inventory";
 import { QuoteBuilder } from "./pages/QuoteBuilder";
 import OrderList from "./pages/orders/OrderList";
@@ -26,7 +27,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AppShell><Outlet /></AppShell>}>
-          <Route index element={<div className="p-8 text-white">Dashboard Placeholder</div>} />
+          <Route index element={<Dashboard />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="quotes/new" element={<QuoteBuilder />} />
           <Route path="orders" element={<OrderList />} />

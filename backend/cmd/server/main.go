@@ -14,6 +14,7 @@ import (
 
 	"github.com/gablelbm/gable/internal/config"
 	"github.com/gablelbm/gable/internal/customer"
+	"github.com/gablelbm/gable/internal/dashboard"
 	"github.com/gablelbm/gable/internal/delivery"
 	"github.com/gablelbm/gable/internal/document"
 	"github.com/gablelbm/gable/internal/edi"
@@ -176,6 +177,12 @@ func main() {
 	partnerHandler := partner.NewHandler(partnerSvc)
 	partnerAuthMw := middleware.NewPartnerAuthMiddleware(customerRepo, logger)
 	partnerHandler.RegisterRoutes(mux, partnerAuthMw.Handler)
+
+	// Dashboard Module (Executive Analytics)
+	dashboardRepo := dashboard.NewRepository(db)
+	dashboardSvc := dashboard.NewService(dashboardRepo)
+	dashboardHandler := dashboard.NewHandler(dashboardSvc)
+	dashboardHandler.RegisterRoutes(mux)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
