@@ -59,3 +59,24 @@
     *   [x] Partner Portal (Co-op management - Sprint 13).
     *   [x] AI Governance Layer (RFC generation - Sprint 14).
     *   [x] Executive Analytics Dashboard (Real-time KPIs - Sprint 15).
+
+## Phase 4: Open Ecosystem (The "Sovereign Dealer")
+**Goal**: Enable true data sovereignty and 3rd-party innovation.
+**Target User**: Tech Admin / Co-op IT Director.
+**Timeline estimate**: Q1 2027.
+
+### Objectives
+1.  **Tech Admin Panel (Sprint 17-18)**:
+    *   [ ] Self-service API Key Generation & Revocation.
+    *   [ ] Webhook Configuration UI (No-code event triggers).
+    *   [ ] System Health & Logs Dashboard.
+2.  **Integration Marketplace**:
+    *   [ ] "One-Click" Run Payments Integration.
+    *   [ ] "One-Click" QuickBooks Online OAuth2 Sync.
+    *   [ ] Zapier/Make Connector.
+3.  **Data Liberation**:
+    *   [ ] Full Database Export (SQL Dump) from Admin UI.
+    *   [ ] Schema Viewer for easy customized reporting.
+4.  **Co-op enablement**:
+    *   [ ] "Fork & Brand" Documentation.
+    *   [ ] Multi-tenant Architecture options for Hosted offerings.

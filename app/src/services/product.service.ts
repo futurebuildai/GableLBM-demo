@@ -1,6 +1,6 @@
 import type { Product } from '../types/product';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8085';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const ProductService = {
     async getProducts(): Promise<Product[]> {

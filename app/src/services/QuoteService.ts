@@ -1,6 +1,6 @@
 import type { Quote, CreateQuoteRequest } from '../types/quote';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8085';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const QuoteService = {
     async createQuote(request: CreateQuoteRequest): Promise<Quote> {

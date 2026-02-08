@@ -21,6 +21,7 @@ import { PartnerInvoiceList } from "./pages/partner/InvoiceList";
 import { RFCDashboard } from "./pages/governance/RFCDashboard";
 import { NewRFC } from "./pages/governance/NewRFC";
 import { RFCDetail } from "./pages/governance/RFCDetail";
+import { TechAdminPage } from "./pages/admin/tech_admin/TechAdminPage";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -46,6 +47,7 @@ function App() {
               <Route path="new" element={<NewRFC />} />
               <Route path=":id" element={<RFCDetail />} />
             </Route>
+            <Route path="admin" element={<TechAdminPage />} />
           </Route>
 
           {/* Mobile Driver App */}

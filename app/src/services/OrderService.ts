@@ -1,6 +1,6 @@
 import type { Order, CreateOrderRequest } from '../types/order';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8085';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const OrderService = {
     async createOrder(request: CreateOrderRequest): Promise<Order> {

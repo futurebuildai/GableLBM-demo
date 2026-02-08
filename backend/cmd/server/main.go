@@ -34,6 +34,7 @@ import (
 	"github.com/gablelbm/gable/internal/purchase_order"
 	"github.com/gablelbm/gable/internal/quote"
 	"github.com/gablelbm/gable/internal/reporting"
+	"github.com/gablelbm/gable/internal/techadmin"
 	"github.com/gablelbm/gable/pkg/database"
 	"github.com/gablelbm/gable/pkg/middleware"
 )
@@ -183,6 +184,12 @@ func main() {
 	dashboardSvc := dashboard.NewService(dashboardRepo)
 	dashboardHandler := dashboard.NewHandler(dashboardSvc)
 	dashboardHandler.RegisterRoutes(mux)
+
+	// Tech Admin Module
+	techAdminRepo := techadmin.NewRepository(db.Pool)
+	techAdminSvc := techadmin.NewService(techAdminRepo)
+	techAdminHandler := techadmin.NewHandler(techAdminSvc)
+	techAdminHandler.RegisterRoutes(mux)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

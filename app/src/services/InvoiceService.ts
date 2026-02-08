@@ -1,6 +1,6 @@
 import type { Invoice } from '../types/invoice';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8085';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const InvoiceService = {
     async listInvoices(): Promise<Invoice[]> {
