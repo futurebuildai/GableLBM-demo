@@ -1,0 +1,57 @@
+package account
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/google/uuid"
+)
+
+type Handler struct {
+	service Service
+}
+
+func NewHandler(service Service) *Handler {
+	return &Handler{service: service}
+}
+
+func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/accounts/{id}", h.GetAccountSummary)
+	mux.HandleFunc("GET /api/accounts/{id}/transactions", h.GetTransactions)
+}
+
+func (h *Handler) GetAccountSummary(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid customer ID", http.StatusBadRequest)
+		return
+	}
+
+	summary, err := h.service.GetAccountSummary(r.Context(), id)
+	if err != nil {
+		http.Error(w, "Failed to get account summary", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(summary)
+}
+
+func (h *Handler) GetTransactions(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid customer ID", http.StatusBadRequest)
+		return
+	}
+
+	txns, err := h.service.GetTransactions(r.Context(), id)
+	if err != nil {
+		http.Error(w, "Failed to get transactions", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(txns)
+}

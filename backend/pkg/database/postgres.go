@@ -52,6 +52,12 @@ func (db *DB) Close() {
 
 // RunInTx executes a function within a database transaction.
 func (db *DB) RunInTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	// Check if we are already in a transaction
+	if _, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
+		// Already in a transaction, just run the function
+		return fn(ctx)
+	}
+
 	tx, err := db.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)

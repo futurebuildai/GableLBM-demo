@@ -3,6 +3,8 @@ package customer
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -15,8 +17,27 @@ func NewHandler(service *Service) *Handler {
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /customers", h.HandleListCustomers)
+	mux.HandleFunc("GET /customers/{id}", h.HandleGetCustomer)
 	mux.HandleFunc("POST /customers", h.HandleCreateCustomer)
 	mux.HandleFunc("GET /price_levels", h.HandleListPriceLevels)
+}
+
+func (h *Handler) HandleGetCustomer(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid customer ID", http.StatusBadRequest)
+		return
+	}
+
+	c, err := h.service.GetCustomer(r.Context(), id)
+	if err != nil {
+		http.Error(w, "Customer not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(c)
 }
 
 func (h *Handler) HandleCreateCustomer(w http.ResponseWriter, r *http.Request) {

@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gablelbm/gable/internal/account"
 	"github.com/gablelbm/gable/internal/config"
 	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/dashboard"
@@ -102,6 +103,12 @@ func main() {
 	customerHandler := customer.NewHandler(customerSvc)
 	customerHandler.RegisterRoutes(mux)
 
+	// Account Module
+	accountRepo := account.NewRepository(db)
+	accountSvc := account.NewService(accountRepo, db, logger)
+	accountHandler := account.NewHandler(accountSvc)
+	accountHandler.RegisterRoutes(mux)
+
 	quoteRepo := quote.NewRepository(db)
 	quoteHandler := quote.NewHandler(quote.NewService(quoteRepo))
 	quoteHandler.RegisterRoutes(mux)
@@ -112,7 +119,7 @@ func main() {
 
 	// Invoice Module
 	invoiceRepo := invoice.NewRepository(db)
-	invoiceSvc := invoice.NewService(invoiceRepo, glSvc)
+	invoiceSvc := invoice.NewService(invoiceRepo, glSvc, accountSvc)
 	invoiceHandler := invoice.NewHandler(invoiceSvc)
 	invoiceHandler.RegisterRoutes(mux)
 
@@ -144,7 +151,7 @@ func main() {
 
 	// Payment Module
 	paymentRepo := payment.NewRepository(db)
-	paymentSvc := payment.NewService(db, paymentRepo, invoiceRepo)
+	paymentSvc := payment.NewService(db, paymentRepo, invoiceRepo, accountSvc)
 	paymentHandler := payment.NewHandler(paymentSvc)
 	paymentHandler.RegisterRoutes(mux)
 

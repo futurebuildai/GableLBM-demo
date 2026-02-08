@@ -57,6 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" isOpen={sidebarOpen} active={location.pathname === '/'} />
                         <NavItem to="/inventory" icon={<Package size={20} />} label="Inventory" isOpen={sidebarOpen} active={location.pathname.startsWith('/inventory')} />
                         <NavItem to="/locations" icon={<LayoutDashboard size={20} />} label="Locations" isOpen={sidebarOpen} active={location.pathname.startsWith('/locations')} />
+                        <NavItem to="/accounts" icon={<LayoutDashboard size={20} />} label="Accounts" isOpen={sidebarOpen} active={location.pathname.startsWith('/accounts')} />
                     </div>
 
                     <div className="mb-2 px-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">

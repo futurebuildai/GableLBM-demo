@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gablelbm/gable/internal/account"
 	"github.com/gablelbm/gable/internal/invoice"
 	"github.com/gablelbm/gable/pkg/database"
 	"github.com/google/uuid"
@@ -14,13 +15,15 @@ type Service struct {
 	db          *database.DB
 	repo        Repository
 	invoiceRepo invoice.Repository
+	account     account.Service
 }
 
-func NewService(db *database.DB, repo Repository, invoiceRepo invoice.Repository) *Service {
+func NewService(db *database.DB, repo Repository, invoiceRepo invoice.Repository, accountService account.Service) *Service {
 	return &Service{
 		db:          db,
 		repo:        repo,
 		invoiceRepo: invoiceRepo,
+		account:     accountService,
 	}
 }
 
@@ -47,6 +50,15 @@ func (s *Service) ProcessPayment(ctx context.Context, invoiceID uuid.UUID, amoun
 
 		if err := s.repo.CreatePayment(ctx, p); err != nil {
 			return err
+		}
+
+		// Post to Account Ledger (Credit - passing negative amount logic handled by type?
+		// Plan said "Positive for Debit/Invoice, Negative for Credit/Payment"
+		// AccountService.PostTransaction does: newBalance := currentBalance + amount
+		// So I must pass NEGATIVE amount for Payment.
+		_, err = s.account.PostTransaction(ctx, inv.CustomerID, account.TransactionTypePayment, -amountCents, &p.ID, "Payment "+ref)
+		if err != nil {
+			return fmt.Errorf("failed to post to account ledger: %w", err)
 		}
 
 		// 3. Calculate Totals and Update Status

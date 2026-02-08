@@ -4,17 +4,19 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gablelbm/gable/internal/account"
 	"github.com/gablelbm/gable/internal/gl"
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	repo Repository
-	gl   *gl.Service
+	repo    Repository
+	gl      *gl.Service
+	account account.Service
 }
 
-func NewService(repo Repository, glService *gl.Service) *Service {
-	return &Service{repo: repo, gl: glService}
+func NewService(repo Repository, glService *gl.Service, accountService account.Service) *Service {
+	return &Service{repo: repo, gl: glService, account: accountService}
 }
 
 func (s *Service) CreateInvoice(ctx context.Context, inv *Invoice) error {
@@ -45,5 +47,12 @@ func (s *Service) FinalizeInvoice(ctx context.Context, id uuid.UUID) error {
 	if err := s.gl.SyncInvoice(ctx, inv.ID.String(), inv.TotalAmount); err != nil {
 		return fmt.Errorf("failed to sync to GL: %w", err)
 	}
+
+	// Post to Account Ledger (Debit)
+	_, err = s.account.PostTransaction(ctx, inv.CustomerID, account.TransactionTypeInvoice, inv.TotalAmount, &inv.ID, "Invoice #"+inv.ID.String()) // Ideally use invoice number
+	if err != nil {
+		return fmt.Errorf("failed to post to account ledger: %w", err)
+	}
+
 	return nil
 }

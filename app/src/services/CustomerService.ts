@@ -11,6 +11,14 @@ export const CustomerService = {
         return response.json();
     },
 
+    async getCustomer(id: string): Promise<Customer> {
+        const response = await fetch(`${API_URL}/customers/${id}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch customer');
+        }
+        return response.json();
+    },
+
     async createCustomer(customer: Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'balance_due'>): Promise<Customer> {
         const response = await fetch(`${API_URL}/customers`, {
             method: 'POST',
