@@ -35,6 +35,8 @@ type Product struct {
 	Description    string    `json:"description"`
 	UOMPrimary     UOM       `json:"uom_primary"`
 	BasePrice      float64   `json:"base_price"`
+	Vendor         *string   `json:"vendor"`
+	UPC            *string   `json:"upc"`
 	TotalQuantity  float64   `json:"total_quantity" db:"-"` // Aggregated from inventory
 	TotalAllocated float64   `json:"total_allocated" db:"-"`
 	CreatedAt      time.Time `json:"created_at"`

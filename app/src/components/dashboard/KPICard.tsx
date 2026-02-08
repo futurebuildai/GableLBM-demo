@@ -1,4 +1,8 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Card, CardContent } from '../ui/Card';
+import { Tooltip } from '../ui/Tooltip';
+import { motion, useSpring, useTransform, useInView } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 
 interface KPICardProps {
     title: string;
@@ -8,6 +12,23 @@ interface KPICardProps {
     icon?: React.ReactNode;
     loading?: boolean;
     valueColor?: string;
+}
+
+function AnimatedNumber({ value }: { value: number }) {
+    const ref = useRef<HTMLSpanElement>(null);
+    const inView = useInView(ref);
+    const spring = useSpring(0, { mass: 0.8, stiffness: 75, damping: 15 });
+    const display = useTransform(spring, (current) =>
+        current.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    );
+
+    useEffect(() => {
+        if (inView) {
+            spring.set(value);
+        }
+    }, [spring, value, inView]);
+
+    return <motion.span ref={ref}>{display}</motion.span>;
 }
 
 export function KPICard({
@@ -35,29 +56,69 @@ export function KPICard({
 
     if (loading) {
         return (
-            <div className="p-6 rounded-lg bg-zinc-900 border border-white/10 animate-pulse">
-                <div className="h-4 w-24 bg-zinc-800 rounded mb-3" />
-                <div className="h-8 w-32 bg-zinc-800 rounded" />
-            </div>
+            <Card variant="default" className="border-white/5 bg-slate-steel/50">
+                <CardContent className="p-6 relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="h-4 w-24 bg-white/10 rounded animate-pulse" />
+                        <div className="h-8 w-8 bg-white/10 rounded-full animate-pulse" />
+                    </div>
+                    <div className="h-8 w-32 bg-white/10 rounded mb-2 animate-pulse" />
+                    <div className="h-4 w-16 bg-white/10 rounded animate-pulse" />
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/5 to-transparent z-10" />
+                </CardContent>
+            </Card>
         );
     }
 
+    // Parse numeric value if string starts with $
+    const numericValue = typeof value === 'string' && value.startsWith('$')
+        ? parseFloat(value.replace(/[^0-9.-]+/g, ""))
+        : typeof value === 'number' ? value : 0;
+
+    const isCurrency = typeof value === 'string' && value.startsWith('$');
+
     return (
-        <div className="p-6 rounded-lg bg-zinc-900 border border-white/10 hover:border-white/20 transition-all duration-200 hover:-translate-y-0.5">
-            <div className="flex items-center justify-between mb-1">
-                <h3 className="text-sm font-medium text-zinc-400">{title}</h3>
-                {icon && <span className="text-zinc-500">{icon}</span>}
+        <Card variant="interactive" className="group relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity duration-300 transform group-hover:scale-110">
+                {icon && <div className="text-current scale-150">{icon}</div>}
             </div>
-            <div className={`text-2xl font-mono font-bold ${valueColor}`}>{value}</div>
-            <div className="flex items-center gap-2 mt-1">
-                {trend !== undefined && (
-                    <div className={`flex items-center gap-1 text-sm ${getTrendColor()}`}>
-                        {getTrendIcon()}
-                        <span>{Math.abs(trend).toFixed(1)}%</span>
-                    </div>
-                )}
-                {subValue && <span className="text-xs text-zinc-500">{subValue}</span>}
-            </div>
-        </div>
+
+            <CardContent className="p-6 relative z-10">
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-zinc-400 font-sans tracking-wide">{title}</h3>
+                    {icon && (
+                        <Tooltip content={`View details for ${title}`}>
+                            <div className={`p-2 rounded-lg bg-white/5 text-zinc-300 group-hover:text-gable-green group-hover:bg-gable-green/10 transition-colors duration-300`}>{icon}</div>
+                        </Tooltip>
+                    )}
+                </div>
+
+                <div className={`text-3xl font-mono font-bold tracking-tight ${valueColor} flex items-baseline gap-1`}>
+                    {isCurrency && <span>$</span>}
+                    {typeof value === 'number' ? (
+                        <AnimatedNumber value={value} />
+                    ) : isCurrency ? (
+                        // For currency, we might want to handle decimals differently, 
+                        // but for now let's just animate the whole number part or display static if standard string
+                        <span>{numericValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    ) : (
+                        value
+                    )}
+                </div>
+
+                <div className="flex items-center gap-2 mt-2 h-6">
+                    {trend !== undefined && (
+                        <div className={`flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 ${getTrendColor()}`}>
+                            {getTrendIcon()}
+                            <span>{Math.abs(trend).toFixed(1)}%</span>
+                        </div>
+                    )}
+                    {subValue && <span className="text-xs text-zinc-500 font-mono">{subValue}</span>}
+                </div>
+            </CardContent>
+
+            {/* Hover Glow Effect */}
+            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-gable-green/20 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        </Card>
     );
 }

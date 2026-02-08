@@ -5,7 +5,10 @@ import { InventoryTable } from '../components/inventory/InventoryTable';
 import { AddProductModal } from '../components/inventory/AddProductModal';
 import { StockAdjustmentModal } from '../components/inventory/StockAdjustmentModal';
 import { InventoryTransferModal } from '../components/inventory/InventoryTransferModal';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Package } from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { PageTransition } from '../components/ui/PageTransition';
+import { Card, CardContent } from '../components/ui/Card';
 
 export const Inventory = () => {
     const [products, setProducts] = useState<Product[]>([]);
@@ -52,48 +55,58 @@ export const Inventory = () => {
     };
 
     return (
-        <div className="p-8 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
+        <PageTransition>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-zinc-100 tracking-tight">The Pile</h1>
-                    <p className="text-zinc-500 mt-1">Master Inventory & SKU Management</p>
+                    <h1 className="text-display-large text-white flex items-center gap-3">
+                        <Package className="w-10 h-10 text-gable-green" />
+                        The Pile
+                    </h1>
+                    <p className="text-zinc-500 mt-1 max-w-2xl text-lg">
+                        Master Inventory Management & SKU Control Center.
+                    </p>
                 </div>
-                <button
+                <Button
                     onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded font-medium transition-colors shadow-lg shadow-amber-900/20"
+                    className="shadow-glow"
                 >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-4 h-4 mr-2" />
                     Add Product
-                </button>
+                </Button>
             </div>
 
-            <div className="mb-6 flex gap-4">
-                {/* Search Bar - Placeholder for now */}
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                    <input
-                        type="text"
-                        placeholder="Search SKUs..."
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded pl-10 pr-4 py-2 text-zinc-300 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                    />
-                </div>
-            </div>
+            <Card variant="glass" className="mb-8" noPadding>
+                <CardContent className="p-4 bg-white/5 border-b border-white/5">
+                    <div className="relative max-w-md w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                        <input
+                            type="text"
+                            placeholder="Search SKUs, products, or categories..."
+                            className="w-full bg-deep-space/50 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gable-green/50 placeholder:text-zinc-600 transition-all font-mono"
+                        />
+                    </div>
+                </CardContent>
 
-            {error && (
-                <div className="mb-6 p-4 bg-red-900/20 border border-red-900/50 text-red-400 rounded">
-                    {error}
-                </div>
-            )}
+                {error && (
+                    <div className="p-4 bg-rose-500/10 border-b border-rose-500/20 text-rose-400">
+                        {error}
+                    </div>
+                )}
 
-            {isLoading ? (
-                <div className="text-zinc-500 text-center py-12 animate-pulse">Loading core inventory...</div>
-            ) : (
-                <InventoryTable
-                    products={products}
-                    onAdjustStock={handleAdjustStock}
-                    onTransferStock={handleTransferStock}
-                />
-            )}
+                <div className="p-0">
+                    {isLoading ? (
+                        <div className="p-12 text-center text-zinc-500 animate-pulse">
+                            Loading core inventory...
+                        </div>
+                    ) : (
+                        <InventoryTable
+                            products={products}
+                            onAdjustStock={handleAdjustStock}
+                            onTransferStock={handleTransferStock}
+                        />
+                    )}
+                </div>
+            </Card>
 
             <AddProductModal
                 isOpen={isModalOpen}
@@ -106,7 +119,7 @@ export const Inventory = () => {
                 onClose={() => setIsStockModalOpen(false)}
                 product={selectedProduct}
                 onSuccess={() => {
-                    loadProducts(); // Reload to update "On Hand" if we calculate it (currently hardcoded 0.0000, need backend update to show real sum)
+                    loadProducts();
                 }}
             />
 
@@ -118,6 +131,6 @@ export const Inventory = () => {
                     loadProducts();
                 }}
             />
-        </div>
+        </PageTransition>
     );
 };

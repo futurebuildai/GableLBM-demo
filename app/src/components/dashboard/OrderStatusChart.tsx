@@ -1,80 +1,91 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 
 interface OrderStatusChartProps {
     statusBreakdown: Record<string, number>;
     loading?: boolean;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-    PENDING: '#FBBF24',      // Amber
-    CONFIRMED: '#38BDF8',    // Blueprint Blue
-    PROCESSING: '#818CF8',   // Indigo
-    READY: '#34D399',        // Emerald
-    ALLOCATED: '#60A5FA',    // Light Blue
-    COMPLETED: '#00FFA3',    // Gable Green
-    CANCELLED: '#F43F5E',    // Safety Red
+const COLORS = ['#00FFA3', '#38BDF8', '#818cf8', '#fbbf24', '#f43f5e', '#a1a1aa'];
+
+// Helper to map status to readable names
+const formatStatus = (status: string) => {
+    return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
-export function OrderStatusChart({ statusBreakdown, loading }: OrderStatusChartProps) {
+interface TooltipPayload {
+    name: string;
+    value: number | string;
+}
+
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-slate-steel/90 backdrop-blur-md border border-white/10 p-2 rounded-lg shadow-xl text-xs">
+                <span className="text-zinc-400">{payload[0].name}: </span>
+                <span className="font-mono font-bold text-white">{payload[0].value}</span>
+            </div>
+        );
+    }
+    return null;
+};
+
+export function OrderStatusChart({ statusBreakdown, loading = false }: OrderStatusChartProps) {
     if (loading) {
         return (
-            <div className="h-64 bg-zinc-900 rounded-lg border border-white/10 animate-pulse flex items-center justify-center">
-                <div className="text-zinc-600">Loading chart...</div>
-            </div>
+            <Card variant="glass" className="h-[400px]">
+                <CardHeader>
+                    <div className="h-6 w-32 bg-white/10 rounded animate-pulse" />
+                </CardHeader>
+                <CardContent className="flex items-center justify-center h-[320px]">
+                    <div className="h-48 w-48 rounded-full border-4 border-white/10 border-t-gable-green/50 animate-spin" />
+                </CardContent>
+            </Card>
         );
     }
 
-    const data = Object.entries(statusBreakdown).map(([name, value]) => ({
-        name,
-        value,
-        fill: STATUS_COLORS[name] || '#6B7280',
-    }));
+    const data = Object.entries(statusBreakdown).map(([status, count]) => ({
+        name: formatStatus(status),
+        value: count,
+        statusKey: status
+    })).filter(item => item.value > 0); // Only show statuses with orders
 
-    if (data.length === 0) {
-        return (
-            <div className="p-4 bg-zinc-900 rounded-lg border border-white/10">
-                <h3 className="text-sm font-medium text-zinc-400 mb-4">Order Status (30 Days)</h3>
-                <div className="h-48 flex items-center justify-center text-zinc-500">
-                    No order data available
-                </div>
-            </div>
-        );
-    }
+    const totalOrders = data.reduce((acc, curr) => acc + curr.value, 0);
 
     return (
-        <div className="p-4 bg-zinc-900 rounded-lg border border-white/10">
-            <h3 className="text-sm font-medium text-zinc-400 mb-4">Order Status (30 Days)</h3>
-            <div className="h-48">
+        <Card variant="glass" className="h-[400px] flex flex-col">
+            <CardHeader>
+                <CardTitle>Order Status</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 min-h-0 relative">
+                <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                    <span className="text-4xl font-bold text-white font-mono">{totalOrders}</span>
+                    <span className="text-xs text-zinc-500 uppercase tracking-widest">Active</span>
+                </div>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
                             data={data}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={50}
-                            outerRadius={70}
-                            paddingAngle={2}
+                            innerRadius={80}
+                            outerRadius={110}
+                            paddingAngle={5}
                             dataKey="value"
+                            stroke="none"
                         >
-                            {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                            {data.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                         </Pie>
-                        <Tooltip
-                            contentStyle={{
-                                background: '#161821',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '8px',
-                            }}
-                            labelStyle={{ color: '#fff' }}
-                        />
+                        <Tooltip content={<CustomTooltip />} />
                         <Legend
-                            wrapperStyle={{ fontSize: '12px' }}
-                            formatter={(value) => <span className="text-zinc-300">{value}</span>}
+                            verticalAlign="bottom"
+                            height={36}
+                            iconType="circle"
+                            formatter={(value) => <span className="text-zinc-400 text-xs ml-1">{value}</span>}
                         />
                     </PieChart>
                 </ResponsiveContainer>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

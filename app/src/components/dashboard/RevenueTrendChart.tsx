@@ -1,11 +1,5 @@
-import {
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer,
-} from 'recharts';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import type { RevenueTrendPoint } from '../../types/dashboard';
 
 interface RevenueTrendChartProps {
@@ -13,64 +7,96 @@ interface RevenueTrendChartProps {
     loading?: boolean;
 }
 
-export function RevenueTrendChart({ data, loading }: RevenueTrendChartProps) {
-    if (loading) {
+interface TooltipPayload {
+    value: number;
+}
+
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: TooltipPayload[];
+    label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+    if (active && payload && payload.length) {
         return (
-            <div className="h-64 bg-zinc-900 rounded-lg border border-white/10 animate-pulse flex items-center justify-center">
-                <div className="text-zinc-600">Loading chart...</div>
+            <div className="bg-slate-steel/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-xl">
+                <p className="text-zinc-400 text-xs mb-1">{label}</p>
+                <p className="text-gable-green font-mono font-bold text-lg">
+                    ${(payload[0].value).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
             </div>
         );
     }
+    return null;
+};
 
-    // Format data for chart - convert cents to dollars
-    const chartData = data.map((point) => ({
-        date: point.date.slice(5), // Show MM-DD
-        revenue: point.revenue / 100,
+export function RevenueTrendChart({ data, loading = false }: RevenueTrendChartProps) {
+    if (loading) {
+        return (
+            <Card variant="glass" className="h-[400px]">
+                <CardHeader>
+                    <div className="h-6 w-48 bg-white/10 rounded animate-pulse" />
+                </CardHeader>
+                <CardContent className="h-[320px] flex items-end justify-between gap-2 px-6 pb-6">
+                    {[...Array(12)].map((_, i) => (
+                        <div key={i} className="w-full bg-white/5 rounded-t animate-pulse" style={{ height: `${(i * 13 + 20) % 60 + 20}%` }} />
+                    ))}
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const formattedData = data.map(point => ({
+        ...point,
+        revenue: point.revenue / 100 // Convert cents to dollars
     }));
 
     return (
-        <div className="p-4 bg-zinc-900 rounded-lg border border-white/10">
-            <h3 className="text-sm font-medium text-zinc-400 mb-4">Revenue Trend (7 Days)</h3>
-            <div className="h-56">
+        <Card variant="glass" className="h-[400px] flex flex-col">
+            <CardHeader>
+                <CardTitle>Revenue Trend</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 min-h-0 pt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                    <AreaChart data={formattedData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                         <defs>
-                            <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#00FFA3" stopOpacity={0.3} />
                                 <stop offset="95%" stopColor="#00FFA3" stopOpacity={0} />
                             </linearGradient>
                         </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                         <XAxis
                             dataKey="date"
-                            axisLine={false}
+                            stroke="#52525b"
+                            fontSize={12}
                             tickLine={false}
-                            tick={{ fill: '#71717a', fontSize: 12 }}
+                            axisLine={false}
+                            tickMargin={10}
                         />
                         <YAxis
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#71717a', fontSize: 12 }}
+                            stroke="#52525b"
+                            fontSize={12}
                             tickFormatter={(value) => `$${value.toLocaleString()}`}
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={10}
                         />
-                        <Tooltip
-                            contentStyle={{
-                                background: '#161821',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '8px',
-                            }}
-                            labelStyle={{ color: '#fff' }}
-                            formatter={(value) => [`$${(value as number)?.toLocaleString() ?? 0}`, 'Revenue']}
-                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} />
                         <Area
                             type="monotone"
                             dataKey="revenue"
                             stroke="#00FFA3"
-                            strokeWidth={2}
-                            fill="url(#revenueGradient)"
+                            strokeWidth={3}
+                            fillOpacity={1}
+                            fill="url(#colorRevenue)"
+                            activeDot={{ r: 6, strokeWidth: 0, fill: '#fff' }}
+                            animationDuration={1500}
                         />
                     </AreaChart>
                 </ResponsiveContainer>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

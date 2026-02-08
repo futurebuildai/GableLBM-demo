@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { GovernanceService } from '../../services/governance.service';
 import type { RFC } from '../../types/governance';
+import { PageTransition } from '../../components/ui/PageTransition';
+import { Button } from '../../components/ui/Button';
+import { Card, CardContent } from '../../components/ui/Card';
+import { ArrowLeft, Edit2, FileText, Calendar, User, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 export function RFCDetail() {
     const { id } = useParams<{ id: string }>();
@@ -25,60 +29,100 @@ export function RFCDetail() {
         }
     };
 
-    if (loading) return <div className="p-8 text-slate-400">Loading protocol...</div>;
-    if (!rfc) return <div className="p-8 text-red-500">RFC Not Found</div>;
+    if (loading) {
+        return (
+            <div className="p-12 flex justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gable-green"></div>
+            </div>
+        );
+    }
+
+    if (!rfc) return <div className="p-8 text-rose-500">RFC Not Found</div>;
+
+    const statusConfig = (status: string) => {
+        switch (status.toLowerCase()) {
+            case 'approved': return { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: CheckCircle };
+            case 'rejected': return { color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20', icon: AlertCircle };
+            case 'review': return { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: Clock };
+            default: return { color: 'text-zinc-400', bg: 'bg-zinc-500/10', border: 'border-zinc-500/20', icon: FileText };
+        }
+    };
+
+    const status = statusConfig(rfc.status);
+    const StatusIcon = status.icon;
 
     return (
-        <div className="flex h-full">
-            {/* Sidebar / Meta */}
-            <div className="w-80 border-r border-white/10 p-6 bg-[#0A0B10] flex flex-col space-y-6">
-                <div>
-                    <button
-                        onClick={() => navigate('/governance')}
-                        className="text-slate-400 hover:text-white flex items-center mb-6 text-sm"
-                    >
-                        ← Back to Governance
-                    </button>
-                    <h1 className="text-xl font-bold text-white mb-2">{rfc.title}</h1>
-                    <div className="inline-block px-2 py-1 rounded text-xs font-mono uppercase bg-slate-800 text-slate-300 border border-slate-700">
-                        {rfc.status}
-                    </div>
+        <PageTransition>
+            <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] gap-6">
+                {/* Sidebar / Meta */}
+                <div className="lg:w-80 shrink-0">
+                    <Card variant="glass" className="h-full bg-slate-steel/50 border-r border-white/5 lg:border-none">
+                        <CardContent className="p-6 flex flex-col h-full">
+                            <button
+                                onClick={() => navigate('/governance')}
+                                className="text-zinc-400 hover:text-white flex items-center mb-8 text-sm transition-colors group"
+                            >
+                                <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+                                Back to Governance
+                            </button>
+
+                            <h1 className="text-xl font-bold text-white mb-4 leading-tight">{rfc.title}</h1>
+
+                            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border w-fit mb-8 ${status.bg} ${status.color} ${status.border}`}>
+                                <StatusIcon className="w-4 h-4" />
+                                <span className="uppercase tracking-wide text-xs">{rfc.status}</span>
+                            </div>
+
+                            <div className="space-y-6 flex-1">
+                                <div className="flex items-start gap-3">
+                                    <User className="w-5 h-5 text-zinc-500 mt-0.5" />
+                                    <div>
+                                        <h3 className="text-xs uppercase text-zinc-500 font-bold mb-0.5">Author</h3>
+                                        <p className="text-zinc-300 text-sm">Owner Bob</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <Calendar className="w-5 h-5 text-zinc-500 mt-0.5" />
+                                    <div>
+                                        <h3 className="text-xs uppercase text-zinc-500 font-bold mb-0.5">Created</h3>
+                                        <p className="text-zinc-300 text-sm font-mono">{new Date(rfc.created_at).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <Clock className="w-5 h-5 text-zinc-500 mt-0.5" />
+                                    <div>
+                                        <h3 className="text-xs uppercase text-zinc-500 font-bold mb-0.5">Last Updated</h3>
+                                        <p className="text-zinc-300 text-sm font-mono">{new Date(rfc.updated_at).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-white/5 space-y-3 mt-auto">
+                                <Button className="w-full justify-center">
+                                    <Edit2 className="w-4 h-4 mr-2" />
+                                    Edit RFC
+                                </Button>
+                                <Button variant="outline" className="w-full justify-center border-white/10 hover:bg-white/5 text-zinc-300">
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Export PDF
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
-                <div className="space-y-4">
-                    <div>
-                        <h3 className="text-xs uppercase text-slate-500 font-bold mb-1">Author</h3>
-                        <p className="text-slate-300 font-mono text-sm">Owner Bob</p>
+                {/* Main Content (Document) */}
+                <div className="flex-1 overflow-auto rounded-xl border border-white/10 bg-[#0A0B10] shadow-2xl relative">
+                    {/* Paper texture overlay could go here */}
+                    <div className="max-w-4xl mx-auto p-12 min-h-full">
+                        <div className="prose prose-invert max-w-none">
+                            <pre className="font-mono text-zinc-300 whitespace-pre-wrap leading-relaxed text-sm">
+                                {rfc.content}
+                            </pre>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-xs uppercase text-slate-500 font-bold mb-1">Created</h3>
-                        <p className="text-slate-300 font-mono text-sm">{new Date(rfc.created_at).toLocaleString()}</p>
-                    </div>
-                    <div>
-                        <h3 className="text-xs uppercase text-slate-500 font-bold mb-1">Last Updated</h3>
-                        <p className="text-slate-300 font-mono text-sm">{new Date(rfc.updated_at).toLocaleString()}</p>
-                    </div>
-                </div>
-
-                <div className="pt-6 border-t border-white/10">
-                    <button className="w-full industrial-button bg-[#00FFA3] text-black px-4 py-2 font-medium mb-2">
-                        Edit RFC
-                    </button>
-                    <button className="w-full border border-white/10 text-white px-4 py-2 font-medium hover:bg-white/5">
-                        Export to PDF
-                    </button>
                 </div>
             </div>
-
-            {/* Main Content (Document) */}
-            <div className="flex-1 overflow-auto bg-[#161821] p-8">
-                <div className="max-w-4xl mx-auto bg-[#0A0B10] border border-white/5 p-12 min-h-screen shadow-2xl">
-                    {/* Simple Markdown-like rendering */}
-                    <pre className="font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">
-                        {rfc.content}
-                    </pre>
-                </div>
-            </div>
-        </div>
+        </PageTransition>
     );
 }

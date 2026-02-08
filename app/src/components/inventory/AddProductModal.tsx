@@ -18,6 +18,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
     const [description, setDescription] = useState('');
     const [uom, setUom] = useState<UOM>('PCS');
     const [basePrice, setBasePrice] = useState<number>(0);
+    const [vendor, setVendor] = useState('');
+    const [upc, setUpc] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -29,15 +31,17 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
         setError('');
 
         try {
-            await onSave({ sku, description, uom_primary: uom, base_price: basePrice });
+            await onSave({ sku, description, uom_primary: uom, base_price: basePrice, vendor, upc });
             onClose();
             // Reset form
             setSku('');
             setDescription('');
             setUom('PCS');
             setBasePrice(0);
+            setVendor('');
+            setUpc('');
         } catch (err) {
-             
+
             setError(err instanceof Error ? err.message : 'Failed to save product');
         } finally {
             setIsSubmitting(false);
@@ -94,6 +98,29 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
                                 <option key={opt} value={opt}>{opt}</option>
                             ))}
                         </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-400 mb-1">UPC Code</label>
+                            <input
+                                type="text"
+                                value={upc}
+                                onChange={(e) => setUpc(e.target.value)}
+                                className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent font-mono"
+                                placeholder="123456789012"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-400 mb-1">Vendor / Manufacturer</label>
+                            <input
+                                type="text"
+                                value={vendor}
+                                onChange={(e) => setVendor(e.target.value)}
+                                className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent"
+                                placeholder="e.g. Weyerhaeuser"
+                            />
+                        </div>
                     </div>
 
                     <div>

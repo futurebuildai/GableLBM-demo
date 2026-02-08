@@ -29,11 +29,11 @@ func NewRepository(db *database.DB) *PostgresRepository {
 // CreateProduct inserts a new product into the database
 func (r *PostgresRepository) CreateProduct(ctx context.Context, p *Product) error {
 	query := `
-		INSERT INTO products (sku, description, uom_primary, base_price) 
-		VALUES ($1, $2, $3, $4) 
+		INSERT INTO products (sku, description, uom_primary, base_price, vendor, upc) 
+		VALUES ($1, $2, $3, $4, $5, $6) 
 		RETURNING id, created_at, updated_at`
 
-	err := r.db.Pool.QueryRow(ctx, query, p.SKU, p.Description, p.UOMPrimary, p.BasePrice).Scan(
+	err := r.db.Pool.QueryRow(ctx, query, p.SKU, p.Description, p.UOMPrimary, p.BasePrice, p.Vendor, p.UPC).Scan(
 		&p.ID,
 		&p.CreatedAt,
 		&p.UpdatedAt,
@@ -49,7 +49,7 @@ func (r *PostgresRepository) CreateProduct(ctx context.Context, p *Product) erro
 // GetProduct retrieves a product by its ID
 func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Product, error) {
 	query := `
-		SELECT id, sku, description, uom_primary, base_price, created_at, updated_at
+		SELECT id, sku, description, uom_primary, base_price, vendor, upc, created_at, updated_at
 		FROM products
 		WHERE id = $1`
 
@@ -60,6 +60,8 @@ func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Pro
 		&p.Description,
 		&p.UOMPrimary,
 		&p.BasePrice,
+		&p.Vendor,
+		&p.UPC,
 		&p.CreatedAt,
 		&p.UpdatedAt,
 	)
@@ -77,7 +79,7 @@ func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Pro
 // ListProducts retrieves all products
 func (r *PostgresRepository) ListProducts(ctx context.Context) ([]Product, error) {
 	query := `
-		SELECT p.id, p.sku, p.description, p.uom_primary, p.base_price, p.created_at, p.updated_at,
+		SELECT p.id, p.sku, p.description, p.uom_primary, p.base_price, p.vendor, p.upc, p.created_at, p.updated_at,
 		       COALESCE(SUM(i.quantity), 0) as total_quantity,
 		       COALESCE(SUM(i.allocated), 0) as total_allocated
 		FROM products p
@@ -100,6 +102,8 @@ func (r *PostgresRepository) ListProducts(ctx context.Context) ([]Product, error
 			&p.Description,
 			&p.UOMPrimary,
 			&p.BasePrice,
+			&p.Vendor,
+			&p.UPC,
 			&p.CreatedAt,
 			&p.UpdatedAt,
 			&p.TotalQuantity,
