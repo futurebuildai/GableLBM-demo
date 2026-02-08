@@ -192,9 +192,10 @@ func main() {
 
 	// 6. Wrap Middleware
 	var finalHandler http.Handler = mux
+	finalHandler = middleware.CORSMiddleware(finalHandler)
 	if authMw != nil {
 		// Wrap with Auth
-		finalHandler = authMw.Handler(mux)
+		finalHandler = authMw.Handler(finalHandler)
 	}
 
 	// Add Logger Middleware (Access Logs)

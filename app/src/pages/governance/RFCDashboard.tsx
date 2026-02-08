@@ -8,17 +8,14 @@ export function RFCDashboard() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        loadRFCs();
+        let cancelled = false;
+        GovernanceService.listRFCs()
+            .then((data) => {
+                if (!cancelled) setRfcs(data);
+            })
+            .catch(console.error);
+        return () => { cancelled = true; };
     }, []);
-
-    const loadRFCs = async () => {
-        try {
-            const data = await GovernanceService.listRFCs();
-            setRfcs(data);
-        } catch (e) {
-            console.error(e);
-        }
-    };
 
     const statusColor = (status: string) => {
         switch (status) {
