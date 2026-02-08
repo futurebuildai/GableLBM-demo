@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Construction } from 'lucide-react'; // Placeholder for Logo
+import { BrandLogo } from './BrandLogo';
 
 export const LoadingScreen: React.FC = () => {
     return (
@@ -13,18 +13,18 @@ export const LoadingScreen: React.FC = () => {
             >
                 <div className="w-24 h-24 rounded-full border-4 border-white/5 border-t-gable-green animate-spin absolute inset-0" />
                 <div className="w-24 h-24 flex items-center justify-center">
-                    <Construction className="w-10 h-10 text-white" />
+                    <BrandLogo variant="mark" size="lg" className="text-white" />
                 </div>
             </motion.div>
 
-            <motion.h1
+            <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="mt-8 text-2xl font-bold text-white tracking-widest font-display"
+                className="mt-8"
             >
-                GABLE<span className="text-gable-green">LBM</span>
-            </motion.h1>
+                <BrandLogo variant="text" size="xl" />
+            </motion.div>
 
             <motion.div
                 initial={{ width: 0 }}

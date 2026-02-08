@@ -8,6 +8,8 @@ import { PageTransition } from '../ui/PageTransition';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DemoModeIndicator } from '../ui/DemoModeIndicator';
 
+import { BrandLogo } from '../ui/BrandLogo';
+
 export function AppShell({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -35,16 +37,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="bg-slate-steel border-r border-white/5 flex flex-col fixed inset-y-0 left-0 z-50 shadow-elevation-2"
             >
                 {/* Logo Section */}
-                <div className="h-16 flex items-center px-4 border-b border-white/5 relative">
+                <div className="h-16 flex items-center px-4 border-b border-white/5 relative bg-deep-space/20">
                     <div className="flex-1 flex items-center gap-3 overflow-hidden">
-                        <div className="h-8 w-8 rounded-lg bg-gable-green flex items-center justify-center text-deep-space font-bold text-xl shrink-0 shadow-glow">
-                            G
+                        <div className="h-10 w-10 flex items-center justify-center shrink-0">
+                            <BrandLogo variant="mark" size="md" className="text-white drop-shadow-glow" />
                         </div>
                         <motion.div
                             animate={{ opacity: sidebarOpen ? 1 : 0 }}
-                            className="font-bold text-lg tracking-tight whitespace-nowrap text-white"
+                            className="whitespace-nowrap"
                         >
-                            GABLE<span className="text-gable-green">LBM</span>
+                            <BrandLogo variant="text" size="md" />
                         </motion.div>
                     </div>
                 </div>

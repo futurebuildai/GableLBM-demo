@@ -3,6 +3,8 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, FileText, ClipboardList, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../lib/utils";
 
+import { BrandLogo } from '../ui/BrandLogo';
+
 export const PartnerLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const location = useLocation();
@@ -24,14 +26,11 @@ export const PartnerLayout = () => {
             >
                 <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-white/5 backdrop-blur-sm">
                     <div className={cn("flex items-center gap-3 transition-opacity duration-200", !sidebarOpen && "opacity-0 hidden")}>
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gable-green to-emerald-600 flex items-center justify-center shadow-lg shadow-gable-green/20">
-                            <span className="font-bold text-white text-lg font-mono">G</span>
-                        </div>
-                        <span className="font-bold text-xl tracking-tight text-white">Partner<span className="text-gable-green">Portal</span></span>
+                        <BrandLogo variant="full" size="md" />
                     </div>
                     {!sidebarOpen && (
-                        <div className="mx-auto h-8 w-8 rounded-lg bg-gradient-to-br from-gable-green to-emerald-600 flex items-center justify-center shadow-lg">
-                            <span className="font-bold text-white text-lg font-mono">G</span>
+                        <div className="mx-auto flex items-center justify-center">
+                            <BrandLogo variant="mark" size="md" />
                         </div>
                     )}
                 </div>
