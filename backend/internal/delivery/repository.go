@@ -208,12 +208,12 @@ func (r *PostgresRepository) UpdateRouteStatus(ctx context.Context, id uuid.UUID
 
 func (r *PostgresRepository) CreateDelivery(ctx context.Context, d *Delivery) error {
 	query := `
-		INSERT INTO deliveries (route_id, order_id, stop_sequence, status, delivery_instructions)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO deliveries (route_id, order_id, stop_sequence, status, delivery_instructions, latitude, longitude)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, updated_at
 	`
 	return r.db.GetExecutor(ctx).QueryRow(ctx, query,
-		d.RouteID, d.OrderID, d.StopSequence, d.Status, d.DeliveryInstructions,
+		d.RouteID, d.OrderID, d.StopSequence, d.Status, d.DeliveryInstructions, d.Latitude, d.Longitude,
 	).Scan(&d.ID, &d.CreatedAt, &d.UpdatedAt)
 }
 
@@ -221,8 +221,9 @@ func (r *PostgresRepository) GetDelivery(ctx context.Context, id uuid.UUID) (*De
 	query := `
 		SELECT d.id, d.route_id, d.order_id, d.stop_sequence, d.status, 
 		       d.pod_proof_url, d.pod_signed_by, d.pod_timestamp, d.delivery_instructions, 
+		       d.latitude, d.longitude,
 		       d.created_at, d.updated_at,
-		       c.name as customer_name, o.order_number
+		       c.name as customer_name, CAST(o.id AS TEXT) as order_number
 		FROM deliveries d
 		JOIN orders o ON d.order_id = o.id
 		JOIN customers c ON o.customer_id = c.id
@@ -232,6 +233,7 @@ func (r *PostgresRepository) GetDelivery(ctx context.Context, id uuid.UUID) (*De
 	err := r.db.GetExecutor(ctx).QueryRow(ctx, query, id).Scan(
 		&d.ID, &d.RouteID, &d.OrderID, &d.StopSequence, &d.Status,
 		&d.PODProofURL, &d.PODSignedBy, &d.PODTimestamp, &d.DeliveryInstructions,
+		&d.Latitude, &d.Longitude,
 		&d.CreatedAt, &d.UpdatedAt,
 		&d.CustomerName, &d.OrderNumber,
 	)
@@ -248,10 +250,11 @@ func (r *PostgresRepository) ListDeliveriesByRoute(ctx context.Context, routeID 
 	query := `
 		SELECT d.id, d.route_id, d.order_id, d.stop_sequence, d.status, 
 		       d.pod_proof_url, d.pod_signed_by, d.pod_timestamp, d.delivery_instructions, 
+		       d.latitude, d.longitude,
 		       d.created_at, d.updated_at,
-		       c.name as customer_name, o.order_number,
+		       c.name as customer_name, CAST(o.id AS TEXT) as order_number,
 		       -- Assuming customer address is what we want here, or job site address
-		       c.billing_address_line1 || ', ' || c.billing_address_city as address
+		       c.address as address
 		FROM deliveries d
 		JOIN orders o ON d.order_id = o.id
 		JOIN customers c ON o.customer_id = c.id
@@ -270,6 +273,7 @@ func (r *PostgresRepository) ListDeliveriesByRoute(ctx context.Context, routeID 
 		if err := rows.Scan(
 			&d.ID, &d.RouteID, &d.OrderID, &d.StopSequence, &d.Status,
 			&d.PODProofURL, &d.PODSignedBy, &d.PODTimestamp, &d.DeliveryInstructions,
+			&d.Latitude, &d.Longitude,
 			&d.CreatedAt, &d.UpdatedAt,
 			&d.CustomerName, &d.OrderNumber, &d.Address,
 		); err != nil {
