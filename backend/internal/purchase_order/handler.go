@@ -21,6 +21,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /purchase-orders/{id}", h.HandleGetPO)
 	mux.HandleFunc("POST /purchase-orders/{id}/submit", h.HandleSubmitPO)
 	mux.HandleFunc("POST /purchase-orders/{id}/receive", h.HandleReceivePO)
+	mux.HandleFunc("POST /purchase-orders/reorder-check", h.HandleCreateReorders)
 }
 
 func (h *Handler) HandleListPOs(w http.ResponseWriter, r *http.Request) {
@@ -154,4 +155,18 @@ func (h *Handler) HandleReceivePO(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "received"})
+}
+
+func (h *Handler) HandleCreateReorders(w http.ResponseWriter, r *http.Request) {
+	count, err := h.service.CreateReorders(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success",
+		"count":  count,
+	})
 }

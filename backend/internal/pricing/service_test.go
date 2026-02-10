@@ -24,6 +24,18 @@ func (m *MockRepository) CreateContract(ctx context.Context, c *CustomerContract
 	return nil
 }
 
+func (m *MockRepository) GetMatchingRules(ctx context.Context, productID uuid.UUID, customerID *uuid.UUID, jobID *uuid.UUID, quantity float64) ([]PricingRule, error) {
+	return nil, nil
+}
+
+func (m *MockRepository) CreateRule(ctx context.Context, r *PricingRule) error {
+	return nil
+}
+
+func (m *MockRepository) ListRules(ctx context.Context) ([]PricingRule, error) {
+	return nil, nil
+}
+
 func TestCalculatePrice(t *testing.T) {
 	repo := &MockRepository{
 		contracts: make(map[string]CustomerContract),

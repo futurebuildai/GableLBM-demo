@@ -123,12 +123,25 @@ func (s *Service) AssignOrderToRoute(ctx context.Context, req AssignOrderRequest
 		}
 	}
 
+	// Mock Geocoding (San Francisco Bay Area)
+	// Base: 37.7749, -122.4194
+	// Use simple byte math for determinism
+	b := req.OrderID[:]
+	// Use bytes 0 and 1 for offsets
+	latOffset := (float64(int(b[0])) - 128.0) / 1000.0 // +/- 0.128 deg
+	lngOffset := (float64(int(b[1])) - 128.0) / 1000.0
+
+	lat := 37.7749 + latOffset
+	lng := -122.4194 + lngOffset
+
 	d := &Delivery{
 		RouteID:              req.RouteID,
 		OrderID:              req.OrderID,
 		StopSequence:         req.StopSequence,
 		Status:               DeliveryStatusPending,
 		DeliveryInstructions: req.DeliveryInstructions,
+		Latitude:             &lat,
+		Longitude:            &lng,
 	}
 
 	if err := s.repo.CreateDelivery(ctx, d); err != nil {

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Truck, FileText, Settings, Menu, Hammer, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { LayoutDashboard, Package, Truck, FileText, Settings, Menu, Hammer, ChevronLeft, ChevronRight, Search, ShoppingBag, Store } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -66,6 +66,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                     <NavItem to="/quotes/new" icon={<FileText size={20} />} label="Quotes" isOpen={sidebarOpen} active={location.pathname.startsWith('/quotes')} />
                     <NavItem to="/orders" icon={<FileText size={20} />} label="Orders" isOpen={sidebarOpen} active={location.pathname.startsWith('/orders')} />
+                    <NavItem to="/purchasing" icon={<ShoppingBag size={20} />} label="Purchasing" isOpen={sidebarOpen} active={location.pathname === '/purchasing' || (location.pathname.startsWith('/purchasing') && !location.pathname.includes('/vendors'))} />
+                    <NavItem to="/purchasing/vendors" icon={<Store size={20} />} label="Vendors" isOpen={sidebarOpen} active={location.pathname.startsWith('/purchasing/vendors')} />
                     <NavItem to="/invoices" icon={<FileText size={20} />} label="Invoices" isOpen={sidebarOpen} active={location.pathname.startsWith('/invoices')} />
                     <NavItem to="/millwork/configure" icon={<Hammer size={20} />} label="Millwork" isOpen={sidebarOpen} active={location.pathname.startsWith('/millwork')} />
                     <NavItem to="/dispatch" icon={<Truck size={20} />} label="Logistics" isOpen={sidebarOpen} active={location.pathname.startsWith('/dispatch') || location.pathname.startsWith('/logistics')} />

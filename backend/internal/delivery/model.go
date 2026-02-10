@@ -98,6 +98,10 @@ type Delivery struct {
 
 	DeliveryInstructions *string `json:"delivery_instructions" db:"delivery_instructions"`
 
+	// Geolocation
+	Latitude  *float64 `json:"latitude" db:"latitude"`
+	Longitude *float64 `json:"longitude" db:"longitude"`
+
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 

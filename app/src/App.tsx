@@ -28,6 +28,8 @@ import QuoteList from "./pages/quotes/QuoteList";
 import { PurchaseOrderList } from "./pages/purchasing/PurchaseOrderList";
 import { PurchaseOrderDetail } from "./pages/purchasing/PurchaseOrderDetail";
 import { NewPurchaseOrder } from "./pages/purchasing/NewPurchaseOrder";
+import VendorList from "./pages/purchasing/VendorList";
+import VendorDetail from "./pages/purchasing/VendorDetail";
 import { ARAgingReportPage } from "./pages/reports/ARAgingReport";
 import { CustomerStatementPage } from "./pages/reports/CustomerStatementPage";
 
@@ -52,6 +54,8 @@ function App() {
             <Route path="reports/customer-statement" element={<CustomerStatementPage />} />
             <Route path="dispatch" element={<DispatchBoard />} />
             <Route path="millwork/configure" element={<DoorConfigurator />} />
+            <Route path="purchasing/vendors" element={<VendorList />} />
+            <Route path="purchasing/vendors/:id" element={<VendorDetail />} />
             <Route path="purchasing" element={<PurchaseOrderList />} />
             <Route path="purchasing/new" element={<NewPurchaseOrder />} />
             <Route path="purchasing/:id" element={<PurchaseOrderDetail />} />

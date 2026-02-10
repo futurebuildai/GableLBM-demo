@@ -17,7 +17,7 @@ export function NewPurchaseOrder() {
     const [lines, setLines] = useState<(CreatePOLine & { key: number })[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
-    let nextKey = 0;
+
 
     useEffect(() => {
         ProductService.getProducts().then(setProducts).catch(console.error);

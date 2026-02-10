@@ -60,6 +60,8 @@ export interface Delivery {
     customer_name?: string;
     order_number?: string;
     address?: string;
+    latitude?: number;
+    longitude?: number;
 }
 
 export interface CreateVehicleRequest {

@@ -96,7 +96,7 @@ function StatusBadge({ status }: { status: import('../../types/order').OrderStat
     let bg = "bg-white/10 text-white";
     if (color === 'info') bg = "bg-blue-500/20 text-blue-400 border-blue-500/50";
     if (color === 'success') bg = "bg-gable-green/20 text-gable-green border-gable-green/50";
-    if (color === 'warning') bg = "bg-yellow-500/20 text-yellow-400 border-yellow-500/50";
+    if (color === 'warning') bg = "bg-amber-500/20 text-amber-400 border-amber-500/50";
     if (color === 'error') bg = "bg-red-500/20 text-red-400 border-red-500/50";
 
     return (

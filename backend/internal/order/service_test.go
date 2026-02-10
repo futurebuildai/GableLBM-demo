@@ -42,9 +42,8 @@ func TestSpecialOrder_POCreation(t *testing.T) {
 	// We only test CreateOrder -> PO trigger.
 
 	poRepo := purchase_order.NewRepository(db)
-	poSvc := purchase_order.NewService(poRepo, nil) // Mock EDI?
-
-	orderSvc := order.NewService(orderRepo, nil, nil, nil, poSvc) // Nil for unused services in CreateOrder
+	poSvc := purchase_order.NewService(poRepo, nil, nil, nil, nil) // Mock EDI, Inventory, Product, Vendor
+	orderSvc := order.NewService(orderRepo, nil, nil, nil, poSvc)  // Nil for unused services in CreateOrder
 
 	// Test Data
 	vendorID := uuid.New()

@@ -1,4 +1,4 @@
-export type OrderStatus = 'DRAFT' | 'CONFIRMED' | 'FULFILLED' | 'CANCELLED';
+export type OrderStatus = 'DRAFT' | 'CONFIRMED' | 'FULFILLED' | 'CANCELLED' | 'ON_HOLD';
 export type OrderStatusColor = 'default' | 'info' | 'success' | 'warning' | 'error';
 
 export interface Order {
@@ -40,6 +40,7 @@ export const getStatusColor = (status: OrderStatus): OrderStatusColor => {
         case 'DRAFT': return 'default';
         case 'CONFIRMED': return 'info';
         case 'FULFILLED': return 'success';
+        case 'ON_HOLD': return 'warning';
         case 'CANCELLED': return 'error';
         default: return 'default';
     }

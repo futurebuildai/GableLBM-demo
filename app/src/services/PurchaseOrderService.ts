@@ -53,4 +53,12 @@ export const PurchaseOrderService = {
         if (!response.ok) throw new Error('Failed to fetch reorder alerts');
         return response.json();
     },
+
+    async generateReorders(): Promise<{ count: number }> {
+        const response = await fetch(`${API_URL}/purchase-orders/reorder-check`, {
+            method: 'POST',
+        });
+        if (!response.ok) throw new Error('Failed to generate reorder POs');
+        return response.json();
+    },
 };

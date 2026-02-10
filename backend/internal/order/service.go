@@ -103,6 +103,29 @@ func (s *Service) ConfirmOrder(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("cannot confirm order in status %s", o.Status)
 	}
 
+	// 1.5 Check Credit Limit
+	cust, err := s.customerSvc.GetCustomer(ctx, o.CustomerID)
+	if err != nil {
+		return fmt.Errorf("failed to get customer details: %w", err)
+	}
+
+	// If Credit Limit is set (> 0) and (Balance + OrderTotal > Limit)
+	if cust.CreditLimit > 0 && (cust.BalanceDue+o.TotalAmount) > cust.CreditLimit {
+		// Place On Hold
+		if err := s.repo.UpdateStatus(ctx, id, StatusOnHold); err != nil {
+			return fmt.Errorf("failed to update order status to ON_HOLD: %w", err)
+		}
+		// Return specific error or just return nil implying "Processed"?
+		// Returning error makes frontend handle "Failure". returning nil implies "Success" (but status is Hold).
+		// Let's return a specific error that the handler can detect if we want special UI, or just success.
+		// For now, let's treat it as a "Soft Failure" - i.e. we didn't confirm it.
+		// But if we return error, the user might think it crashed.
+		// Best practice: Return nil, but let frontend check status.
+		// Or return a sentinel error "ErrCreditLimitExceeded".
+		// Let's return nil, but assume the caller re-fetches the order or we return the updated order (method returns error only though).
+		return fmt.Errorf("credit limit exceeded: order placed ON HOLD")
+	}
+
 	// 2. Allocate Inventory for each line (with Rollback)
 	var allocated []OrderLine
 	defer func() {

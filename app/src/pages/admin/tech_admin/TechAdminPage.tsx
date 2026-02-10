@@ -177,7 +177,7 @@ const APIKeyManager = () => {
     );
 };
 
-const IntegrationCard = ({ name, description, icon: Icon, connected = false }: { name: string, description: string, icon: any, connected?: boolean }) => (
+const IntegrationCard = ({ name, description, icon: Icon, connected = false }: { name: string, description: string, icon: React.ElementType, connected?: boolean }) => (
     <div className="bg-slate-steel border border-white/5 p-6 rounded-lg flex items-start justify-between hover:border-white/10 transition-colors group">
         <div className="flex gap-4">
             <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center shrink-0 transition-colors", connected ? "bg-gable-green/20 text-gable-green" : "bg-white/5 text-slate-400 group-hover:text-white")}>
@@ -245,7 +245,7 @@ export const TechAdminPage = () => {
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
+                        onClick={() => setActiveTab(tab.id as 'keys' | 'integrations' | 'health')}
                         className={cn(
                             "flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors relative",
                             activeTab === tab.id ? "text-gable-green" : "text-slate-400 hover:text-white"

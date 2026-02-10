@@ -66,10 +66,29 @@ export function PurchaseOrderList() {
             {alerts.length > 0 && (
                 <Card variant="glass" className="mb-6 border-amber-500/20">
                     <CardContent className="p-4">
-                        <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2 mb-3">
-                            <AlertTriangle className="w-4 h-4" />
-                            Reorder Alerts ({alerts.length})
-                        </h2>
+                        <div className="flex justify-between items-center mb-3">
+                            <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4" />
+                                Reorder Alerts ({alerts.length})
+                            </h2>
+                            <button
+                                onClick={async () => {
+                                    setLoading(true);
+                                    try {
+                                        const res = await PurchaseOrderService.generateReorders();
+                                        showToast(`Generated ${res.count} draft purchase orders`, 'success');
+                                        loadData();
+                                    } catch (err) {
+                                        console.error(err);
+                                        showToast('Failed to generate reorders', 'error');
+                                        setLoading(false);
+                                    }
+                                }}
+                                className="text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-3 py-1.5 rounded transition-colors uppercase font-bold tracking-wide"
+                            >
+                                Generate Replenishment POs
+                            </button>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {alerts.map((alert) => (
                                 <div key={alert.product_id} className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3">

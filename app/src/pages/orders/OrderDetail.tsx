@@ -75,13 +75,13 @@ export default function OrderDetail() {
                     <p className="text-muted-foreground">Created on {new Date(order.created_at).toLocaleString()}</p>
                 </div>
                 <div className="flex gap-3">
-                    {order.status === 'DRAFT' && (
+                    {(order.status === 'DRAFT' || order.status === 'ON_HOLD') && (
                         <button
                             onClick={handleConfirm}
                             disabled={processing}
                             className="bg-gable-green text-black font-bold px-4 py-2 rounded hover:bg-gable-green/90 transition-colors flex items-center gap-2"
                         >
-                            {processing ? 'Processing...' : <><Check size={18} /> Confirm Order</>}
+                            {processing ? 'Processing...' : <><Check size={18} /> {order.status === 'ON_HOLD' ? 'Retry Confirmation' : 'Confirm Order'}</>}
                         </button>
                     )}
                     {order.status === 'CONFIRMED' && (

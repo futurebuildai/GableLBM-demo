@@ -9,9 +9,10 @@ import { useToast } from '../ui/ToastContext';
 interface DeliveryListProps {
     routeId: string | null;
     vehicleId?: string;
+    onDeliveriesChange?: (deliveries: Delivery[]) => void;
 }
 
-export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId }) => {
+export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId, onDeliveriesChange }) => {
     const { showToast } = useToast();
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [loading, setLoading] = useState(false);
@@ -19,24 +20,26 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId }
     const [reordering, setReordering] = useState(false);
 
     useEffect(() => {
+        const loadDeliveries = async (id: string) => {
+            setLoading(true);
+            try {
+                const data = await deliveryService.listDeliveries(id);
+                setDeliveries(data);
+                onDeliveriesChange?.(data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if (routeId) {
             loadDeliveries(routeId);
         } else {
             setDeliveries([]);
+            onDeliveriesChange?.([]);
         }
-    }, [routeId]);
-
-    const loadDeliveries = async (id: string) => {
-        setLoading(true);
-        try {
-            const data = await deliveryService.listDeliveries(id);
-            setDeliveries(data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [routeId, onDeliveriesChange]);
 
     const moveStop = async (index: number, direction: 'up' | 'down') => {
         if (!routeId) return;
@@ -50,6 +53,7 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId }
         try {
             await deliveryService.reorderStops(routeId, reordered.map(d => d.id));
             setDeliveries(reordered);
+            onDeliveriesChange?.(reordered);
         } catch {
             showToast('Failed to reorder stops', 'error');
         } finally {
@@ -64,6 +68,7 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId }
         try {
             await deliveryService.reorderStops(routeId, reversed.map(d => d.id));
             setDeliveries(reversed);
+            onDeliveriesChange?.(reversed);
             showToast('Route order reversed', 'success');
         } catch {
             showToast('Failed to reverse route', 'error');

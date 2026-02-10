@@ -36,6 +36,7 @@ import (
 	"github.com/gablelbm/gable/internal/quote"
 	"github.com/gablelbm/gable/internal/reporting"
 	"github.com/gablelbm/gable/internal/techadmin"
+	"github.com/gablelbm/gable/internal/vendor"
 	"github.com/gablelbm/gable/pkg/database"
 	"github.com/gablelbm/gable/pkg/middleware"
 )
@@ -129,6 +130,12 @@ func main() {
 	pricingHandler := pricing.NewHandler(pricingSvc, customerSvc, productSvc)
 	pricingHandler.RegisterRoutes(mux)
 
+	// Vendor Module
+	vendorRepo := vendor.NewRepository(db)
+	vendorSvc := vendor.NewService(vendorRepo)
+	vendorHandler := vendor.NewHandler(vendorSvc)
+	vendorHandler.RegisterRoutes(mux)
+
 	// Order Module - injected with InventoryService and InvoiceService
 	orderRepo := order.NewRepository(db)
 	poRepo := purchase_order.NewRepository(db)
@@ -136,7 +143,7 @@ func main() {
 	// EDI Module
 	ediSvc := edi.NewService("./edi_out", logger) // Stub output dir
 
-	poSvc := purchase_order.NewService(poRepo, ediSvc, inventorySvc)
+	poSvc := purchase_order.NewService(poRepo, ediSvc, inventorySvc, productSvc, vendorSvc)
 	poHandler := purchase_order.NewHandler(poSvc)
 	poHandler.RegisterRoutes(mux)
 

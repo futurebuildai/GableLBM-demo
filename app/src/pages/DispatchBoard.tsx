@@ -1,17 +1,24 @@
 import React, { useState } from 'react';
 import { RouteList } from '../components/logistics/RouteList';
 import { DeliveryList } from '../components/logistics/DeliveryList';
+import { RouteMap } from '../components/logistics/RouteMap';
 import { PageTransition } from '../components/ui/PageTransition';
-import { Truck, Map, Calendar } from 'lucide-react';
+import { Truck, Calendar } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/Card';
+import type { Delivery } from '../types/delivery';
 
 export const DispatchBoard: React.FC = () => {
     const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
     const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined);
+    const [currentDeliveries, setCurrentDeliveries] = useState<Delivery[]>([]);
 
     const handleSelectRoute = (routeId: string, vehicleId?: string) => {
         setSelectedRouteId(routeId);
         setSelectedVehicleId(vehicleId);
+        // Reset deliveries when route changes (optional, but cleaner)
+        if (routeId !== selectedRouteId) {
+            setCurrentDeliveries([]);
+        }
     };
 
     return (
@@ -41,26 +48,20 @@ export const DispatchBoard: React.FC = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Right Panel: Delivery Manifest & Map Placeholder */}
+                    {/* Right Panel: Delivery Manifest & Map */}
                     <div className="w-2/3 flex flex-col gap-6">
                         <Card variant="glass" className="flex-1 flex flex-col overflow-hidden">
                             <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
-                                <DeliveryList routeId={selectedRouteId} vehicleId={selectedVehicleId} />
+                                <DeliveryList
+                                    routeId={selectedRouteId}
+                                    vehicleId={selectedVehicleId}
+                                    onDeliveriesChange={setCurrentDeliveries}
+                                />
                             </CardContent>
                         </Card>
 
-                        {/* Map Placeholder - Future Integration */}
-                        <Card variant="glass" className="h-[300px] relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-[#161821] flex items-center justify-center">
-                                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#2d3748_1px,transparent_1px)] [background-size:16px_16px]"></div>
-                                <div className="text-center z-10">
-                                    <div className="w-16 h-16 rounded-full bg-gable-green/10 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-500">
-                                        <Map className="w-8 h-8 text-gable-green" />
-                                    </div>
-                                    <h3 className="text-white font-medium">Live Fleet Map</h3>
-                                    <p className="text-zinc-500 text-sm mt-1">Real-time telematics integration coming soon</p>
-                                </div>
-                            </div>
+                        <Card variant="glass" className="h-[350px] relative overflow-hidden">
+                            <RouteMap deliveries={currentDeliveries} />
                         </Card>
                     </div>
                 </div>

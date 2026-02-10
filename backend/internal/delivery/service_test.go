@@ -14,8 +14,11 @@ type MockRepository struct {
 
 func (m *MockRepository) CreateVehicle(ctx context.Context, v *Vehicle) error { return nil }
 func (m *MockRepository) ListVehicles(ctx context.Context) ([]Vehicle, error) { return nil, nil }
-func (m *MockRepository) CreateDriver(ctx context.Context, d *Driver) error   { return nil }
-func (m *MockRepository) ListDrivers(ctx context.Context) ([]Driver, error)   { return nil, nil }
+func (m *MockRepository) GetVehicle(ctx context.Context, id uuid.UUID) (*Vehicle, error) {
+	return nil, nil
+}
+func (m *MockRepository) CreateDriver(ctx context.Context, d *Driver) error { return nil }
+func (m *MockRepository) ListDrivers(ctx context.Context) ([]Driver, error) { return nil, nil }
 
 func (m *MockRepository) CreateRoute(ctx context.Context, r *Route) error { return nil }
 func (m *MockRepository) GetRoute(ctx context.Context, id uuid.UUID) (*Route, error) {
@@ -51,6 +54,14 @@ func (m *MockRepository) UpdateDeliveryStatus(ctx context.Context, id uuid.UUID,
 }
 func (m *MockRepository) ReorderRouteDeliveries(ctx context.Context, routeID uuid.UUID, deliveryIDs []uuid.UUID) error {
 	return nil
+}
+
+func (m *MockRepository) GetRouteLoadWeight(ctx context.Context, routeID uuid.UUID) (float64, error) {
+	return 0, nil
+}
+
+func (m *MockRepository) GetOrderEstimatedWeight(ctx context.Context, orderID uuid.UUID) (float64, error) {
+	return 0, nil
 }
 
 func TestReorderStops(t *testing.T) {

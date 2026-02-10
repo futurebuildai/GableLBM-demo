@@ -13,6 +13,7 @@ const (
 	StatusConfirmed OrderStatus = "CONFIRMED"
 	StatusFulfilled OrderStatus = "FULFILLED"
 	StatusCancelled OrderStatus = "CANCELLED"
+	StatusOnHold    OrderStatus = "ON_HOLD"
 )
 
 type Order struct {
