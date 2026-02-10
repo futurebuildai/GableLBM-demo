@@ -151,6 +151,7 @@ type ReorderStopsRequest struct {
 type Repository interface {
 	// Fleet
 	CreateVehicle(ctx context.Context, vehicle *Vehicle) error
+	GetVehicle(ctx context.Context, id uuid.UUID) (*Vehicle, error)
 	ListVehicles(ctx context.Context) ([]Vehicle, error)
 	CreateDriver(ctx context.Context, driver *Driver) error
 	ListDrivers(ctx context.Context) ([]Driver, error)
@@ -167,6 +168,18 @@ type Repository interface {
 	ListDeliveriesByRoute(ctx context.Context, routeID uuid.UUID) ([]Delivery, error)
 	UpdateDeliveryStatus(ctx context.Context, id uuid.UUID, status DeliveryStatus, pod *PODUpdate) error
 	ReorderRouteDeliveries(ctx context.Context, routeID uuid.UUID, deliveryIDs []uuid.UUID) error
+
+	// Capacity
+	GetRouteLoadWeight(ctx context.Context, routeID uuid.UUID) (float64, error)
+	GetOrderEstimatedWeight(ctx context.Context, orderID uuid.UUID) (float64, error)
+}
+
+// CapacityWarning is returned when assignment would exceed vehicle capacity
+type CapacityWarning struct {
+	VehicleCapacity float64 `json:"vehicle_capacity_lbs"`
+	CurrentLoad     float64 `json:"current_load_lbs"`
+	OrderWeight     float64 `json:"order_weight_lbs"`
+	TotalAfter      float64 `json:"total_after_lbs"`
 }
 
 type PODUpdate struct {

@@ -51,7 +51,7 @@ func (r *PostgresRepository) CreateProduct(ctx context.Context, p *Product) erro
 func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Product, error) {
 	query := `
 		SELECT id, sku, description, uom_primary, base_price, vendor, upc,
-		       COALESCE(reorder_point, 0), COALESCE(reorder_qty, 0),
+		       COALESCE(weight_lbs, 0), COALESCE(reorder_point, 0), COALESCE(reorder_qty, 0),
 		       created_at, updated_at
 		FROM products
 		WHERE id = $1`
@@ -65,6 +65,7 @@ func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Pro
 		&p.BasePrice,
 		&p.Vendor,
 		&p.UPC,
+		&p.WeightLbs,
 		&p.ReorderPoint,
 		&p.ReorderQty,
 		&p.CreatedAt,
@@ -85,7 +86,7 @@ func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Pro
 func (r *PostgresRepository) ListProducts(ctx context.Context) ([]Product, error) {
 	query := `
 		SELECT p.id, p.sku, p.description, p.uom_primary, p.base_price, p.vendor, p.upc,
-		       COALESCE(p.reorder_point, 0), COALESCE(p.reorder_qty, 0),
+		       COALESCE(p.weight_lbs, 0), COALESCE(p.reorder_point, 0), COALESCE(p.reorder_qty, 0),
 		       p.created_at, p.updated_at,
 		       COALESCE(SUM(i.quantity), 0) as total_quantity,
 		       COALESCE(SUM(i.allocated), 0) as total_allocated
@@ -111,6 +112,7 @@ func (r *PostgresRepository) ListProducts(ctx context.Context) ([]Product, error
 			&p.BasePrice,
 			&p.Vendor,
 			&p.UPC,
+			&p.WeightLbs,
 			&p.ReorderPoint,
 			&p.ReorderQty,
 			&p.CreatedAt,

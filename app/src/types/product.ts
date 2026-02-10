@@ -24,6 +24,7 @@ export interface Product {
     base_price: number;
     vendor?: string;
     upc?: string;
+    weight_lbs?: number;
     reorder_point?: number;
     reorder_qty?: number;
     total_quantity?: number;

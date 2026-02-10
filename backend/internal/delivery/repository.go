@@ -58,6 +58,25 @@ func (r *PostgresRepository) ListVehicles(ctx context.Context) ([]Vehicle, error
 	return vehicles, nil
 }
 
+func (r *PostgresRepository) GetVehicle(ctx context.Context, id uuid.UUID) (*Vehicle, error) {
+	query := `
+		SELECT id, name, vehicle_type, license_plate, capacity_weight_lbs, created_at, updated_at
+		FROM vehicles
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+	var v Vehicle
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, query, id).Scan(
+		&v.ID, &v.Name, &v.VehicleType, &v.LicensePlate, &v.CapacityWeightLbs, &v.CreatedAt, &v.UpdatedAt,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("vehicle not found")
+		}
+		return nil, err
+	}
+	return &v, nil
+}
+
 func (r *PostgresRepository) CreateDriver(ctx context.Context, d *Driver) error {
 	query := `
 		INSERT INTO drivers (name, license_number, phone_number, status)
@@ -287,4 +306,35 @@ func (r *PostgresRepository) ReorderRouteDeliveries(ctx context.Context, routeID
 		}
 		return nil
 	})
+}
+
+// Capacity
+
+func (r *PostgresRepository) GetRouteLoadWeight(ctx context.Context, routeID uuid.UUID) (float64, error) {
+	query := `
+		SELECT COALESCE(SUM(
+			COALESCE(p.weight_lbs, 0) * ol.quantity
+		), 0)
+		FROM deliveries d
+		JOIN order_lines ol ON ol.order_id = d.order_id
+		JOIN products p ON p.id = ol.product_id
+		WHERE d.route_id = $1
+	`
+	var weight float64
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, query, routeID).Scan(&weight)
+	return weight, err
+}
+
+func (r *PostgresRepository) GetOrderEstimatedWeight(ctx context.Context, orderID uuid.UUID) (float64, error) {
+	query := `
+		SELECT COALESCE(SUM(
+			COALESCE(p.weight_lbs, 0) * ol.quantity
+		), 0)
+		FROM order_lines ol
+		JOIN products p ON p.id = ol.product_id
+		WHERE ol.order_id = $1
+	`
+	var weight float64
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, query, orderID).Scan(&weight)
+	return weight, err
 }

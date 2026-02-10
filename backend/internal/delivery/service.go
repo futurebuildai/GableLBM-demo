@@ -97,11 +97,30 @@ func (s *Service) DispatchRoute(ctx context.Context, id uuid.UUID) error {
 
 // Delivery Management
 
-func (s *Service) AssignOrderToRoute(ctx context.Context, req AssignOrderRequest) (*Delivery, error) {
-	// Verify route exists
-	_, err := s.repo.GetRoute(ctx, req.RouteID)
+func (s *Service) AssignOrderToRoute(ctx context.Context, req AssignOrderRequest) (*Delivery, *CapacityWarning, error) {
+	// Verify route exists and get vehicle info
+	route, err := s.repo.GetRoute(ctx, req.RouteID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	// Vehicle capacity validation
+	var warning *CapacityWarning
+	vehicle, err := s.repo.GetVehicle(ctx, route.VehicleID)
+	if err == nil && vehicle.CapacityWeightLbs != nil && *vehicle.CapacityWeightLbs > 0 {
+		currentLoad, _ := s.repo.GetRouteLoadWeight(ctx, req.RouteID)
+		orderWeight, _ := s.repo.GetOrderEstimatedWeight(ctx, req.OrderID)
+		totalAfter := currentLoad + orderWeight
+
+		if totalAfter > float64(*vehicle.CapacityWeightLbs) {
+			warning = &CapacityWarning{
+				VehicleCapacity: float64(*vehicle.CapacityWeightLbs),
+				CurrentLoad:     currentLoad,
+				OrderWeight:     orderWeight,
+				TotalAfter:      totalAfter,
+			}
+			// Warning only — still allow assignment (soft validation)
+		}
 	}
 
 	d := &Delivery{
@@ -113,9 +132,9 @@ func (s *Service) AssignOrderToRoute(ctx context.Context, req AssignOrderRequest
 	}
 
 	if err := s.repo.CreateDelivery(ctx, d); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return d, nil
+	return d, warning, nil
 }
 
 func (s *Service) ListDeliveries(ctx context.Context, routeID uuid.UUID) ([]Delivery, error) {

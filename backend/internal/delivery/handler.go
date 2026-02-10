@@ -221,14 +221,24 @@ func (h *Handler) HandleAssignOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d, err := h.service.AssignOrderToRoute(r.Context(), req)
+	d, capacityWarning, err := h.service.AssignOrderToRoute(r.Context(), req)
 	if err != nil {
 		slog.Error("AssignOrderToRoute failed", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	response := struct {
+		Delivery        *Delivery        `json:"delivery"`
+		CapacityWarning *CapacityWarning `json:"capacity_warning,omitempty"`
+	}{
+		Delivery:        d,
+		CapacityWarning: capacityWarning,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(d)
+	json.NewEncoder(w).Encode(response)
 }
 
 func (h *Handler) HandleUpdateDeliveryStatus(w http.ResponseWriter, r *http.Request) {

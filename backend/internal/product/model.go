@@ -37,6 +37,7 @@ type Product struct {
 	BasePrice      float64   `json:"base_price"`
 	Vendor         *string   `json:"vendor"`
 	UPC            *string   `json:"upc"`
+	WeightLbs      float64   `json:"weight_lbs"`
 	ReorderPoint   float64   `json:"reorder_point"`
 	ReorderQty     float64   `json:"reorder_qty"`
 	TotalQuantity  float64   `json:"total_quantity" db:"-"` // Aggregated from inventory
