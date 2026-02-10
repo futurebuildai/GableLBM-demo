@@ -11,6 +11,8 @@ import (
 type Repository interface {
 	GetDailyTill(ctx context.Context, date time.Time) (*DailyTillReport, error)
 	GetSalesSummary(ctx context.Context, start, end time.Time) (*SalesSummaryReport, error)
+	GetARAgingReport(ctx context.Context) (*ARAgingReport, error)
+	GetCustomerStatement(ctx context.Context, customerID string, start, end time.Time) (*CustomerStatement, error)
 }
 
 type PostgresRepository struct {
@@ -125,4 +127,108 @@ func (r *PostgresRepository) GetSalesSummary(ctx context.Context, start, end tim
 	}
 
 	return report, nil
+}
+
+func (r *PostgresRepository) GetARAgingReport(ctx context.Context) (*ARAgingReport, error) {
+	query := `
+		SELECT
+			i.customer_id,
+			COALESCE(c.name, 'Unknown'),
+			COALESCE(SUM(CASE WHEN CURRENT_DATE - COALESCE(i.due_date, i.created_at)::date <= 30 THEN i.total_amount ELSE 0 END), 0) AS current_bucket,
+			COALESCE(SUM(CASE WHEN CURRENT_DATE - COALESCE(i.due_date, i.created_at)::date BETWEEN 31 AND 60 THEN i.total_amount ELSE 0 END), 0) AS days_31_60,
+			COALESCE(SUM(CASE WHEN CURRENT_DATE - COALESCE(i.due_date, i.created_at)::date BETWEEN 61 AND 90 THEN i.total_amount ELSE 0 END), 0) AS days_61_90,
+			COALESCE(SUM(CASE WHEN CURRENT_DATE - COALESCE(i.due_date, i.created_at)::date > 90 THEN i.total_amount ELSE 0 END), 0) AS over_90,
+			COALESCE(SUM(i.total_amount), 0) AS total
+		FROM invoices i
+		LEFT JOIN customers c ON c.id = i.customer_id
+		WHERE i.status IN ('UNPAID', 'PARTIAL', 'OVERDUE')
+		GROUP BY i.customer_id, c.name
+		ORDER BY total DESC
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query AR aging: %w", err)
+	}
+	defer rows.Close()
+
+	report := &ARAgingReport{
+		AsOfDate: time.Now().Format("2006-01-02"),
+	}
+
+	for rows.Next() {
+		var b ARAgingBucket
+		if err := rows.Scan(&b.CustomerID, &b.CustomerName, &b.Current, &b.Days31to60, &b.Days61to90, &b.Over90, &b.Total); err != nil {
+			return nil, fmt.Errorf("failed to scan AR aging row: %w", err)
+		}
+		report.Buckets = append(report.Buckets, b)
+		report.TotalCurrent += b.Current
+		report.Total31to60 += b.Days31to60
+		report.Total61to90 += b.Days61to90
+		report.TotalOver90 += b.Over90
+		report.GrandTotal += b.Total
+	}
+
+	return report, nil
+}
+
+func (r *PostgresRepository) GetCustomerStatement(ctx context.Context, customerID string, start, end time.Time) (*CustomerStatement, error) {
+	// Get customer name
+	var customerName string
+	nameQuery := `SELECT COALESCE(name, '') FROM customers WHERE id = $1`
+	_ = r.db.Pool.QueryRow(ctx, nameQuery, customerID).Scan(&customerName)
+
+	stmt := &CustomerStatement{
+		CustomerID:   customerID,
+		CustomerName: customerName,
+		StartDate:    start.Format("2006-01-02"),
+		EndDate:      end.Format("2006-01-02"),
+	}
+
+	// Get transactions in range
+	query := `
+		SELECT ct.created_at, ct.type, ct.description,
+		       CASE WHEN ct.amount > 0 THEN ct.amount::float / 100.0 ELSE 0 END AS debit,
+		       CASE WHEN ct.amount < 0 THEN ABS(ct.amount)::float / 100.0 ELSE 0 END AS credit,
+		       ct.balance_after::float / 100.0 AS balance
+		FROM customer_transactions ct
+		WHERE ct.customer_id = $1 AND ct.created_at >= $2 AND ct.created_at < $3
+		ORDER BY ct.created_at ASC
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query, customerID, start, end)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query statement: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var l StatementLine
+		var ts time.Time
+		if err := rows.Scan(&ts, &l.Type, &l.Description, &l.Debit, &l.Credit, &l.Balance); err != nil {
+			return nil, fmt.Errorf("failed to scan statement line: %w", err)
+		}
+		l.Date = ts.Format("2006-01-02")
+		stmt.Lines = append(stmt.Lines, l)
+	}
+
+	// Open balance: balance_after of last transaction before start date
+	openQuery := `
+		SELECT COALESCE(balance_after::float / 100.0, 0)
+		FROM customer_transactions
+		WHERE customer_id = $1 AND created_at < $2
+		ORDER BY created_at DESC LIMIT 1
+	`
+	_ = r.db.Pool.QueryRow(ctx, openQuery, customerID, start).Scan(&stmt.OpenBalance)
+
+	// Close balance: balance_after of last transaction in or before end date
+	closeQuery := `
+		SELECT COALESCE(balance_after::float / 100.0, 0)
+		FROM customer_transactions
+		WHERE customer_id = $1 AND created_at < $2
+		ORDER BY created_at DESC LIMIT 1
+	`
+	_ = r.db.Pool.QueryRow(ctx, closeQuery, customerID, end).Scan(&stmt.CloseBalance)
+
+	return stmt, nil
 }

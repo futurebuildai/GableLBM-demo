@@ -5,8 +5,9 @@ import { paymentService } from '../../services/paymentService';
 import { PaymentModal } from '../../components/invoices/PaymentModal';
 import type { Invoice } from '../../types/invoice';
 import type { Payment, CreatePaymentRequest } from '../../types/payment';
-import { Download, CreditCard, Mail } from 'lucide-react';
+import { Download, CreditCard, Mail, RotateCcw } from 'lucide-react';
 import { useToast } from '../../components/ui/ToastContext';
+import { ReportingService } from '../../services/ReportingService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -17,6 +18,9 @@ export default function InvoiceDetail() {
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [creditMemoReason, setCreditMemoReason] = useState('');
+    const [creditMemoAmount, setCreditMemoAmount] = useState('');
+    const [showCreditMemo, setShowCreditMemo] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -95,6 +99,12 @@ export default function InvoiceDetail() {
                             <CreditCard size={18} /> Pay
                         </button>
                     )}
+                    <button
+                        onClick={() => setShowCreditMemo(!showCreditMemo)}
+                        className="bg-white/10 text-white hover:bg-white/20 px-4 py-2 rounded flex items-center gap-2 transition-colors border border-white/10"
+                    >
+                        <RotateCcw size={18} /> Credit Memo
+                    </button>
                 </div>
             </div>
 
@@ -112,6 +122,10 @@ export default function InvoiceDetail() {
                         <div className="flex justify-between">
                             <span className="text-zinc-400">Issue Date</span>
                             <span className="text-zinc-200">{new Date(invoice.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-zinc-400">Terms</span>
+                            <span className="text-zinc-200 font-mono">{invoice.payment_terms || 'NET30'}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-zinc-400">Due Date</span>
@@ -158,6 +172,18 @@ export default function InvoiceDetail() {
                         ))}
                     </tbody>
                     <tfoot className="bg-zinc-950">
+                        {invoice.subtotal > 0 && invoice.subtotal !== invoice.total_amount && (
+                            <>
+                                <tr>
+                                    <td colSpan={3} className="px-6 py-2 text-right text-zinc-400">Subtotal</td>
+                                    <td className="px-6 py-2 text-right text-zinc-300 font-mono">${invoice.subtotal.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                    <td colSpan={3} className="px-6 py-2 text-right text-zinc-400">Tax ({(invoice.tax_rate * 100).toFixed(2)}%)</td>
+                                    <td className="px-6 py-2 text-right text-zinc-300 font-mono">${invoice.tax_amount.toFixed(2)}</td>
+                                </tr>
+                            </>
+                        )}
                         <tr>
                             <td colSpan={3} className="px-6 py-4 text-right text-zinc-400 font-bold uppercase">Total Due</td>
                             <td className="px-6 py-4 text-right text-emerald-500 font-bold font-mono text-xl">${invoice.total_amount.toFixed(2)}</td>
@@ -197,6 +223,64 @@ export default function InvoiceDetail() {
                     </div>
                 )
             }
+
+            {/* Credit Memo Form */}
+            {showCreditMemo && (
+                <div className="bg-zinc-900 rounded-lg border border-amber-500/20 p-6 space-y-4">
+                    <h3 className="text-zinc-100 font-bold flex items-center gap-2">
+                        <RotateCcw className="w-4 h-4 text-amber-400" />
+                        Issue Credit Memo
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs text-zinc-500 uppercase block mb-1">Amount ($)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={creditMemoAmount}
+                                onChange={(e) => setCreditMemoAmount(e.target.value)}
+                                className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white font-mono focus:border-[#00FFA3] outline-none"
+                                placeholder="0.00"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs text-zinc-500 uppercase block mb-1">Reason</label>
+                            <input
+                                type="text"
+                                value={creditMemoReason}
+                                onChange={(e) => setCreditMemoReason(e.target.value)}
+                                className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white focus:border-[#00FFA3] outline-none"
+                                placeholder="Damaged goods, pricing error, etc."
+                            />
+                        </div>
+                    </div>
+                    <div className="flex gap-3 justify-end">
+                        <button onClick={() => setShowCreditMemo(false)} className="px-4 py-2 text-zinc-400 hover:text-white">Cancel</button>
+                        <button
+                            onClick={async () => {
+                                if (!creditMemoAmount || !creditMemoReason) {
+                                    showToast('Enter amount and reason', 'error');
+                                    return;
+                                }
+                                try {
+                                    await ReportingService.createCreditMemo(invoice.id, Number(creditMemoAmount), creditMemoReason);
+                                    showToast('Credit memo applied', 'success');
+                                    setShowCreditMemo(false);
+                                    setCreditMemoAmount('');
+                                    setCreditMemoReason('');
+                                    if (id) loadInvoice(id);
+                                } catch {
+                                    showToast('Failed to create credit memo', 'error');
+                                }
+                            }}
+                            className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded font-medium"
+                        >
+                            Apply Credit
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {
                 invoice.id && (

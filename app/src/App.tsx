@@ -28,6 +28,8 @@ import QuoteList from "./pages/quotes/QuoteList";
 import { PurchaseOrderList } from "./pages/purchasing/PurchaseOrderList";
 import { PurchaseOrderDetail } from "./pages/purchasing/PurchaseOrderDetail";
 import { NewPurchaseOrder } from "./pages/purchasing/NewPurchaseOrder";
+import { ARAgingReportPage } from "./pages/reports/ARAgingReport";
+import { CustomerStatementPage } from "./pages/reports/CustomerStatementPage";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -46,6 +48,8 @@ function App() {
             <Route path="invoices" element={<InvoiceList />} />
             <Route path="invoices/:id" element={<InvoiceDetail />} />
             <Route path="reports/daily-till" element={<DailyTill />} />
+            <Route path="reports/ar-aging" element={<ARAgingReportPage />} />
+            <Route path="reports/customer-statement" element={<CustomerStatementPage />} />
             <Route path="dispatch" element={<DispatchBoard />} />
             <Route path="millwork/configure" element={<DoorConfigurator />} />
             <Route path="purchasing" element={<PurchaseOrderList />} />
