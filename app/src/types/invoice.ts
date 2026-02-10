@@ -4,6 +4,7 @@ export interface Invoice {
     id: string;
     order_id: string;
     customer_id: string;
+    customer_name?: string;
     status: InvoiceStatus;
     total_amount: number;
     due_date?: string;
@@ -19,6 +20,8 @@ export interface InvoiceLine {
     id: string;
     invoice_id: string;
     product_id: string;
+    product_sku?: string;
+    product_name?: string;
     quantity: number;
     price_each: number;
     created_at: string;

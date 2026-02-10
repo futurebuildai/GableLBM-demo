@@ -35,3 +35,16 @@ func (s *Service) CreateQuote(ctx context.Context, q *Quote) error {
 func (s *Service) GetQuote(ctx context.Context, id uuid.UUID) (*Quote, error) {
 	return s.repo.GetQuote(ctx, id)
 }
+
+func (s *Service) ListQuotes(ctx context.Context) ([]Quote, error) {
+	return s.repo.ListQuotes(ctx)
+}
+
+func (s *Service) UpdateState(ctx context.Context, id uuid.UUID, state QuoteState) error {
+	q, err := s.repo.GetQuote(ctx, id)
+	if err != nil {
+		return err
+	}
+	q.State = state
+	return s.repo.UpdateQuote(ctx, q)
+}

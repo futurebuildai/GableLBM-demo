@@ -3,6 +3,7 @@ import type { Product } from '../../types/product';
 import type { Location } from '../../types/location';
 import { LocationService } from '../../services/LocationService';
 import { InventoryService } from '../../services/InventoryService';
+import { useToast } from '../ui/ToastContext';
 
 interface StockAdjustmentModalProps {
     isOpen: boolean;
@@ -12,6 +13,7 @@ interface StockAdjustmentModalProps {
 }
 
 export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({ isOpen, onClose, product, onSuccess }) => {
+    const { showToast } = useToast();
     const [locations, setLocations] = useState<Location[]>([]);
     const [selectedLocationId, setSelectedLocationId] = useState('');
     const [quantity, setQuantity] = useState(0);
@@ -52,7 +54,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({ isOp
             onSuccess();
             onClose();
         } catch (error) {
-            alert('Failed to adjust stock');
+            showToast('Failed to adjust stock', 'error');
             console.error(error);
         } finally {
             setIsSubmitting(false);

@@ -11,9 +11,11 @@ import { useNavigate } from 'react-router-dom';
 import { PageTransition } from '../components/ui/PageTransition';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { useToast } from '../components/ui/ToastContext';
 
 export const QuoteBuilder = () => {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
     const [lines, setLines] = useState<CreateQuoteRequest['lines']>([]);
@@ -54,7 +56,7 @@ export const QuoteBuilder = () => {
             navigate('/orders'); // Redirect to orders list (or quotes list if we had one)
         } catch (err) {
             console.error(err);
-            alert('Failed to save quote');
+            showToast('Failed to save quote', 'error');
         } finally {
             setLoading(false);
         }

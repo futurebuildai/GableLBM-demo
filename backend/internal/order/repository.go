@@ -80,12 +80,14 @@ func (r *PostgresRepository) CreateOrder(ctx context.Context, o *Order) error {
 
 func (r *PostgresRepository) GetOrder(ctx context.Context, id uuid.UUID) (*Order, error) {
 	queryOrder := `
-		SELECT id, customer_id, quote_id, status, total_amount, created_at, updated_at
-		FROM orders WHERE id = $1
+		SELECT o.id, o.customer_id, COALESCE(c.name, ''), o.quote_id, o.status, o.total_amount, o.created_at, o.updated_at
+		FROM orders o
+		LEFT JOIN customers c ON c.id = o.customer_id
+		WHERE o.id = $1
 	`
 	var o Order
 	err := r.db.Pool.QueryRow(ctx, queryOrder, id).Scan(
-		&o.ID, &o.CustomerID, &o.QuoteID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt,
+		&o.ID, &o.CustomerID, &o.CustomerName, &o.QuoteID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -94,10 +96,12 @@ func (r *PostgresRepository) GetOrder(ctx context.Context, id uuid.UUID) (*Order
 		return nil, fmt.Errorf("failed to get order: %w", err)
 	}
 
-	// Get Lines
+	// Get Lines with product names
 	queryLines := `
-		SELECT id, order_id, product_id, quantity, price_each
-		FROM order_lines WHERE order_id = $1
+		SELECT ol.id, ol.order_id, ol.product_id, COALESCE(p.sku, ''), COALESCE(p.description, ''), ol.quantity, ol.price_each
+		FROM order_lines ol
+		LEFT JOIN products p ON p.id = ol.product_id
+		WHERE ol.order_id = $1
 	`
 	rows, err := r.db.Pool.Query(ctx, queryLines, id)
 	if err != nil {
@@ -107,7 +111,7 @@ func (r *PostgresRepository) GetOrder(ctx context.Context, id uuid.UUID) (*Order
 
 	for rows.Next() {
 		var l OrderLine
-		if err := rows.Scan(&l.ID, &l.OrderID, &l.ProductID, &l.Quantity, &l.PriceEach); err != nil {
+		if err := rows.Scan(&l.ID, &l.OrderID, &l.ProductID, &l.ProductSKU, &l.ProductName, &l.Quantity, &l.PriceEach); err != nil {
 			return nil, fmt.Errorf("failed to scan order line: %w", err)
 		}
 		o.Lines = append(o.Lines, l)
@@ -118,8 +122,10 @@ func (r *PostgresRepository) GetOrder(ctx context.Context, id uuid.UUID) (*Order
 
 func (r *PostgresRepository) ListOrders(ctx context.Context) ([]Order, error) {
 	query := `
-		SELECT id, customer_id, quote_id, status, total_amount, created_at, updated_at
-		FROM orders ORDER BY created_at DESC
+		SELECT o.id, o.customer_id, COALESCE(c.name, ''), o.quote_id, o.status, o.total_amount, o.created_at, o.updated_at
+		FROM orders o
+		LEFT JOIN customers c ON c.id = o.customer_id
+		ORDER BY o.created_at DESC
 	`
 	rows, err := r.db.Pool.Query(ctx, query)
 	if err != nil {
@@ -131,7 +137,7 @@ func (r *PostgresRepository) ListOrders(ctx context.Context) ([]Order, error) {
 	for rows.Next() {
 		var o Order
 		if err := rows.Scan(
-			&o.ID, &o.CustomerID, &o.QuoteID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt,
+			&o.ID, &o.CustomerID, &o.CustomerName, &o.QuoteID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
 		}

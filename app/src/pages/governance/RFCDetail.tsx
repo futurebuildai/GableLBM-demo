@@ -6,10 +6,12 @@ import { PageTransition } from '../../components/ui/PageTransition';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
 import { ArrowLeft, Edit2, FileText, Calendar, User, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { useToast } from '../../components/ui/ToastContext';
 
 export function RFCDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [rfc, setRfc] = useState<RFC | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,7 @@ export function RFCDetail() {
             setRfc(data);
         } catch (e) {
             console.error(e);
-            alert('Failed to load RFC');
+            showToast('Failed to load RFC', 'error');
         } finally {
             setLoading(false);
         }

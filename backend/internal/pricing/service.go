@@ -17,8 +17,19 @@ func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
 }
 
+// CalculatePrice implements a 6-level pricing waterfall:
+// 1. Contract Price (SKU + Customer specific)
+// 2. Job-Level Override (project-specific pricing)
+// 3. Promotional/Sale Price (time-bound)
+// 4. Quantity Break (volume discount)
+// 5. Customer Price Level/Tier
+// 6. Base Retail
 func (s *Service) CalculatePrice(ctx context.Context, cust *customer.Customer, productID uuid.UUID, basePrice float64) (CalculatedPrice, error) {
-	// 1. Check Contract
+	return s.CalculatePriceWithQty(ctx, cust, productID, basePrice, 1, nil)
+}
+
+func (s *Service) CalculatePriceWithQty(ctx context.Context, cust *customer.Customer, productID uuid.UUID, basePrice float64, quantity float64, jobID *uuid.UUID) (CalculatedPrice, error) {
+	// 1. Check Contract Price (highest priority - specific customer+product agreement)
 	contract, err := s.repo.GetContract(ctx, cust.ID, productID)
 	if err != nil {
 		return CalculatedPrice{}, err
@@ -38,9 +49,64 @@ func (s *Service) CalculatePrice(ctx context.Context, cust *customer.Customer, p
 		}, nil
 	}
 
-	// 2. Check Price Level (Tier)
-	// Priority: Custom Price Level > Tier Enum > Retail
+	// 2-4. Check pricing rules (job override, promotional, quantity break)
+	custID := &cust.ID
+	rules, err := s.repo.GetMatchingRules(ctx, productID, custID, jobID, quantity)
+	if err != nil {
+		// Rules table may not exist yet - fall through to tier pricing
+		rules = nil
+	}
 
+	for _, rule := range rules {
+		finalPrice := basePrice
+		source := SourceRetail
+		details := rule.Name
+
+		switch rule.RuleType {
+		case RuleTypeJobOverride:
+			source = SourceJobOverride
+		case RuleTypePromotional:
+			source = SourcePromotional
+		case RuleTypeQuantityBreak:
+			source = SourceQuantityBreak
+		}
+
+		// Apply the rule's pricing adjustment
+		if rule.FixedPrice != nil {
+			finalPrice = *rule.FixedPrice
+		} else if rule.DiscountPct != nil {
+			finalPrice = basePrice * (1 - *rule.DiscountPct/100)
+		} else if rule.MarkupPct != nil {
+			finalPrice = basePrice * (1 + *rule.MarkupPct/100)
+		} else {
+			continue // No pricing action defined
+		}
+
+		// Margin floor protection
+		if rule.MarginFloorPct != nil && basePrice > 0 {
+			minPrice := basePrice * (1 - *rule.MarginFloorPct/100)
+			if finalPrice < minPrice {
+				finalPrice = minPrice
+				details = fmt.Sprintf("%s (margin floor applied)", details)
+			}
+		}
+
+		discountPct := 0.0
+		if basePrice > 0 {
+			discountPct = (basePrice - finalPrice) / basePrice * 100
+		}
+
+		return CalculatedPrice{
+			ProductID:     productID,
+			OriginalPrice: basePrice,
+			FinalPrice:    math.Round(finalPrice*100) / 100,
+			DiscountPct:   math.Round(discountPct*100) / 100,
+			Source:        source,
+			Details:       details,
+		}, nil
+	}
+
+	// 5. Check Price Level (Tier)
 	multiplier := 1.0
 	details := ""
 	source := SourceRetail
@@ -79,7 +145,7 @@ func (s *Service) CalculatePrice(ctx context.Context, cust *customer.Customer, p
 		}, nil
 	}
 
-	// 3. Retail
+	// 6. Retail
 	return CalculatedPrice{
 		ProductID:     productID,
 		OriginalPrice: basePrice,
@@ -88,4 +154,12 @@ func (s *Service) CalculatePrice(ctx context.Context, cust *customer.Customer, p
 		Source:        SourceRetail,
 		Details:       "Base Retail Price",
 	}, nil
+}
+
+func (s *Service) CreateRule(ctx context.Context, rule *PricingRule) error {
+	return s.repo.CreateRule(ctx, rule)
+}
+
+func (s *Service) ListRules(ctx context.Context) ([]PricingRule, error) {
+	return s.repo.ListRules(ctx)
 }

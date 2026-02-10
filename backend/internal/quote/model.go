@@ -18,14 +18,15 @@ const (
 )
 
 type Quote struct {
-	ID          uuid.UUID  `json:"id"`
-	CustomerID  uuid.UUID  `json:"customer_id"`
-	JobID       *uuid.UUID `json:"job_id,omitempty"`
-	State       QuoteState `json:"state"`
-	TotalAmount float64    `json:"total_amount"`
-	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID           uuid.UUID  `json:"id"`
+	CustomerID   uuid.UUID  `json:"customer_id"`
+	CustomerName string     `json:"customer_name,omitempty"`
+	JobID        *uuid.UUID `json:"job_id,omitempty"`
+	State        QuoteState `json:"state"`
+	TotalAmount  float64    `json:"total_amount"`
+	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 
 	Lines []QuoteLine `json:"lines,omitempty"`
 }

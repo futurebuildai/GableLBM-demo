@@ -3,12 +3,13 @@ import { useParams } from 'react-router-dom';
 import { Truck, Check, Printer } from 'lucide-react';
 import { OrderService } from '../../services/OrderService';
 import { type Order, getStatusColor } from '../../types/order';
+import { useToast } from '../../components/ui/ToastContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export default function OrderDetail() {
     const { id } = useParams();
-    // const navigate = useNavigate(); // Unused
+    const { showToast } = useToast();
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
@@ -37,7 +38,7 @@ export default function OrderDetail() {
             await OrderService.confirmOrder(order.id);
             await loadOrder(order.id); // Reload to see status change
         } catch (error) {
-            alert("Failed to confirm order: " + error);
+            showToast("Failed to confirm order: " + (error instanceof Error ? error.message : error), 'error');
         } finally {
             setProcessing(false);
         }
@@ -52,7 +53,7 @@ export default function OrderDetail() {
             await OrderService.fulfillOrder(order.id);
             await loadOrder(order.id);
         } catch (error) {
-            alert("Failed to fulfill order: " + error);
+            showToast("Failed to fulfill order: " + (error instanceof Error ? error.message : error), 'error');
         } finally {
             setProcessing(false);
         }
@@ -122,7 +123,10 @@ export default function OrderDetail() {
                             <tbody className="divide-y divide-white/5">
                                 {order.lines?.map((line) => (
                                     <tr key={line.id}>
-                                        <td className="p-4 text-white">{line.product_id}</td> {/* TODO: Resolve Name */}
+                                        <td className="p-4 text-white">
+                                            <div className="font-mono text-sm">{line.product_sku || line.product_id.slice(0, 8)}</div>
+                                            {line.product_name && <div className="text-xs text-muted-foreground">{line.product_name}</div>}
+                                        </td>
                                         <td className="p-4 text-white font-mono text-right">{line.quantity}</td>
                                         <td className="p-4 text-white font-mono text-right">${line.price_each.toFixed(2)}</td>
                                         <td className="p-4 text-gable-green font-mono text-right font-medium">
@@ -148,9 +152,8 @@ export default function OrderDetail() {
                     <div className="bg-slate-steel rounded-lg border border-white/10 p-6">
                         <h3 className="font-semibold text-white mb-4">Customer Details</h3>
                         <div className="space-y-2 text-sm">
-                            <p className="text-muted-foreground">ID: <span className="text-white font-mono">{order.customer_id.slice(0, 8)}</span></p>
-                            {/* <p className="text-white font-medium">Bob the Builder</p> */}
-                            {/* <p className="text-muted-foreground">123 Construction Ln</p> */}
+                            {order.customer_name && <p className="text-white font-medium text-base">{order.customer_name}</p>}
+                            <p className="text-muted-foreground">Account: <span className="text-white font-mono">{order.customer_id.slice(0, 8)}</span></p>
                         </div>
                     </div>
 

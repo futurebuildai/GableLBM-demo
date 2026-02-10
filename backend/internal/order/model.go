@@ -16,13 +16,14 @@ const (
 )
 
 type Order struct {
-	ID          uuid.UUID   `json:"id"`
-	CustomerID  uuid.UUID   `json:"customer_id"`
-	QuoteID     *uuid.UUID  `json:"quote_id,omitempty"`
-	Status      OrderStatus `json:"status"`
-	TotalAmount float64     `json:"total_amount"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	ID           uuid.UUID   `json:"id"`
+	CustomerID   uuid.UUID   `json:"customer_id"`
+	CustomerName string      `json:"customer_name,omitempty"`
+	QuoteID      *uuid.UUID  `json:"quote_id,omitempty"`
+	Status       OrderStatus `json:"status"`
+	TotalAmount  float64     `json:"total_amount"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
 
 	// Relations
 	Lines []OrderLine `json:"lines,omitempty"`
@@ -32,6 +33,8 @@ type OrderLine struct {
 	ID               uuid.UUID  `json:"id"`
 	OrderID          uuid.UUID  `json:"order_id"`
 	ProductID        uuid.UUID  `json:"product_id"`
+	ProductSKU       string     `json:"product_sku,omitempty"`
+	ProductName      string     `json:"product_name,omitempty"`
 	Quantity         float64    `json:"quantity"`
 	PriceEach        float64    `json:"price_each"`
 	IsSpecialOrder   bool       `json:"is_special_order"`

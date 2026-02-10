@@ -13,8 +13,8 @@ import (
 type Repository interface {
 	CreateQuote(ctx context.Context, q *Quote) error
 	GetQuote(ctx context.Context, id uuid.UUID) (*Quote, error)
-	// AddLine(ctx context.Context, line *QuoteLine) error // Can be part of update
 	UpdateQuote(ctx context.Context, q *Quote) error
+	ListQuotes(ctx context.Context) ([]Quote, error)
 	ListQuotesByCustomer(ctx context.Context, customerID uuid.UUID) ([]Quote, error)
 }
 
@@ -158,6 +158,32 @@ func (r *PostgresRepository) UpdateQuote(ctx context.Context, q *Quote) error {
 
 	// TODO: Handle lines update if needed
 	return nil
+}
+
+func (r *PostgresRepository) ListQuotes(ctx context.Context) ([]Quote, error) {
+	query := `
+		SELECT q.id, q.customer_id, COALESCE(c.name, ''), q.job_id, q.state, q.total_amount, q.expires_at, q.created_at, q.updated_at
+		FROM quotes q
+		LEFT JOIN customers c ON c.id = q.customer_id
+		ORDER BY q.created_at DESC
+	`
+	rows, err := r.db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list quotes: %w", err)
+	}
+	defer rows.Close()
+
+	var quotes []Quote
+	for rows.Next() {
+		var q Quote
+		if err := rows.Scan(
+			&q.ID, &q.CustomerID, &q.CustomerName, &q.JobID, &q.State, &q.TotalAmount, &q.ExpiresAt, &q.CreatedAt, &q.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan quote: %w", err)
+		}
+		quotes = append(quotes, q)
+	}
+	return quotes, nil
 }
 
 func (r *PostgresRepository) ListQuotesByCustomer(ctx context.Context, customerID uuid.UUID) ([]Quote, error) {

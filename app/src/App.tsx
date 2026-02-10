@@ -24,6 +24,7 @@ import { RFCDetail } from "./pages/governance/RFCDetail";
 import { TechAdminPage } from "./pages/admin/tech_admin/TechAdminPage";
 import { AccountsPage } from "./pages/accounts/AccountsPage";
 import { AccountDetailPage } from "./pages/accounts/AccountDetailPage";
+import QuoteList from "./pages/quotes/QuoteList";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -35,6 +36,7 @@ function App() {
           <Route path="/" element={<AppShell><Outlet /></AppShell>}>
             <Route index element={<Dashboard />} />
             <Route path="inventory" element={<Inventory />} />
+            <Route path="quotes" element={<QuoteList />} />
             <Route path="quotes/new" element={<QuoteBuilder />} />
             <Route path="orders" element={<OrderList />} />
             <Route path="orders/:id" element={<OrderDetail />} />
@@ -43,7 +45,7 @@ function App() {
             <Route path="reports/daily-till" element={<DailyTill />} />
             <Route path="dispatch" element={<DispatchBoard />} />
             <Route path="millwork/configure" element={<DoorConfigurator />} />
-            <Route path="sales" element={<Navigate to="/quotes/new" replace />} />
+            <Route path="sales" element={<Navigate to="/quotes" replace />} />
             <Route path="governance">
               <Route index element={<RFCDashboard />} />
               <Route path="new" element={<NewRFC />} />

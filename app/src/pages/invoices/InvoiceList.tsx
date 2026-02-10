@@ -56,7 +56,7 @@ export default function InvoiceList() {
                                     >
                                         <td className="px-6 py-3 font-mono text-zinc-100">{inv.id.slice(0, 8)}</td>
                                         <td className="px-6 py-3 font-mono text-zinc-400">{inv.order_id.slice(0, 8)}</td>
-                                        <td className="px-6 py-3 text-zinc-300">{inv.customer_id.slice(0, 8)}</td>
+                                        <td className="px-6 py-3 text-zinc-300">{inv.customer_name || inv.customer_id.slice(0, 8)}</td>
                                         <td className="px-6 py-3 text-right font-mono text-emerald-400 font-medium">
                                             ${inv.total_amount.toFixed(2)}
                                         </td>

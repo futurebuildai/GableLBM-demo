@@ -4,6 +4,7 @@ export type OrderStatusColor = 'default' | 'info' | 'success' | 'warning' | 'err
 export interface Order {
     id: string;
     customer_id: string;
+    customer_name?: string;
     quote_id?: string;
     status: OrderStatus;
     total_amount: number;
@@ -18,6 +19,8 @@ export interface OrderLine {
     id: string;
     order_id: string;
     product_id: string;
+    product_sku?: string;
+    product_name?: string;
     quantity: number;
     price_each: number;
 }

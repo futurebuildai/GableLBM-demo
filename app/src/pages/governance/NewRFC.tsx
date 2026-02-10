@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GovernanceService } from '../../services/governance.service';
+import { useToast } from '../../components/ui/ToastContext';
 
 export function NewRFC() {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
@@ -19,7 +21,7 @@ export function NewRFC() {
             navigate('/governance');
         } catch (err) {
             console.error(err);
-            alert('Failed to create RFC');
+            showToast('Failed to create RFC', 'error');
         } finally {
             setLoading(false);
         }

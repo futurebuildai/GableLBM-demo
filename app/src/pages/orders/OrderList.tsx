@@ -65,8 +65,7 @@ export default function OrderList() {
                                 <tr key={order.id} className="hover:bg-white/5 transition-colors">
                                     <td className="p-4 font-mono text-white/80">#{order.id.slice(0, 8)}</td>
                                     <td className="p-4 text-white/80">{new Date(order.created_at).toLocaleDateString()}</td>
-                                    {/* Ideally we join customer name, for now showing ID or placeholder */}
-                                    <td className="p-4 text-white font-medium">{/* Customer Name TODO */} {order.customer_id.slice(0, 8)}...</td>
+                                    <td className="p-4 text-white font-medium">{order.customer_name || order.customer_id.slice(0, 8)}</td>
                                     <td className="p-4">
                                         <StatusBadge status={order.status} />
                                     </td>

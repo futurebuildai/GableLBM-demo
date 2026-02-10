@@ -6,10 +6,12 @@ import { PageTransition } from "../../components/ui/PageTransition";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { ArrowLeft, MapPin, FileText, CheckCircle, XCircle, AlertTriangle, PenTool, Navigation } from "lucide-react";
+import { useToast } from "../../components/ui/ToastContext";
 
 export function DeliveryDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [delivery, setDelivery] = useState<Delivery | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -95,7 +97,7 @@ export function DeliveryDetail() {
             const updated = await deliveryService.getDelivery(delivery.id);
             setDelivery(updated);
         } catch {
-            alert("Failed to update status");
+            showToast("Failed to update status", "error");
         } finally {
             setIsSubmitting(false);
         }

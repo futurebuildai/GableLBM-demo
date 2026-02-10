@@ -88,13 +88,15 @@ func (r *PostgresRepository) CreateInvoice(ctx context.Context, inv *Invoice) er
 
 func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Invoice, error) {
 	queryInv := `
-		SELECT id, order_id, customer_id, status, total_amount, due_date, paid_at, created_at, updated_at
-		FROM invoices WHERE id = $1
+		SELECT i.id, i.order_id, i.customer_id, COALESCE(c.name, ''), i.status, i.total_amount, i.due_date, i.paid_at, i.created_at, i.updated_at
+		FROM invoices i
+		LEFT JOIN customers c ON c.id = i.customer_id
+		WHERE i.id = $1
 	`
 	var inv Invoice
 	var totalAmountFloat float64
 	err := r.db.GetExecutor(ctx).QueryRow(ctx, queryInv, id).Scan(
-		&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.Status, &totalAmountFloat, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
+		&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.CustomerName, &inv.Status, &totalAmountFloat, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
 	)
 	inv.TotalAmount = int64(totalAmountFloat*100.0 + 0.5)
 	if err != nil {
@@ -104,10 +106,12 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Inv
 		return nil, fmt.Errorf("failed to get invoice: %w", err)
 	}
 
-	// Get Lines
+	// Get Lines with product names
 	queryLines := `
-		SELECT id, invoice_id, product_id, quantity, price_each, created_at
-		FROM invoice_lines WHERE invoice_id = $1
+		SELECT il.id, il.invoice_id, il.product_id, COALESCE(p.sku, ''), COALESCE(p.description, ''), il.quantity, il.price_each, il.created_at
+		FROM invoice_lines il
+		LEFT JOIN products p ON p.id = il.product_id
+		WHERE il.invoice_id = $1
 	`
 	rows, err := r.db.GetExecutor(ctx).Query(ctx, queryLines, id)
 	if err != nil {
@@ -118,7 +122,7 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Inv
 	for rows.Next() {
 		var l InvoiceLine
 		var priceEachFloat float64
-		if err := rows.Scan(&l.ID, &l.InvoiceID, &l.ProductID, &l.Quantity, &priceEachFloat, &l.CreatedAt); err != nil {
+		if err := rows.Scan(&l.ID, &l.InvoiceID, &l.ProductID, &l.ProductSKU, &l.ProductName, &l.Quantity, &priceEachFloat, &l.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan invoice line: %w", err)
 		}
 		l.PriceEach = int64(priceEachFloat*100.0 + 0.5)
@@ -130,8 +134,10 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Inv
 
 func (r *PostgresRepository) ListInvoices(ctx context.Context) ([]Invoice, error) {
 	query := `
-		SELECT id, order_id, customer_id, status, total_amount, due_date, paid_at, created_at, updated_at
-		FROM invoices ORDER BY created_at DESC
+		SELECT i.id, i.order_id, i.customer_id, COALESCE(c.name, ''), i.status, i.total_amount, i.due_date, i.paid_at, i.created_at, i.updated_at
+		FROM invoices i
+		LEFT JOIN customers c ON c.id = i.customer_id
+		ORDER BY i.created_at DESC
 	`
 	rows, err := r.db.Pool.Query(ctx, query)
 	if err != nil {
@@ -144,7 +150,7 @@ func (r *PostgresRepository) ListInvoices(ctx context.Context) ([]Invoice, error
 		var inv Invoice
 		var totalAmountFloat float64
 		if err := rows.Scan(
-			&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.Status, &totalAmountFloat, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
+			&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.CustomerName, &inv.Status, &totalAmountFloat, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan invoice: %w", err)
 		}
