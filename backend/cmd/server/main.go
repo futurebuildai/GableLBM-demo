@@ -136,7 +136,10 @@ func main() {
 	// EDI Module
 	ediSvc := edi.NewService("./edi_out", logger) // Stub output dir
 
-	poSvc := purchase_order.NewService(poRepo, ediSvc)
+	poSvc := purchase_order.NewService(poRepo, ediSvc, inventorySvc)
+	poHandler := purchase_order.NewHandler(poSvc)
+	poHandler.RegisterRoutes(mux)
+
 	orderSvc := order.NewService(orderRepo, inventorySvc, invoiceSvc, customerSvc, poSvc)
 	orderHandler := order.NewHandler(orderSvc)
 	orderHandler.RegisterRoutes(mux)

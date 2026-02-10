@@ -7,26 +7,32 @@ import (
 )
 
 type PurchaseOrder struct {
-	ID        uuid.UUID           `json:"id"`
-	VendorID  *uuid.UUID          `json:"vendor_id,omitempty"`
-	Status    string              `json:"status"`
-	CreatedAt time.Time           `json:"created_at"`
-	UpdatedAt time.Time           `json:"updated_at"`
-	Lines     []PurchaseOrderLine `json:"lines,omitempty"`
+	ID         uuid.UUID           `json:"id"`
+	VendorID   *uuid.UUID          `json:"vendor_id,omitempty"`
+	VendorName string              `json:"vendor_name,omitempty"`
+	Status     string              `json:"status"`
+	CreatedAt  time.Time           `json:"created_at"`
+	UpdatedAt  time.Time           `json:"updated_at"`
+	Lines      []PurchaseOrderLine `json:"lines,omitempty"`
+	LineCount  int                 `json:"line_count,omitempty"`
+	TotalCost  float64             `json:"total_cost,omitempty"`
 }
 
 type PurchaseOrderLine struct {
 	ID             uuid.UUID  `json:"id"`
 	POID           uuid.UUID  `json:"po_id"`
+	ProductID      *uuid.UUID `json:"product_id,omitempty"`
 	Description    string     `json:"description"`
 	Quantity       float64    `json:"quantity"`
+	QtyReceived    float64    `json:"qty_received"`
 	Cost           float64    `json:"cost"`
 	LinkedSOLineID *uuid.UUID `json:"linked_so_line_id,omitempty"`
 }
 
 const (
-	StatusDraft     = "DRAFT"
-	StatusSent      = "SENT"
-	StatusReceived  = "RECEIVED"
-	StatusCancelled = "CANCELLED"
+	StatusDraft          = "DRAFT"
+	StatusSent           = "SENT"
+	StatusPartialReceive = "PARTIAL"
+	StatusReceived       = "RECEIVED"
+	StatusCancelled      = "CANCELLED"
 )

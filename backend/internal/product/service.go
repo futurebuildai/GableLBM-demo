@@ -39,3 +39,8 @@ func (s *Service) ListProducts(ctx context.Context) ([]Product, error) {
 func (s *Service) GetProduct(ctx context.Context, id uuid.UUID) (*Product, error) {
 	return s.repo.GetProduct(ctx, id)
 }
+
+// ListBelowReorder returns products below their reorder point
+func (s *Service) ListBelowReorder(ctx context.Context) ([]ReorderAlert, error) {
+	return s.repo.ListBelowReorder(ctx)
+}

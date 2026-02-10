@@ -19,6 +19,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /products", h.HandleListProducts)
 	mux.HandleFunc("POST /products", h.HandleCreateProduct)
+	mux.HandleFunc("GET /products/reorder-alerts", h.HandleReorderAlerts)
 }
 
 // HandleCreateProduct handles POST /products
@@ -36,6 +37,18 @@ func (h *Handler) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(p)
+}
+
+// HandleReorderAlerts handles GET /products/reorder-alerts
+func (h *Handler) HandleReorderAlerts(w http.ResponseWriter, r *http.Request) {
+	alerts, err := h.service.ListBelowReorder(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to fetch reorder alerts", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(alerts)
 }
 
 // HandleListProducts handles GET /products

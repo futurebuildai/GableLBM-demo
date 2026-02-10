@@ -24,10 +24,23 @@ export interface Product {
     base_price: number;
     vendor?: string;
     upc?: string;
+    reorder_point?: number;
+    reorder_qty?: number;
     total_quantity?: number;
     total_allocated?: number;
     created_at: string;
     updated_at: string;
+}
+
+export interface ReorderAlert {
+    product_id: string;
+    sku: string;
+    description: string;
+    vendor?: string;
+    reorder_point: number;
+    reorder_qty: number;
+    current_stock: number;
+    deficit: number;
 }
 
 export interface Inventory {

@@ -14,6 +14,7 @@ type Repository interface {
 	CreateProduct(ctx context.Context, p *Product) error
 	GetProduct(ctx context.Context, id uuid.UUID) (*Product, error)
 	ListProducts(ctx context.Context) ([]Product, error)
+	ListBelowReorder(ctx context.Context) ([]ReorderAlert, error)
 }
 
 // PostgresRepository implements Repository using pgx
@@ -49,7 +50,9 @@ func (r *PostgresRepository) CreateProduct(ctx context.Context, p *Product) erro
 // GetProduct retrieves a product by its ID
 func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Product, error) {
 	query := `
-		SELECT id, sku, description, uom_primary, base_price, vendor, upc, created_at, updated_at
+		SELECT id, sku, description, uom_primary, base_price, vendor, upc,
+		       COALESCE(reorder_point, 0), COALESCE(reorder_qty, 0),
+		       created_at, updated_at
 		FROM products
 		WHERE id = $1`
 
@@ -62,6 +65,8 @@ func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Pro
 		&p.BasePrice,
 		&p.Vendor,
 		&p.UPC,
+		&p.ReorderPoint,
+		&p.ReorderQty,
 		&p.CreatedAt,
 		&p.UpdatedAt,
 	)
@@ -79,7 +84,9 @@ func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Pro
 // ListProducts retrieves all products
 func (r *PostgresRepository) ListProducts(ctx context.Context) ([]Product, error) {
 	query := `
-		SELECT p.id, p.sku, p.description, p.uom_primary, p.base_price, p.vendor, p.upc, p.created_at, p.updated_at,
+		SELECT p.id, p.sku, p.description, p.uom_primary, p.base_price, p.vendor, p.upc,
+		       COALESCE(p.reorder_point, 0), COALESCE(p.reorder_qty, 0),
+		       p.created_at, p.updated_at,
 		       COALESCE(SUM(i.quantity), 0) as total_quantity,
 		       COALESCE(SUM(i.allocated), 0) as total_allocated
 		FROM products p
@@ -104,6 +111,8 @@ func (r *PostgresRepository) ListProducts(ctx context.Context) ([]Product, error
 			&p.BasePrice,
 			&p.Vendor,
 			&p.UPC,
+			&p.ReorderPoint,
+			&p.ReorderQty,
 			&p.CreatedAt,
 			&p.UpdatedAt,
 			&p.TotalQuantity,
@@ -119,4 +128,45 @@ func (r *PostgresRepository) ListProducts(ctx context.Context) ([]Product, error
 	}
 
 	return products, nil
+}
+
+// ListBelowReorder returns products whose current stock is below their reorder point
+func (r *PostgresRepository) ListBelowReorder(ctx context.Context) ([]ReorderAlert, error) {
+	query := `
+		SELECT p.id, p.sku, p.description, p.vendor,
+		       p.reorder_point, COALESCE(p.reorder_qty, 0),
+		       COALESCE(SUM(i.quantity), 0) AS current_stock,
+		       p.reorder_point - COALESCE(SUM(i.quantity), 0) AS deficit
+		FROM products p
+		LEFT JOIN inventory i ON p.id = i.product_id
+		WHERE p.reorder_point > 0
+		GROUP BY p.id
+		HAVING COALESCE(SUM(i.quantity), 0) < p.reorder_point
+		ORDER BY (p.reorder_point - COALESCE(SUM(i.quantity), 0)) DESC`
+
+	rows, err := r.db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list reorder alerts: %w", err)
+	}
+	defer rows.Close()
+
+	var alerts []ReorderAlert
+	for rows.Next() {
+		var a ReorderAlert
+		if err := rows.Scan(
+			&a.ProductID,
+			&a.SKU,
+			&a.Description,
+			&a.Vendor,
+			&a.ReorderPoint,
+			&a.ReorderQty,
+			&a.CurrentStock,
+			&a.Deficit,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan reorder alert: %w", err)
+		}
+		alerts = append(alerts, a)
+	}
+
+	return alerts, nil
 }

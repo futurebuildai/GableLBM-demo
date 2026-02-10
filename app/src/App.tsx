@@ -25,6 +25,9 @@ import { TechAdminPage } from "./pages/admin/tech_admin/TechAdminPage";
 import { AccountsPage } from "./pages/accounts/AccountsPage";
 import { AccountDetailPage } from "./pages/accounts/AccountDetailPage";
 import QuoteList from "./pages/quotes/QuoteList";
+import { PurchaseOrderList } from "./pages/purchasing/PurchaseOrderList";
+import { PurchaseOrderDetail } from "./pages/purchasing/PurchaseOrderDetail";
+import { NewPurchaseOrder } from "./pages/purchasing/NewPurchaseOrder";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -45,6 +48,9 @@ function App() {
             <Route path="reports/daily-till" element={<DailyTill />} />
             <Route path="dispatch" element={<DispatchBoard />} />
             <Route path="millwork/configure" element={<DoorConfigurator />} />
+            <Route path="purchasing" element={<PurchaseOrderList />} />
+            <Route path="purchasing/new" element={<NewPurchaseOrder />} />
+            <Route path="purchasing/:id" element={<PurchaseOrderDetail />} />
             <Route path="sales" element={<Navigate to="/quotes" replace />} />
             <Route path="governance">
               <Route index element={<RFCDashboard />} />
