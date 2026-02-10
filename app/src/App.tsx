@@ -24,6 +24,12 @@ import { RFCDetail } from "./pages/governance/RFCDetail";
 import { TechAdminPage } from "./pages/admin/tech_admin/TechAdminPage";
 import { AccountsPage } from "./pages/accounts/AccountsPage";
 import { AccountDetailPage } from "./pages/accounts/AccountDetailPage";
+import QuoteList from "./pages/quotes/QuoteList";
+import { PurchaseOrderList } from "./pages/purchasing/PurchaseOrderList";
+import { PurchaseOrderDetail } from "./pages/purchasing/PurchaseOrderDetail";
+import { NewPurchaseOrder } from "./pages/purchasing/NewPurchaseOrder";
+import { ARAgingReportPage } from "./pages/reports/ARAgingReport";
+import { CustomerStatementPage } from "./pages/reports/CustomerStatementPage";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -35,15 +41,21 @@ function App() {
           <Route path="/" element={<AppShell><Outlet /></AppShell>}>
             <Route index element={<Dashboard />} />
             <Route path="inventory" element={<Inventory />} />
+            <Route path="quotes" element={<QuoteList />} />
             <Route path="quotes/new" element={<QuoteBuilder />} />
             <Route path="orders" element={<OrderList />} />
             <Route path="orders/:id" element={<OrderDetail />} />
             <Route path="invoices" element={<InvoiceList />} />
             <Route path="invoices/:id" element={<InvoiceDetail />} />
             <Route path="reports/daily-till" element={<DailyTill />} />
+            <Route path="reports/ar-aging" element={<ARAgingReportPage />} />
+            <Route path="reports/customer-statement" element={<CustomerStatementPage />} />
             <Route path="dispatch" element={<DispatchBoard />} />
             <Route path="millwork/configure" element={<DoorConfigurator />} />
-            <Route path="sales" element={<Navigate to="/quotes/new" replace />} />
+            <Route path="purchasing" element={<PurchaseOrderList />} />
+            <Route path="purchasing/new" element={<NewPurchaseOrder />} />
+            <Route path="purchasing/:id" element={<PurchaseOrderDetail />} />
+            <Route path="sales" element={<Navigate to="/quotes" replace />} />
             <Route path="governance">
               <Route index element={<RFCDashboard />} />
               <Route path="new" element={<NewRFC />} />

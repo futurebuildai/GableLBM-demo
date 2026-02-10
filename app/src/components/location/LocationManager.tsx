@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { LocationService } from '../../services/LocationService';
 import type { Location, LocationType } from '../../types/location';
+import { useToast } from '../ui/ToastContext';
 
 export const LocationManager: React.FC = () => {
+    const { showToast } = useToast();
     const [locations, setLocations] = useState<Location[]>([]);
     const [newCode, setNewCode] = useState('');
     const [newType, setNewType] = useState<LocationType>('ZONE');
@@ -32,7 +34,7 @@ export const LocationManager: React.FC = () => {
             setNewCode('');
             loadLocations();
         } catch {
-            alert('Failed to create location');
+            showToast('Failed to create location', 'error');
         }
     };
 

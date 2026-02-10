@@ -15,6 +15,9 @@ type Repository interface {
 	GetInvoice(ctx context.Context, id uuid.UUID) (*Invoice, error)
 	ListInvoices(ctx context.Context) ([]Invoice, error)
 	UpdateInvoice(ctx context.Context, inv *Invoice) error
+	CreateCreditMemo(ctx context.Context, cm *CreditMemo) error
+	ListCreditMemos(ctx context.Context, customerID uuid.UUID) ([]CreditMemo, error)
+	UpdateCreditMemo(ctx context.Context, cm *CreditMemo) error
 }
 
 type PostgresRepository struct {
@@ -45,13 +48,15 @@ func (r *PostgresRepository) CreateInvoice(ctx context.Context, inv *Invoice) er
 	// Insert Invoice
 	// Convert Cents -> Dollars
 	totalAmountFloat := float64(inv.TotalAmount) / 100.0
+	subtotalFloat := float64(inv.Subtotal) / 100.0
+	taxAmountFloat := float64(inv.TaxAmount) / 100.0
 
 	queryInv := `
-		INSERT INTO invoices (id, order_id, customer_id, status, total_amount, due_date, paid_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO invoices (id, order_id, customer_id, status, total_amount, subtotal, tax_rate, tax_amount, payment_terms, due_date, paid_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	`
 	_, err = tx.Exec(ctx, queryInv,
-		inv.ID, inv.OrderID, inv.CustomerID, inv.Status, totalAmountFloat, inv.DueDate, inv.PaidAt, inv.CreatedAt, inv.UpdatedAt,
+		inv.ID, inv.OrderID, inv.CustomerID, inv.Status, totalAmountFloat, subtotalFloat, inv.TaxRate, taxAmountFloat, inv.PaymentTerms, inv.DueDate, inv.PaidAt, inv.CreatedAt, inv.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert invoice: %w", err)
@@ -88,15 +93,25 @@ func (r *PostgresRepository) CreateInvoice(ctx context.Context, inv *Invoice) er
 
 func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Invoice, error) {
 	queryInv := `
-		SELECT id, order_id, customer_id, status, total_amount, due_date, paid_at, created_at, updated_at
-		FROM invoices WHERE id = $1
+		SELECT i.id, i.order_id, i.customer_id, COALESCE(c.name, ''), i.status,
+		       i.total_amount, COALESCE(i.subtotal, i.total_amount), COALESCE(i.tax_rate, 0), COALESCE(i.tax_amount, 0),
+		       COALESCE(i.payment_terms, 'NET30'),
+		       i.due_date, i.paid_at, i.created_at, i.updated_at
+		FROM invoices i
+		LEFT JOIN customers c ON c.id = i.customer_id
+		WHERE i.id = $1
 	`
 	var inv Invoice
-	var totalAmountFloat float64
+	var totalAmountFloat, subtotalFloat, taxAmountFloat float64
 	err := r.db.GetExecutor(ctx).QueryRow(ctx, queryInv, id).Scan(
-		&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.Status, &totalAmountFloat, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
+		&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.CustomerName, &inv.Status,
+		&totalAmountFloat, &subtotalFloat, &inv.TaxRate, &taxAmountFloat,
+		&inv.PaymentTerms,
+		&inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
 	)
 	inv.TotalAmount = int64(totalAmountFloat*100.0 + 0.5)
+	inv.Subtotal = int64(subtotalFloat*100.0 + 0.5)
+	inv.TaxAmount = int64(taxAmountFloat*100.0 + 0.5)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("invoice not found")
@@ -104,10 +119,12 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Inv
 		return nil, fmt.Errorf("failed to get invoice: %w", err)
 	}
 
-	// Get Lines
+	// Get Lines with product names
 	queryLines := `
-		SELECT id, invoice_id, product_id, quantity, price_each, created_at
-		FROM invoice_lines WHERE invoice_id = $1
+		SELECT il.id, il.invoice_id, il.product_id, COALESCE(p.sku, ''), COALESCE(p.description, ''), il.quantity, il.price_each, il.created_at
+		FROM invoice_lines il
+		LEFT JOIN products p ON p.id = il.product_id
+		WHERE il.invoice_id = $1
 	`
 	rows, err := r.db.GetExecutor(ctx).Query(ctx, queryLines, id)
 	if err != nil {
@@ -118,7 +135,7 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Inv
 	for rows.Next() {
 		var l InvoiceLine
 		var priceEachFloat float64
-		if err := rows.Scan(&l.ID, &l.InvoiceID, &l.ProductID, &l.Quantity, &priceEachFloat, &l.CreatedAt); err != nil {
+		if err := rows.Scan(&l.ID, &l.InvoiceID, &l.ProductID, &l.ProductSKU, &l.ProductName, &l.Quantity, &priceEachFloat, &l.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan invoice line: %w", err)
 		}
 		l.PriceEach = int64(priceEachFloat*100.0 + 0.5)
@@ -130,8 +147,13 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, id uuid.UUID) (*Inv
 
 func (r *PostgresRepository) ListInvoices(ctx context.Context) ([]Invoice, error) {
 	query := `
-		SELECT id, order_id, customer_id, status, total_amount, due_date, paid_at, created_at, updated_at
-		FROM invoices ORDER BY created_at DESC
+		SELECT i.id, i.order_id, i.customer_id, COALESCE(c.name, ''), i.status,
+		       i.total_amount, COALESCE(i.subtotal, i.total_amount), COALESCE(i.tax_rate, 0), COALESCE(i.tax_amount, 0),
+		       COALESCE(i.payment_terms, 'NET30'),
+		       i.due_date, i.paid_at, i.created_at, i.updated_at
+		FROM invoices i
+		LEFT JOIN customers c ON c.id = i.customer_id
+		ORDER BY i.created_at DESC
 	`
 	rows, err := r.db.Pool.Query(ctx, query)
 	if err != nil {
@@ -142,13 +164,18 @@ func (r *PostgresRepository) ListInvoices(ctx context.Context) ([]Invoice, error
 	var invoices []Invoice
 	for rows.Next() {
 		var inv Invoice
-		var totalAmountFloat float64
+		var totalAmountFloat, subtotalFloat, taxAmountFloat float64
 		if err := rows.Scan(
-			&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.Status, &totalAmountFloat, &inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
+			&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.CustomerName, &inv.Status,
+			&totalAmountFloat, &subtotalFloat, &inv.TaxRate, &taxAmountFloat,
+			&inv.PaymentTerms,
+			&inv.DueDate, &inv.PaidAt, &inv.CreatedAt, &inv.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan invoice: %w", err)
 		}
 		inv.TotalAmount = int64(totalAmountFloat*100.0 + 0.5)
+		inv.Subtotal = int64(subtotalFloat*100.0 + 0.5)
+		inv.TaxAmount = int64(taxAmountFloat*100.0 + 0.5)
 		invoices = append(invoices, inv)
 	}
 	return invoices, nil
@@ -166,4 +193,56 @@ func (r *PostgresRepository) UpdateInvoice(ctx context.Context, inv *Invoice) er
 		return fmt.Errorf("failed to update invoice: %w", err)
 	}
 	return nil
+}
+
+func (r *PostgresRepository) CreateCreditMemo(ctx context.Context, cm *CreditMemo) error {
+	if cm.ID == uuid.Nil {
+		cm.ID = uuid.New()
+	}
+	cm.CreatedAt = time.Now()
+	amountFloat := float64(cm.Amount) / 100.0
+
+	query := `
+		INSERT INTO credit_memos (id, invoice_id, customer_id, amount, reason, status, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`
+	_, err := r.db.Pool.Exec(ctx, query,
+		cm.ID, cm.InvoiceID, cm.CustomerID, amountFloat, cm.Reason, cm.Status, cm.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create credit memo: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) ListCreditMemos(ctx context.Context, customerID uuid.UUID) ([]CreditMemo, error) {
+	query := `
+		SELECT id, invoice_id, customer_id, amount, reason, status, created_at, applied_at
+		FROM credit_memos
+		WHERE customer_id = $1
+		ORDER BY created_at DESC
+	`
+	rows, err := r.db.Pool.Query(ctx, query, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list credit memos: %w", err)
+	}
+	defer rows.Close()
+
+	var memos []CreditMemo
+	for rows.Next() {
+		var cm CreditMemo
+		var amountFloat float64
+		if err := rows.Scan(&cm.ID, &cm.InvoiceID, &cm.CustomerID, &amountFloat, &cm.Reason, &cm.Status, &cm.CreatedAt, &cm.AppliedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan credit memo: %w", err)
+		}
+		cm.Amount = int64(amountFloat*100.0 + 0.5)
+		memos = append(memos, cm)
+	}
+	return memos, nil
+}
+
+func (r *PostgresRepository) UpdateCreditMemo(ctx context.Context, cm *CreditMemo) error {
+	query := `UPDATE credit_memos SET status = $1, applied_at = $2 WHERE id = $3`
+	_, err := r.db.Pool.Exec(ctx, query, cm.Status, cm.AppliedAt, cm.ID)
+	return err
 }

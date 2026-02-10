@@ -7,6 +7,12 @@ import { Card, CardContent } from '../components/ui/Card';
 
 export const DispatchBoard: React.FC = () => {
     const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+    const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined);
+
+    const handleSelectRoute = (routeId: string, vehicleId?: string) => {
+        setSelectedRouteId(routeId);
+        setSelectedVehicleId(vehicleId);
+    };
 
     return (
         <PageTransition>
@@ -31,7 +37,7 @@ export const DispatchBoard: React.FC = () => {
                     {/* Left Panel: Route List */}
                     <Card variant="glass" className="w-1/3 flex flex-col overflow-hidden">
                         <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
-                            <RouteList onSelectRoute={setSelectedRouteId} selectedRouteId={selectedRouteId} />
+                            <RouteList onSelectRoute={handleSelectRoute} selectedRouteId={selectedRouteId} />
                         </CardContent>
                     </Card>
 
@@ -39,7 +45,7 @@ export const DispatchBoard: React.FC = () => {
                     <div className="w-2/3 flex flex-col gap-6">
                         <Card variant="glass" className="flex-1 flex flex-col overflow-hidden">
                             <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
-                                <DeliveryList routeId={selectedRouteId} />
+                                <DeliveryList routeId={selectedRouteId} vehicleId={selectedVehicleId} />
                             </CardContent>
                         </Card>
 

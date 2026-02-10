@@ -3,6 +3,7 @@ import type { Route, RouteStatus } from '../../types/delivery';
 import { deliveryService } from '../../services/deliveryService';
 import { Plus, User, Truck, Clock, MapPin } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { CreateRouteModal } from './CreateRouteModal';
 
 // Simple helper for dates
 const formatDate = (dateString: string) => {
@@ -21,13 +22,14 @@ const StatusBadge: React.FC<{ status: RouteStatus }> = ({ status }) => {
 };
 
 interface RouteListProps {
-    onSelectRoute: (routeId: string) => void;
+    onSelectRoute: (routeId: string, vehicleId?: string) => void;
     selectedRouteId: string | null;
 }
 
 export const RouteList: React.FC<RouteListProps> = ({ onSelectRoute, selectedRouteId }) => {
     const [routes, setRoutes] = useState<Route[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
     useEffect(() => {
         loadRoutes();
@@ -50,7 +52,7 @@ export const RouteList: React.FC<RouteListProps> = ({ onSelectRoute, selectedRou
         <div className="flex flex-col h-full">
             <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
                 <h2 className="text-lg font-bold text-white">Active Routes</h2>
-                <Button size="sm" className="h-8 px-2 shadow-glow">
+                <Button size="sm" className="h-8 px-2 shadow-glow" onClick={() => setShowCreateModal(true)}>
                     <Plus className="w-4 h-4" />
                 </Button>
             </div>
@@ -61,7 +63,7 @@ export const RouteList: React.FC<RouteListProps> = ({ onSelectRoute, selectedRou
                     return (
                         <div
                             key={route.id}
-                            onClick={() => onSelectRoute(route.id)}
+                            onClick={() => onSelectRoute(route.id, route.vehicle_id)}
                             className={`p-4 rounded-lg border transition-all duration-200 cursor-pointer group relative overflow-hidden ${isSelected
                                     ? 'bg-gable-green/10 border-gable-green/50 shadow-[0_0_15px_rgba(0,255,163,0.1)]'
                                     : 'bg-[#161821] border-white/5 hover:border-white/20 hover:bg-white/5'
@@ -104,6 +106,12 @@ export const RouteList: React.FC<RouteListProps> = ({ onSelectRoute, selectedRou
                     </div>
                 )}
             </div>
+
+            <CreateRouteModal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                onCreated={loadRoutes}
+            />
         </div>
     );
 };

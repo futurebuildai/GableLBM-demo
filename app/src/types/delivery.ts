@@ -94,3 +94,10 @@ export interface UpdateDeliveryStatusRequest {
     pod_proof_url?: string;
     pod_signed_by?: string;
 }
+
+export interface CapacityWarning {
+    vehicle_capacity_lbs: number;
+    current_load_lbs: number;
+    order_weight_lbs: number;
+    total_after_lbs: number;
+}

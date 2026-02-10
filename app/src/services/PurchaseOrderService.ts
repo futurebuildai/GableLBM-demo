@@ -1,0 +1,56 @@
+import type { PurchaseOrder, CreatePORequest, ReceivePORequest } from '../types/purchaseOrder';
+import type { ReorderAlert } from '../types/product';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+export const PurchaseOrderService = {
+    async listPOs(): Promise<PurchaseOrder[]> {
+        const response = await fetch(`${API_URL}/purchase-orders`);
+        if (!response.ok) throw new Error('Failed to fetch purchase orders');
+        return response.json();
+    },
+
+    async getPO(id: string): Promise<PurchaseOrder> {
+        const response = await fetch(`${API_URL}/purchase-orders/${id}`);
+        if (!response.ok) throw new Error('Failed to fetch purchase order');
+        return response.json();
+    },
+
+    async createPO(request: CreatePORequest): Promise<PurchaseOrder> {
+        const response = await fetch(`${API_URL}/purchase-orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to create purchase order');
+        }
+        return response.json();
+    },
+
+    async submitPO(id: string): Promise<void> {
+        const response = await fetch(`${API_URL}/purchase-orders/${id}/submit`, {
+            method: 'POST',
+        });
+        if (!response.ok) throw new Error('Failed to submit purchase order');
+    },
+
+    async receivePO(id: string, request: ReceivePORequest): Promise<void> {
+        const response = await fetch(`${API_URL}/purchase-orders/${id}/receive`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to receive purchase order');
+        }
+    },
+
+    async getReorderAlerts(): Promise<ReorderAlert[]> {
+        const response = await fetch(`${API_URL}/products/reorder-alerts`);
+        if (!response.ok) throw new Error('Failed to fetch reorder alerts');
+        return response.json();
+    },
+};

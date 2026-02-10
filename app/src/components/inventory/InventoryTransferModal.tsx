@@ -4,6 +4,7 @@ import { InventoryService } from "../../services/InventoryService";
 import { LocationService } from "../../services/LocationService";
 import type { Product, Inventory } from "../../types/product";
 import type { Location } from "../../types/location";
+import { useToast } from "../ui/ToastContext";
 
 interface InventoryTransferModalProps {
     isOpen: boolean;
@@ -13,6 +14,7 @@ interface InventoryTransferModalProps {
 }
 
 export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: InventoryTransferModalProps) {
+    const { showToast } = useToast();
     const [fromLoc, setFromLoc] = useState("");
     const [toLoc, setToLoc] = useState("");
     const [quantity, setQuantity] = useState("");
@@ -60,7 +62,7 @@ export function InventoryTransferModal({ isOpen, onClose, product, onSuccess }: 
             onSuccess();
             onClose();
         } catch {
-            alert("Transfer failed");
+            showToast("Transfer failed", "error");
         } finally {
             setIsSubmitting(false);
         }

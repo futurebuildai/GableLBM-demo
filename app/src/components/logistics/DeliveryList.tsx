@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import type { Delivery } from '../../types/delivery';
 import { deliveryService } from '../../services/deliveryService';
-import { MapPin, Box, FileText, ArrowRight } from 'lucide-react';
+import { MapPin, Box, FileText, ArrowRight, ArrowUp, ArrowDown, RotateCcw, Play } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { AssignOrderModal } from './AssignOrderModal';
+import { useToast } from '../ui/ToastContext';
 
 interface DeliveryListProps {
     routeId: string | null;
+    vehicleId?: string;
 }
 
-export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId }) => {
+export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId }) => {
+    const { showToast } = useToast();
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [loading, setLoading] = useState(false);
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [reordering, setReordering] = useState(false);
 
     useEffect(() => {
         if (routeId) {
@@ -29,6 +35,50 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId }) => {
             console.error(err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const moveStop = async (index: number, direction: 'up' | 'down') => {
+        if (!routeId) return;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= deliveries.length) return;
+
+        const reordered = [...deliveries];
+        [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+
+        setReordering(true);
+        try {
+            await deliveryService.reorderStops(routeId, reordered.map(d => d.id));
+            setDeliveries(reordered);
+        } catch {
+            showToast('Failed to reorder stops', 'error');
+        } finally {
+            setReordering(false);
+        }
+    };
+
+    const reverseRoute = async () => {
+        if (!routeId || deliveries.length < 2) return;
+        const reversed = [...deliveries].reverse();
+        setReordering(true);
+        try {
+            await deliveryService.reorderStops(routeId, reversed.map(d => d.id));
+            setDeliveries(reversed);
+            showToast('Route order reversed', 'success');
+        } catch {
+            showToast('Failed to reverse route', 'error');
+        } finally {
+            setReordering(false);
+        }
+    };
+
+    const dispatchRoute = async () => {
+        if (!routeId) return;
+        try {
+            await deliveryService.dispatchRoute(routeId);
+            showToast('Route dispatched — driver notified', 'success');
+        } catch {
+            showToast('Failed to dispatch route', 'error');
         }
     };
 
@@ -57,8 +107,25 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId }) => {
                     <FileText className="w-5 h-5 text-sky-400" />
                     Delivery Manifest
                 </h2>
-                <div className="text-xs text-zinc-400 font-mono">
-                    {deliveries.length} DROPS
+                <div className="flex items-center gap-2">
+                    {deliveries.length >= 2 && (
+                        <button
+                            onClick={reverseRoute}
+                            disabled={reordering}
+                            className="p-1.5 rounded bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors"
+                            title="Reverse stop order"
+                        >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                    {deliveries.length > 0 && (
+                        <Button size="sm" className="h-7 px-2 text-xs" onClick={dispatchRoute}>
+                            <Play className="w-3 h-3 mr-1" /> Dispatch
+                        </Button>
+                    )}
+                    <span className="text-xs text-zinc-400 font-mono ml-1">
+                        {deliveries.length} DROPS
+                    </span>
                 </div>
             </div>
 
@@ -78,9 +145,30 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId }) => {
                         <div className="bg-[#161821] border border-white/5 p-5 rounded-xl hover:border-gable-green/30 hover:bg-white/5 transition-all duration-300 group-hover:translate-x-1">
                             <div className="flex justify-between items-start mb-2">
                                 <span className="font-bold text-lg text-white group-hover:text-gable-green transition-colors">{delivery.customer_name}</span>
-                                <span className="text-[10px] font-mono uppercase bg-white/5 px-2 py-1 rounded text-zinc-400 border border-white/5">
-                                    {delivery.status}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    {/* Reorder buttons */}
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                        <button
+                                            disabled={index === 0 || reordering}
+                                            onClick={(e) => { e.stopPropagation(); moveStop(index, 'up'); }}
+                                            className="p-1 rounded bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                                            title="Move up"
+                                        >
+                                            <ArrowUp className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                            disabled={index === deliveries.length - 1 || reordering}
+                                            onClick={(e) => { e.stopPropagation(); moveStop(index, 'down'); }}
+                                            className="p-1 rounded bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                                            title="Move down"
+                                        >
+                                            <ArrowDown className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                    <span className="text-[10px] font-mono uppercase bg-white/5 px-2 py-1 rounded text-zinc-400 border border-white/5">
+                                        {delivery.status}
+                                    </span>
+                                </div>
                             </div>
 
                             <div className="flex items-start gap-2 text-zinc-400 text-sm mb-4">
@@ -111,11 +199,26 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId }) => {
             </div>
 
             <div className="p-4 border-t border-white/5 bg-white/5">
-                <Button variant="outline" className="w-full border-dashed border-white/20 hover:border-gable-green/50 text-gable-green hover:bg-gable-green/5">
+                <Button
+                    variant="outline"
+                    className="w-full border-dashed border-white/20 hover:border-gable-green/50 text-gable-green hover:bg-gable-green/5"
+                    onClick={() => setShowAssignModal(true)}
+                >
                     <ArrowRight className="w-4 h-4 mr-2" />
                     Assign Order to Route
                 </Button>
             </div>
+
+            {routeId && (
+                <AssignOrderModal
+                    isOpen={showAssignModal}
+                    onClose={() => setShowAssignModal(false)}
+                    routeId={routeId}
+                    vehicleId={vehicleId || ''}
+                    existingDeliveries={deliveries}
+                    onAssigned={() => loadDeliveries(routeId)}
+                />
+            )}
         </div>
     );
 };

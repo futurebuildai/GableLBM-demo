@@ -1,4 +1,4 @@
-export type PricingSource = "CONTRACT" | "TIER" | "RETAIL";
+export type PricingSource = "CONTRACT" | "TIER" | "RETAIL" | "QUANTITY_BREAK" | "JOB_OVERRIDE" | "PROMOTIONAL";
 
 export interface CalculatedPrice {
     product_id: string;

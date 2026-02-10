@@ -37,8 +37,23 @@ type Product struct {
 	BasePrice      float64   `json:"base_price"`
 	Vendor         *string   `json:"vendor"`
 	UPC            *string   `json:"upc"`
+	WeightLbs      float64   `json:"weight_lbs"`
+	ReorderPoint   float64   `json:"reorder_point"`
+	ReorderQty     float64   `json:"reorder_qty"`
 	TotalQuantity  float64   `json:"total_quantity" db:"-"` // Aggregated from inventory
 	TotalAllocated float64   `json:"total_allocated" db:"-"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// ReorderAlert represents a product that's below its reorder point
+type ReorderAlert struct {
+	ProductID    uuid.UUID `json:"product_id"`
+	SKU          string    `json:"sku"`
+	Description  string    `json:"description"`
+	Vendor       *string   `json:"vendor"`
+	ReorderPoint float64   `json:"reorder_point"`
+	ReorderQty   float64   `json:"reorder_qty"`
+	CurrentStock float64   `json:"current_stock"`
+	Deficit      float64   `json:"deficit"`
 }

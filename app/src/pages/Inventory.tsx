@@ -12,6 +12,7 @@ import { Card, CardContent } from '../components/ui/Card';
 
 export const Inventory = () => {
     const [products, setProducts] = useState<Product[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [error, setError] = useState('');
@@ -82,6 +83,8 @@ export const Inventory = () => {
                         <input
                             type="text"
                             placeholder="Search SKUs, products, or categories..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full bg-deep-space/50 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gable-green/50 placeholder:text-zinc-600 transition-all font-mono"
                         />
                     </div>
@@ -100,7 +103,14 @@ export const Inventory = () => {
                         </div>
                     ) : (
                         <InventoryTable
-                            products={products}
+                            products={searchTerm.trim()
+                                ? products.filter(p =>
+                                    p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    (p.vendor && p.vendor.toLowerCase().includes(searchTerm.toLowerCase()))
+                                )
+                                : products
+                            }
                             onAdjustStock={handleAdjustStock}
                             onTransferStock={handleTransferStock}
                         />

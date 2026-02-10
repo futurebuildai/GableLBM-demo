@@ -3,6 +3,7 @@ package pricing
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/product"
@@ -21,6 +22,8 @@ func NewHandler(s *Service, c *customer.Service, p *product.Service) *Handler {
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /pricing/calculate", h.HandleCalculatePrice)
+	mux.HandleFunc("POST /pricing/rules", h.HandleCreateRule)
+	mux.HandleFunc("GET /pricing/rules", h.HandleListRules)
 }
 
 func (h *Handler) HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +47,22 @@ func (h *Handler) HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Optional: quantity for volume pricing
+	quantity := 1.0
+	if qtyStr := r.URL.Query().Get("quantity"); qtyStr != "" {
+		if q, err := strconv.ParseFloat(qtyStr, 64); err == nil && q > 0 {
+			quantity = q
+		}
+	}
+
+	// Optional: job_id for job-level pricing
+	var jobID *uuid.UUID
+	if jobIDStr := r.URL.Query().Get("job_id"); jobIDStr != "" {
+		if jid, err := uuid.Parse(jobIDStr); err == nil {
+			jobID = &jid
+		}
+	}
+
 	cust, err := h.customerSvc.GetCustomer(r.Context(), customerID)
 	if err != nil {
 		http.Error(w, "failed to get customer", http.StatusNotFound)
@@ -56,7 +75,7 @@ func (h *Handler) HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	priceResult, err := h.service.CalculatePrice(r.Context(), cust, productID, prod.BasePrice)
+	priceResult, err := h.service.CalculatePriceWithQty(r.Context(), cust, productID, prod.BasePrice, quantity, jobID)
 	if err != nil {
 		http.Error(w, "failed to calculate price: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -64,4 +83,36 @@ func (h *Handler) HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(priceResult)
+}
+
+func (h *Handler) HandleCreateRule(w http.ResponseWriter, r *http.Request) {
+	var rule PricingRule
+	if err := json.NewDecoder(r.Body).Decode(&rule); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if rule.Name == "" || rule.RuleType == "" {
+		http.Error(w, "name and rule_type are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.CreateRule(r.Context(), &rule); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(rule)
+}
+
+func (h *Handler) HandleListRules(w http.ResponseWriter, r *http.Request) {
+	rules, err := h.service.ListRules(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(rules)
 }

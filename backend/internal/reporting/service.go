@@ -111,3 +111,50 @@ func (s *Service) GetSalesSummary(ctx context.Context, startStr, endStr string) 
 
 	return data, nil
 }
+
+func (s *Service) GetARAgingReport(ctx context.Context) (*ARAgingReport, error) {
+	key := "ar_aging"
+
+	s.cacheMutex.RLock()
+	if item, ok := s.cache[key]; ok {
+		if time.Since(item.timestamp) < 60*time.Second {
+			s.cacheMutex.RUnlock()
+			return item.data.(*ARAgingReport), nil
+		}
+	}
+	s.cacheMutex.RUnlock()
+
+	data, err := s.repo.GetARAgingReport(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	s.cacheMutex.Lock()
+	s.cache[key] = cachedReport{data: data, timestamp: time.Now()}
+	s.cacheMutex.Unlock()
+
+	return data, nil
+}
+
+func (s *Service) GetCustomerStatement(ctx context.Context, customerID, startStr, endStr string) (*CustomerStatement, error) {
+	now := time.Now()
+	start := now.AddDate(0, -1, 0) // Default last month
+	end := now
+
+	var err error
+	if startStr != "" {
+		start, err = time.Parse("2006-01-02", startStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if endStr != "" {
+		end, err = time.Parse("2006-01-02", endStr)
+		if err != nil {
+			return nil, err
+		}
+		end = end.Add(24*time.Hour - time.Nanosecond)
+	}
+
+	return s.repo.GetCustomerStatement(ctx, customerID, start, end)
+}

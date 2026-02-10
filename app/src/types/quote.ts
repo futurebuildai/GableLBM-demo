@@ -18,6 +18,7 @@ export interface QuoteLine {
 export interface Quote {
     id: string;
     customer_id: string;
+    customer_name?: string;
     job_id?: string;
     state: QuoteState;
     total_amount: number;

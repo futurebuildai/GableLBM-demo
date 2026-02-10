@@ -26,5 +26,24 @@ export const QuoteService = {
             throw new Error('Failed to fetch quote');
         }
         return response.json();
+    },
+
+    async listQuotes(): Promise<Quote[]> {
+        const response = await fetch(`${API_URL}/quotes`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch quotes');
+        }
+        return response.json();
+    },
+
+    async convertToOrder(quoteId: string): Promise<{ customer_id: string; quote_id: string; lines: { product_id: string; quantity: number; price_each: number }[] }> {
+        const response = await fetch(`${API_URL}/quotes/${quoteId}/convert`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'Failed to convert quote to order');
+        }
+        return response.json();
     }
 };

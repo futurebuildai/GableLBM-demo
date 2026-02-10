@@ -1,5 +1,5 @@
 import type {
-    Vehicle, Driver, Route, Delivery,
+    Vehicle, Driver, Route, Delivery, CapacityWarning,
     CreateVehicleRequest, CreateDriverRequest, CreateRouteRequest,
     AssignOrderRequest, UpdateDeliveryStatusRequest
 } from '../types/delivery';
@@ -90,7 +90,7 @@ export const deliveryService = {
         return res.json();
     },
 
-    assignOrder: async (req: AssignOrderRequest): Promise<Delivery> => {
+    assignOrder: async (req: AssignOrderRequest): Promise<{ delivery: Delivery; capacity_warning?: CapacityWarning }> => {
         const res = await fetch(`${API_BASE}/deliveries`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
