@@ -1,16 +1,16 @@
 # GableERP Task List
 
 ## Current Sprint: Sprint 15 — Executive Analytics Dashboard
-- [ ] **Backend**: Dashboard Aggregate Endpoint (`/api/v1/dashboard/summary`) <!-- id: 1 -->
-- [ ] **Backend**: Inventory Alerts Endpoint <!-- id: 2 -->
-- [ ] **Backend**: Top Customers Endpoint <!-- id: 3 -->
-- [ ] **Backend**: Order Activity Endpoint <!-- id: 4 -->
-- [ ] **Frontend**: KPI Cards (Revenue, Orders, Dispatch, AR) <!-- id: 5 -->
-- [ ] **Frontend**: Revenue Trend Chart (7-day) <!-- id: 6 -->
-- [ ] **Frontend**: Top Customers Widget <!-- id: 7 -->
-- [ ] **Frontend**: Inventory Alerts Widget <!-- id: 8 -->
-- [ ] **Frontend**: Recent Orders Feed <!-- id: 9 -->
-- [ ] **Frontend**: Auto-Refresh (60s) + Manual Refresh <!-- id: 10 -->
+- [x] **Backend**: Dashboard Aggregate Endpoint (`/api/v1/dashboard/summary`) <!-- id: 1 -->
+- [x] **Backend**: Inventory Alerts Endpoint <!-- id: 2 -->
+- [x] **Backend**: Top Customers Endpoint <!-- id: 3 -->
+- [x] **Backend**: Order Activity Endpoint <!-- id: 4 -->
+- [x] **Frontend**: KPI Cards (Revenue, Orders, Dispatch, AR) <!-- id: 5 -->
+- [x] **Frontend**: Revenue Trend Chart (7-day) <!-- id: 6 -->
+- [x] **Frontend**: Top Customers Widget <!-- id: 7 -->
+- [x] **Frontend**: Inventory Alerts Widget <!-- id: 8 -->
+- [x] **Frontend**: Recent Orders Feed <!-- id: 9 -->
+- [x] **Frontend**: Auto-Refresh (60s) + Manual Refresh <!-- id: 10 -->
 
 ---
 

@@ -6,51 +6,64 @@ import (
 	"time"
 )
 
-type cachedItem struct {
-	data      interface{}
+// cache is a type-safe, TTL-based in-memory cache.
+type cache[T any] struct {
+	data      T
 	timestamp time.Time
+	valid     bool
 }
 
-// Service provides dashboard business logic with caching.
+// cacheStore holds all dashboard caches with a shared mutex for simplicity.
+type cacheStore struct {
+	mu              sync.RWMutex
+	ttl             time.Duration
+	summary         cache[*DashboardSummary]
+	inventoryAlerts cache[[]InventoryAlert]
+	topCustomers    cache[[]TopCustomer]
+	orderActivity   cache[*OrderActivity]
+	revenueTrend    cache[[]RevenueTrendPoint]
+}
+
+func newCacheStore(ttl time.Duration) *cacheStore {
+	return &cacheStore{ttl: ttl}
+}
+
+func getCache[T any](mu *sync.RWMutex, c *cache[T], ttl time.Duration) (T, bool) {
+	mu.RLock()
+	defer mu.RUnlock()
+	if c.valid && time.Since(c.timestamp) < ttl {
+		return c.data, true
+	}
+	var zero T
+	return zero, false
+}
+
+func setCache[T any](mu *sync.RWMutex, c *cache[T], data T) {
+	mu.Lock()
+	defer mu.Unlock()
+	c.data = data
+	c.timestamp = time.Now()
+	c.valid = true
+}
+
+// Service provides dashboard business logic with type-safe caching.
 type Service struct {
-	repo       Repository
-	cache      map[string]cachedItem
-	cacheMutex sync.RWMutex
-	cacheTTL   time.Duration
+	repo  Repository
+	store *cacheStore
 }
 
 // NewService creates a new dashboard service.
 func NewService(repo Repository) *Service {
 	return &Service{
-		repo:     repo,
-		cache:    make(map[string]cachedItem),
-		cacheTTL: 60 * time.Second,
+		repo:  repo,
+		store: newCacheStore(60 * time.Second),
 	}
-}
-
-func (s *Service) getFromCache(key string) (interface{}, bool) {
-	s.cacheMutex.RLock()
-	defer s.cacheMutex.RUnlock()
-
-	if item, ok := s.cache[key]; ok {
-		if time.Since(item.timestamp) < s.cacheTTL {
-			return item.data, true
-		}
-	}
-	return nil, false
-}
-
-func (s *Service) setCache(key string, data interface{}) {
-	s.cacheMutex.Lock()
-	defer s.cacheMutex.Unlock()
-	s.cache[key] = cachedItem{data: data, timestamp: time.Now()}
 }
 
 // GetSummary returns the dashboard summary with caching.
 func (s *Service) GetSummary(ctx context.Context) (*DashboardSummary, error) {
-	const key = "dashboard:summary"
-	if cached, ok := s.getFromCache(key); ok {
-		return cached.(*DashboardSummary), nil
+	if cached, ok := getCache(&s.store.mu, &s.store.summary, s.store.ttl); ok {
+		return cached, nil
 	}
 
 	data, err := s.repo.GetDashboardSummary(ctx)
@@ -58,15 +71,14 @@ func (s *Service) GetSummary(ctx context.Context) (*DashboardSummary, error) {
 		return nil, err
 	}
 
-	s.setCache(key, data)
+	setCache(&s.store.mu, &s.store.summary, data)
 	return data, nil
 }
 
 // GetInventoryAlerts returns inventory alerts with caching.
 func (s *Service) GetInventoryAlerts(ctx context.Context) ([]InventoryAlert, error) {
-	const key = "dashboard:inventory-alerts"
-	if cached, ok := s.getFromCache(key); ok {
-		return cached.([]InventoryAlert), nil
+	if cached, ok := getCache(&s.store.mu, &s.store.inventoryAlerts, s.store.ttl); ok {
+		return cached, nil
 	}
 
 	data, err := s.repo.GetInventoryAlerts(ctx, 10)
@@ -74,15 +86,14 @@ func (s *Service) GetInventoryAlerts(ctx context.Context) ([]InventoryAlert, err
 		return nil, err
 	}
 
-	s.setCache(key, data)
+	setCache(&s.store.mu, &s.store.inventoryAlerts, data)
 	return data, nil
 }
 
 // GetTopCustomers returns top customers with caching.
 func (s *Service) GetTopCustomers(ctx context.Context) ([]TopCustomer, error) {
-	const key = "dashboard:top-customers"
-	if cached, ok := s.getFromCache(key); ok {
-		return cached.([]TopCustomer), nil
+	if cached, ok := getCache(&s.store.mu, &s.store.topCustomers, s.store.ttl); ok {
+		return cached, nil
 	}
 
 	data, err := s.repo.GetTopCustomers(ctx, 5, 30)
@@ -90,15 +101,14 @@ func (s *Service) GetTopCustomers(ctx context.Context) ([]TopCustomer, error) {
 		return nil, err
 	}
 
-	s.setCache(key, data)
+	setCache(&s.store.mu, &s.store.topCustomers, data)
 	return data, nil
 }
 
 // GetOrderActivity returns order activity with caching.
 func (s *Service) GetOrderActivity(ctx context.Context) (*OrderActivity, error) {
-	const key = "dashboard:order-activity"
-	if cached, ok := s.getFromCache(key); ok {
-		return cached.(*OrderActivity), nil
+	if cached, ok := getCache(&s.store.mu, &s.store.orderActivity, s.store.ttl); ok {
+		return cached, nil
 	}
 
 	data, err := s.repo.GetOrderActivity(ctx, 10)
@@ -106,15 +116,14 @@ func (s *Service) GetOrderActivity(ctx context.Context) (*OrderActivity, error) 
 		return nil, err
 	}
 
-	s.setCache(key, data)
+	setCache(&s.store.mu, &s.store.orderActivity, data)
 	return data, nil
 }
 
 // GetRevenueTrend returns revenue trend for chart.
 func (s *Service) GetRevenueTrend(ctx context.Context) ([]RevenueTrendPoint, error) {
-	const key = "dashboard:revenue-trend"
-	if cached, ok := s.getFromCache(key); ok {
-		return cached.([]RevenueTrendPoint), nil
+	if cached, ok := getCache(&s.store.mu, &s.store.revenueTrend, s.store.ttl); ok {
+		return cached, nil
 	}
 
 	data, err := s.repo.GetRevenueTrend(ctx, 7)
@@ -122,6 +131,6 @@ func (s *Service) GetRevenueTrend(ctx context.Context) ([]RevenueTrendPoint, err
 		return nil, err
 	}
 
-	s.setCache(key, data)
+	setCache(&s.store.mu, &s.store.revenueTrend, data)
 	return data, nil
 }

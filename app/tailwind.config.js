@@ -6,7 +6,7 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Outfit', 'sans-serif'],
-                mono: ['Roboto Mono', 'monospace'],
+                mono: ['JetBrains Mono', 'monospace'],
             },
             colors: {
                 border: "hsl(var(--border))",

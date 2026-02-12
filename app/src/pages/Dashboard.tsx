@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, DollarSign, ShoppingCart, Truck, CreditCard, Calendar } from 'lucide-react';
+import { RefreshCw, DollarSign, ShoppingCart, Truck, CreditCard, Calendar, AlertCircle } from 'lucide-react';
 import { DashboardService } from '../services/DashboardService';
 import { KPICard } from '../components/dashboard/KPICard';
 import { RevenueTrendChart } from '../components/dashboard/RevenueTrendChart';
@@ -43,6 +43,7 @@ export const Dashboard = () => {
     const [orderActivity, setOrderActivity] = useState<OrderActivity | null>(null);
     const [revenueTrend, setRevenueTrend] = useState<RevenueTrendPoint[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
     const [refreshing, setRefreshing] = useState(false);
     const { showToast } = useToast();
@@ -71,13 +72,19 @@ export const Dashboard = () => {
             setOrderActivity(activityData);
             setRevenueTrend(trendData);
             setLastRefresh(new Date());
-        } catch (error) {
-            console.error('Failed to fetch dashboard data:', error);
+            setError(null);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+            console.error('Failed to fetch dashboard data:', err);
+            setError(message);
+            if (showSpinner) {
+                showToast('Failed to refresh dashboard data', 'error');
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [showToast]);
 
     useEffect(() => {
         fetchDashboardData();
@@ -121,8 +128,8 @@ export const Dashboard = () => {
                     <div className="text-right text-xs text-zinc-500 hidden md:block">
                         <div className="font-mono">Last updated: {lastRefresh.toLocaleTimeString()}</div>
                         <div className="flex items-center gap-1 justify-end mt-1">
-                            <span className="w-2 h-2 rounded-full bg-gable-green animate-pulse"></span>
-                            Live
+                            <span className={`w-2 h-2 rounded-full ${error ? 'bg-rose-500' : 'bg-gable-green'} animate-pulse`}></span>
+                            {error ? 'Error' : 'Live'}
                         </div>
                     </div>
                     <Button
@@ -136,6 +143,31 @@ export const Dashboard = () => {
                     </Button>
                 </div>
             </div>
+
+            {/* Error Banner */}
+            {error && !loading && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400"
+                >
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <div className="flex-1">
+                        <p className="text-sm font-medium">Unable to load dashboard data</p>
+                        <p className="text-xs text-rose-400/70 mt-0.5">
+                            {error}. Data shown may be stale.
+                        </p>
+                    </div>
+                    <Button
+                        onClick={() => fetchDashboardData(true)}
+                        disabled={refreshing}
+                        variant="secondary"
+                        size="sm"
+                    >
+                        Retry
+                    </Button>
+                </motion.div>
+            )}
 
             {/* KPI Cards */}
             <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

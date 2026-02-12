@@ -27,7 +27,7 @@ func NewRepository(db *database.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
 
-// GetDashboardSummary returns aggregate KPIs.
+// GetDashboardSummary returns all aggregate KPIs in a single query using a CTE.
 func (r *PostgresRepository) GetDashboardSummary(ctx context.Context) (*DashboardSummary, error) {
 	summary := &DashboardSummary{}
 
@@ -36,53 +36,57 @@ func (r *PostgresRepository) GetDashboardSummary(ctx context.Context) (*Dashboar
 	todayEnd := todayStart.Add(24 * time.Hour)
 	yesterdayStart := todayStart.AddDate(0, 0, -1)
 
-	// Today's revenue (cents)
-	queryTodayRevenue := `
-		SELECT COALESCE(SUM(amount), 0)
-		FROM payments
-		WHERE created_at >= $1 AND created_at < $2
+	query := `
+		WITH today_rev AS (
+			SELECT COALESCE(SUM(amount), 0) AS val
+			FROM payments
+			WHERE created_at >= $1 AND created_at < $2
+		),
+		yesterday_rev AS (
+			SELECT COALESCE(SUM(amount), 0) AS val
+			FROM payments
+			WHERE created_at >= $3 AND created_at < $1
+		),
+		active_ord AS (
+			SELECT COUNT(*) AS val
+			FROM orders
+			WHERE status IN ('PENDING', 'CONFIRMED', 'PROCESSING', 'READY', 'ALLOCATED')
+		),
+		pending_disp AS (
+			SELECT COUNT(*) AS val
+			FROM deliveries
+			WHERE status IN ('PENDING', 'ASSIGNED')
+		),
+		outstanding AS (
+			SELECT COALESCE(SUM(total_amount), 0) AS amount, COUNT(*) AS cnt
+			FROM invoices
+			WHERE status IN ('UNPAID', 'PARTIAL', 'OVERDUE')
+		)
+		SELECT
+			(SELECT val FROM today_rev),
+			(SELECT val FROM yesterday_rev),
+			(SELECT val FROM active_ord),
+			(SELECT val FROM pending_disp),
+			(SELECT amount FROM outstanding),
+			(SELECT cnt FROM outstanding)
 	`
-	if err := r.db.Pool.QueryRow(ctx, queryTodayRevenue, todayStart, todayEnd).Scan(&summary.TodayRevenue); err != nil {
-		return nil, fmt.Errorf("failed to query today revenue: %w", err)
+
+	var todayRevenue, yesterdayRevenue int64
+	err := r.db.Pool.QueryRow(ctx, query, todayStart, todayEnd, yesterdayStart).Scan(
+		&todayRevenue,
+		&yesterdayRevenue,
+		&summary.ActiveOrders,
+		&summary.PendingDispatch,
+		&summary.OutstandingAR,
+		&summary.OutstandingARCount,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query dashboard summary: %w", err)
 	}
 
-	// Yesterday's revenue for comparison
-	var yesterdayRevenue int64
-	if err := r.db.Pool.QueryRow(ctx, queryTodayRevenue, yesterdayStart, todayStart).Scan(&yesterdayRevenue); err != nil {
-		return nil, fmt.Errorf("failed to query yesterday revenue: %w", err)
-	}
+	summary.TodayRevenue = todayRevenue
 	if yesterdayRevenue > 0 {
-		summary.TodayRevenueChange = float64(summary.TodayRevenue-yesterdayRevenue) / float64(yesterdayRevenue) * 100
-	}
-
-	// Active orders (not completed/cancelled)
-	queryActiveOrders := `
-		SELECT COUNT(*)
-		FROM orders
-		WHERE status IN ('PENDING', 'CONFIRMED', 'PROCESSING', 'READY', 'ALLOCATED')
-	`
-	if err := r.db.Pool.QueryRow(ctx, queryActiveOrders).Scan(&summary.ActiveOrders); err != nil {
-		return nil, fmt.Errorf("failed to query active orders: %w", err)
-	}
-
-	// Pending dispatch (deliveries not dispatched)
-	queryPendingDispatch := `
-		SELECT COUNT(*)
-		FROM deliveries
-		WHERE status IN ('PENDING', 'ASSIGNED')
-	`
-	if err := r.db.Pool.QueryRow(ctx, queryPendingDispatch).Scan(&summary.PendingDispatch); err != nil {
-		return nil, fmt.Errorf("failed to query pending dispatch: %w", err)
-	}
-
-	// Outstanding AR
-	queryAR := `
-		SELECT COALESCE(SUM(total_amount), 0), COUNT(*)
-		FROM invoices
-		WHERE status IN ('UNPAID', 'PARTIAL', 'OVERDUE')
-	`
-	if err := r.db.Pool.QueryRow(ctx, queryAR).Scan(&summary.OutstandingAR, &summary.OutstandingARCount); err != nil {
-		return nil, fmt.Errorf("failed to query outstanding AR: %w", err)
+		summary.TodayRevenueChange = float64(todayRevenue-yesterdayRevenue) / float64(yesterdayRevenue) * 100
 	}
 
 	return summary, nil
@@ -120,6 +124,9 @@ func (r *PostgresRepository) GetInventoryAlerts(ctx context.Context, limit int) 
 		}
 		alerts = append(alerts, a)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating inventory alerts: %w", err)
+	}
 
 	return alerts, nil
 }
@@ -153,6 +160,9 @@ func (r *PostgresRepository) GetTopCustomers(ctx context.Context, limit int, day
 			return nil, fmt.Errorf("failed to scan top customer: %w", err)
 		}
 		customers = append(customers, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating top customers: %w", err)
 	}
 
 	return customers, nil
@@ -192,6 +202,9 @@ func (r *PostgresRepository) GetOrderActivity(ctx context.Context, limit int) (*
 		}
 		activity.RecentOrders = append(activity.RecentOrders, o)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating recent orders: %w", err)
+	}
 
 	// Status breakdown
 	queryStatus := `
@@ -214,6 +227,9 @@ func (r *PostgresRepository) GetOrderActivity(ctx context.Context, limit int) (*
 		}
 		activity.StatusBreakdown[status] = count
 	}
+	if err := statusRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating status breakdown: %w", err)
+	}
 
 	return activity, nil
 }
@@ -225,11 +241,11 @@ func (r *PostgresRepository) GetRevenueTrend(ctx context.Context, days int) ([]R
 			DATE(created_at) as date,
 			COALESCE(SUM(amount), 0) as revenue
 		FROM payments
-		WHERE created_at >= NOW() - INTERVAL '%d days'
+		WHERE created_at >= NOW() - MAKE_INTERVAL(days => $1)
 		GROUP BY DATE(created_at)
 		ORDER BY date ASC
 	`
-	rows, err := r.db.Pool.Query(ctx, fmt.Sprintf(query, days))
+	rows, err := r.db.Pool.Query(ctx, query, days)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query revenue trend: %w", err)
 	}
@@ -244,6 +260,9 @@ func (r *PostgresRepository) GetRevenueTrend(ctx context.Context, days int) ([]R
 		}
 		point.Date = dateVal.Format("2006-01-02")
 		trend = append(trend, point)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating revenue trend: %w", err)
 	}
 
 	return trend, nil
