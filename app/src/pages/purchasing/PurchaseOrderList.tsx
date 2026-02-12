@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PurchaseOrderService } from '../../services/PurchaseOrderService';
 import type { PurchaseOrder } from '../../types/purchaseOrder';
@@ -23,11 +23,7 @@ export function PurchaseOrderList() {
     const [alerts, setAlerts] = useState<ReorderAlert[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             const [poData, alertData] = await Promise.all([
                 PurchaseOrderService.listPOs(),
@@ -41,7 +37,11 @@ export function PurchaseOrderList() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     return (
         <PageTransition>

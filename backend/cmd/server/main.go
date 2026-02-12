@@ -30,6 +30,7 @@ import (
 	"github.com/gablelbm/gable/internal/order"
 	"github.com/gablelbm/gable/internal/partner"
 	"github.com/gablelbm/gable/internal/payment"
+	"github.com/gablelbm/gable/internal/portal"
 	"github.com/gablelbm/gable/internal/pricing"
 	"github.com/gablelbm/gable/internal/product"
 	"github.com/gablelbm/gable/internal/purchase_order"
@@ -68,7 +69,7 @@ func main() {
 		am, err := middleware.NewAuthMiddleware(context.Background(), middleware.AuthConfig{
 			JWKSURL:     cfg.JWKSURL,
 			Issuer:      cfg.AuthIssuer,
-			PublicPaths: []string{"/health"},
+			PublicPaths: []string{"/health", "/api/portal/v1/login", "/api/portal/v1/config"},
 		}, logger)
 		if err != nil {
 			logger.Error("Failed to initialize Auth Middleware", "error", err)
@@ -207,6 +208,17 @@ func main() {
 	techAdminSvc := techadmin.NewService(techAdminRepo)
 	techAdminHandler := techadmin.NewHandler(techAdminSvc)
 	techAdminHandler.RegisterRoutes(mux)
+
+	// Portal Module (Sovereign Dealer Portal)
+	portalRepo := portal.NewRepository(db)
+	portalSvc := portal.NewService(portalRepo, logger)
+	portalHandler := portal.NewHandler(portalSvc)
+	portalJWTSecret := os.Getenv("PORTAL_JWT_SECRET")
+	if portalJWTSecret == "" {
+		portalJWTSecret = "portal-dev-secret-change-in-production"
+	}
+	portalAuthMw := middleware.NewPortalAuthMiddleware([]byte(portalJWTSecret), logger)
+	portalHandler.RegisterRoutes(mux, portalAuthMw.Handler)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

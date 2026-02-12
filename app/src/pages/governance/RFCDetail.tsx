@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { GovernanceService } from '../../services/governance.service';
 import type { RFC } from '../../types/governance';
@@ -15,11 +15,7 @@ export function RFCDetail() {
     const [rfc, setRfc] = useState<RFC | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (id) loadRFC(id);
-    }, [id]);
-
-    const loadRFC = async (rfcId: string) => {
+    const loadRFC = useCallback(async (rfcId: string) => {
         try {
             const data = await GovernanceService.getRFC(rfcId);
             setRfc(data);
@@ -29,7 +25,11 @@ export function RFCDetail() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        if (id) loadRFC(id);
+    }, [id, loadRFC]);
 
     if (loading) {
         return (

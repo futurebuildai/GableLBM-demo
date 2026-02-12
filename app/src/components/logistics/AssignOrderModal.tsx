@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Dialog } from '@headlessui/react';
 import { X, Package, MapPin, FileText, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -26,13 +26,7 @@ export const AssignOrderModal: React.FC<Props> = ({ isOpen, onClose, routeId, ve
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (isOpen) {
-            loadData();
-        }
-    }, [isOpen]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const [allOrders, vehicles] = await Promise.all([
@@ -48,7 +42,13 @@ export const AssignOrderModal: React.FC<Props> = ({ isOpen, onClose, routeId, ve
         } finally {
             setLoading(false);
         }
-    };
+    }, [existingDeliveries, vehicleId, showToast]);
+
+    useEffect(() => {
+        if (isOpen) {
+            loadData();
+        }
+    }, [isOpen, loadData]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -133,11 +133,10 @@ export const AssignOrderModal: React.FC<Props> = ({ isOpen, onClose, routeId, ve
                                         {orders.map(order => (
                                             <label
                                                 key={order.id}
-                                                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                                                    selectedOrderId === order.id
+                                                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${selectedOrderId === order.id
                                                         ? 'bg-gable-green/10 border-gable-green/50'
                                                         : 'bg-[#0A0B10] border-white/10 hover:border-white/20'
-                                                }`}
+                                                    }`}
                                             >
                                                 <input
                                                     type="radio"

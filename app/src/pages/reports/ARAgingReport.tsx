@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ReportingService } from '../../services/ReportingService';
 import type { ARAgingReport } from '../../types/invoice';
 import { useToast } from '../../components/ui/ToastContext';
@@ -11,11 +11,7 @@ export function ARAgingReportPage() {
     const [report, setReport] = useState<ARAgingReport | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadReport();
-    }, []);
-
-    const loadReport = async () => {
+    const loadReport = useCallback(async () => {
         try {
             const data = await ReportingService.getARAgingReport();
             setReport(data);
@@ -25,7 +21,11 @@ export function ARAgingReportPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        loadReport();
+    }, [loadReport]);
 
     const fmt = (v: number) => `$${v.toFixed(2)}`;
 

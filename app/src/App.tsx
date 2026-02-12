@@ -32,6 +32,12 @@ import VendorList from "./pages/purchasing/VendorList";
 import VendorDetail from "./pages/purchasing/VendorDetail";
 import { ARAgingReportPage } from "./pages/reports/ARAgingReport";
 import { CustomerStatementPage } from "./pages/reports/CustomerStatementPage";
+import { PortalLayout } from "./components/layout/PortalLayout";
+import { PortalLogin } from "./pages/portal/PortalLogin";
+import { PortalDashboard } from "./pages/portal/PortalDashboard";
+import { PortalOrders } from "./pages/portal/PortalOrders";
+import { PortalInvoices } from "./pages/portal/PortalInvoices";
+import { PortalDeliveries } from "./pages/portal/PortalDeliveries";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -84,6 +90,15 @@ function App() {
             <Route index element={<PartnerDashboard />} />
             <Route path="projects" element={<ProjectList />} />
             <Route path="invoices" element={<PartnerInvoiceList />} />
+          </Route>
+
+          {/* Sovereign Dealer Portal (B2B) */}
+          <Route path="/portal/login" element={<PortalLogin />} />
+          <Route path="/portal" element={<PortalLayout />}>
+            <Route index element={<PortalDashboard />} />
+            <Route path="orders" element={<PortalOrders />} />
+            <Route path="invoices" element={<PortalInvoices />} />
+            <Route path="deliveries" element={<PortalDeliveries />} />
           </Route>
         </Routes>
       </BrowserRouter>

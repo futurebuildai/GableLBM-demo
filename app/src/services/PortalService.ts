@@ -1,0 +1,162 @@
+import type {
+    PortalLoginResponse,
+    PortalConfig,
+    PortalDashboard,
+    PortalOrder,
+    PortalInvoice,
+    PortalDelivery,
+    ReorderResponse,
+} from '../types/portal';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const REQUEST_TIMEOUT_MS = 10_000;
+const MAX_RETRIES = 1;
+const RETRY_DELAY_MS = 2_000;
+const TOKEN_KEY = 'portal_token';
+
+/**
+ * Get stored portal JWT token.
+ */
+function getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
+}
+
+/**
+ * Store portal JWT token.
+ */
+export function setToken(token: string): void {
+    localStorage.setItem(TOKEN_KEY, token);
+}
+
+/**
+ * Remove stored portal JWT token.
+ */
+export function clearToken(): void {
+    localStorage.removeItem(TOKEN_KEY);
+}
+
+/**
+ * Check if user is authenticated.
+ */
+export function isAuthenticated(): boolean {
+    return getToken() !== null;
+}
+
+/**
+ * Fetch with timeout, retry, and auth header injection.
+ */
+async function fetchWithRetry<T>(
+    url: string,
+    options: RequestInit = {},
+    retries = MAX_RETRIES,
+): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+        try {
+            const token = getToken();
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                ...(options.headers as Record<string, string> || {}),
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(url, {
+                ...options,
+                headers,
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const text = await response.text().catch(() => response.statusText);
+                throw new Error(`API error: ${response.status} ${text}`);
+            }
+
+            return await response.json() as T;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            lastError = error instanceof Error ? error : new Error(String(error));
+
+            if (lastError.name === 'AbortError') {
+                lastError = new Error('Request timed out');
+            }
+
+            if (attempt < retries) {
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            }
+        }
+    }
+
+    throw lastError ?? new Error('Request failed');
+}
+
+export const PortalService = {
+    /** Authenticate contractor and return JWT + user + config. No retries (auth calls). */
+    async login(email: string, password: string): Promise<PortalLoginResponse> {
+        return fetchWithRetry<PortalLoginResponse>(
+            `${API_URL}/api/portal/v1/login`,
+            {
+                method: 'POST',
+                body: JSON.stringify({ email, password }),
+            },
+            0, // No retries for authentication — fail fast on bad credentials
+        );
+    },
+
+    /** Get portal branding config (public). */
+    async getConfig(): Promise<PortalConfig> {
+        return fetchWithRetry<PortalConfig>(`${API_URL}/api/portal/v1/config`);
+    },
+
+    /** Get contractor dashboard data. */
+    async getDashboard(): Promise<PortalDashboard> {
+        return fetchWithRetry<PortalDashboard>(`${API_URL}/api/portal/v1/dashboard`);
+    },
+
+    /** List order history. */
+    async getOrders(): Promise<PortalOrder[]> {
+        return fetchWithRetry<PortalOrder[]>(`${API_URL}/api/portal/v1/orders`);
+    },
+
+    /** Get single order with lines. */
+    async getOrder(id: string): Promise<PortalOrder> {
+        return fetchWithRetry<PortalOrder>(`${API_URL}/api/portal/v1/orders/${id}`);
+    },
+
+    /** Create a reorder from historical order. */
+    async reorder(orderId: string): Promise<ReorderResponse> {
+        return fetchWithRetry<ReorderResponse>(
+            `${API_URL}/api/portal/v1/orders/reorder`,
+            {
+                method: 'POST',
+                body: JSON.stringify({ order_id: orderId }),
+            },
+        );
+    },
+
+    /** List invoices. */
+    async getInvoices(): Promise<PortalInvoice[]> {
+        return fetchWithRetry<PortalInvoice[]>(`${API_URL}/api/portal/v1/invoices`);
+    },
+
+    /** Get single invoice with lines. */
+    async getInvoice(id: string): Promise<PortalInvoice> {
+        return fetchWithRetry<PortalInvoice>(`${API_URL}/api/portal/v1/invoices/${id}`);
+    },
+
+    /** List deliveries with POD info. */
+    async getDeliveries(): Promise<PortalDelivery[]> {
+        return fetchWithRetry<PortalDelivery[]>(`${API_URL}/api/portal/v1/deliveries`);
+    },
+
+    /** Get single delivery with POD info. */
+    async getDelivery(id: string): Promise<PortalDelivery> {
+        return fetchWithRetry<PortalDelivery>(`${API_URL}/api/portal/v1/deliveries/${id}`);
+    },
+};

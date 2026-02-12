@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PurchaseOrderService } from '../../services/PurchaseOrderService';
 import { LocationService } from '../../services/LocationService';
@@ -20,14 +20,7 @@ export function PurchaseOrderDetail() {
     const [receiveData, setReceiveData] = useState<Record<string, { qty: number; locationId: string }>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        if (id) {
-            loadPO(id);
-            LocationService.listLocations().then(setLocations);
-        }
-    }, [id]);
-
-    const loadPO = async (poId: string) => {
+    const loadPO = useCallback(async (poId: string) => {
         try {
             const data = await PurchaseOrderService.getPO(poId);
             setPO(data);
@@ -41,7 +34,14 @@ export function PurchaseOrderDetail() {
             console.error(err);
             showToast('Failed to load purchase order', 'error');
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        if (id) {
+            loadPO(id);
+            LocationService.listLocations().then(setLocations);
+        }
+    }, [id, loadPO]);
 
     const handleSubmitPO = async () => {
         if (!po) return;

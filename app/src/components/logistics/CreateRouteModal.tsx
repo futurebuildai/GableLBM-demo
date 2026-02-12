@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Dialog } from '@headlessui/react';
 import { X, Truck, User, Calendar, FileText } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -22,13 +22,7 @@ export const CreateRouteModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
     const [notes, setNotes] = useState('');
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        if (isOpen) {
-            loadFleet();
-        }
-    }, [isOpen]);
-
-    const loadFleet = async () => {
+    const loadFleet = useCallback(async () => {
         try {
             const [v, d] = await Promise.all([
                 deliveryService.listVehicles(),
@@ -39,7 +33,13 @@ export const CreateRouteModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
         } catch {
             showToast('Failed to load fleet data', 'error');
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        if (isOpen) {
+            loadFleet();
+        }
+    }, [isOpen, loadFleet]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
