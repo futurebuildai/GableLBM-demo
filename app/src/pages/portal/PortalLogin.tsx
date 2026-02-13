@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogIn, AlertCircle, Loader2 } from 'lucide-react';
 import { PortalService, setToken } from '../../services/PortalService';
 import type { PortalConfig } from '../../types/portal';
+import { BrandLogo } from '../../components/ui/BrandLogo';
 
 export const PortalLogin = () => {
     const navigate = useNavigate();
@@ -61,16 +62,8 @@ export const PortalLogin = () => {
                             className="h-16 w-auto mx-auto mb-4 object-contain"
                         />
                     ) : (
-                        <div className="inline-flex items-baseline text-4xl mb-2">
-                            <span className="font-bold tracking-tight text-white">
-                                {config?.dealer_name || 'Dealer'}
-                            </span>
-                            <span
-                                className="font-light tracking-widest ml-1"
-                                style={{ color: primaryColor }}
-                            >
-                                Portal
-                            </span>
+                        <div className="inline-flex items-center mb-2">
+                            <BrandLogo variant="full" size="lg" />
                         </div>
                     )}
                     <p className="text-zinc-500 text-sm">

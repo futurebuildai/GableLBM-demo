@@ -123,9 +123,12 @@ func main() {
 	quoteHandler := quote.NewHandler(quote.NewService(quoteRepo))
 	quoteHandler.RegisterRoutes(mux)
 
-	// GL Module
+	// GL Module (Full General Ledger)
 	glAdapter := glint.NewMockGLAdapter()
-	glSvc := gl.NewService(glAdapter, logger)
+	glRepo := gl.NewRepository(db)
+	glSvc := gl.NewService(glRepo, glAdapter, logger)
+	glHandler := gl.NewHandler(glSvc)
+	glHandler.RegisterRoutes(mux)
 
 	// Invoice Module
 	invoiceRepo := invoice.NewRepository(db)

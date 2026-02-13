@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Truck, FileText, Settings, Menu, Hammer, ChevronLeft, ChevronRight, Search, ShoppingBag, Store } from 'lucide-react';
+import { LayoutDashboard, Package, Truck, FileText, Settings, Menu, Hammer, ChevronLeft, ChevronRight, Search, ShoppingBag, Store, BookOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -72,6 +72,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <NavItem to="/millwork/configurator" icon={<Hammer size={20} />} label="Millwork" isOpen={sidebarOpen} active={location.pathname.startsWith('/millwork')} />
                     <NavItem to="/dispatch" icon={<Truck size={20} />} label="Logistics" isOpen={sidebarOpen} active={location.pathname.startsWith('/dispatch') || location.pathname.startsWith('/logistics')} />
                     <NavItem to="/reports/daily-till" icon={<LayoutDashboard size={20} />} label="Daily Till" isOpen={sidebarOpen} active={location.pathname.startsWith('/reports')} />
+
+                    <div className="mb-2 mt-4 px-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                        {sidebarOpen && "Accounting"}
+                    </div>
+
+                    <NavItem to="/accounting/chart-of-accounts" icon={<BookOpen size={20} />} label="Chart of Accounts" isOpen={sidebarOpen} active={location.pathname === '/accounting/chart-of-accounts'} />
+                    <NavItem to="/accounting/journal-entries" icon={<FileText size={20} />} label="Journal Entries" isOpen={sidebarOpen} active={location.pathname === '/accounting/journal-entries'} />
+                    <NavItem to="/accounting/trial-balance" icon={<LayoutDashboard size={20} />} label="Trial Balance" isOpen={sidebarOpen} active={location.pathname === '/accounting/trial-balance'} />
                 </nav>
 
                 {/* Footer / Admin */}

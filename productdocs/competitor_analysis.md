@@ -1,7 +1,17 @@
 # Competitor Analysis & Feature Parity Matrix
 
 ## 1. Executive Summary
-*To be filled after completion of all deep dives.*
+
+The LBM ERP market is dominated by four incumbents: **Epicor BisTrack** (enterprise standard), **DMSi Agility** (heavyweight/millwork leader), **ECI Spruce** (mid-market generalist), and **Intact GenetiQ** (modern cloud entrant). All four share architectural weaknesses that GableERP can exploit:
+
+1. **Access Tax**: BisTrack and Agility require Citrix/RDP for full functionality—GableERP is browser-native.
+2. **Integration Tax**: DMSi and Epicor charge $5K–$15K for API access—GableERP is open API-first.
+3. **Innovation Gap**: None ship AI-native features—GableERP leads with VelocityAI and Smart Counter.
+4. **Sovereignty Gap**: All are proprietary—GableERP offers open-source transparency and community governance.
+
+**Closest threat**: Intact GenetiQ shares GableERP's cloud-native philosophy but remains proprietary and opaque on pricing. **Hardest to displace**: DMSi Agility has 95% satisfaction and unmatched millwork depth.
+
+> Full deep-dives: [DMSi Agility](file:///home/colton/Desktop/4C%20Digital_HQ/Lumber%20Digital%20Tools/GableLBM/GableERP/productdocs/competitor_analysis_dmsi.md) · [Intact GenetiQ](file:///home/colton/Desktop/4C%20Digital_HQ/Lumber%20Digital%20Tools/GableLBM/GableERP/productdocs/competitor_analysis_intact.md)
 
 ## 2. Competitive Matrix (Feature Grid)
 | Feature Category | Feature | Epicor BisTrack | ECI Spruce | DMSi Agility | GableLBM (Target) |
@@ -93,3 +103,63 @@
 2.  **Democratized Millwork**: Agility's millwork tools are expensive add-ons. GableLBM should include basic "Assembly/Kitting" logic in the core open-source tier.
 3.  **No Citrix**: Browser-native performance without the latency of remote desktop protocols.
 
+
+## 6. Deep Dive: Intact GenetiQ
+**Market Position**: Modern Cloud Entrant. The closest architectural competitor to GableERP.
+
+> Full deep-dive: [competitor_analysis_intact.md](file:///home/colton/Desktop/4C%20Digital_HQ/Lumber%20Digital%20Tools/GableLBM/GableERP/productdocs/competitor_analysis_intact.md)
+
+### 6.1 Key Differentiators
+*   **Cloud-Native Browser UI**: No Citrix/VPN—unique among legacy competitors.
+*   **"Haggle" POS**: Margin-aware price negotiation at the trade counter.
+*   **Nexus Workflow Engine**: Deep customization without vendor code changes.
+*   **Offline Mobile Warehouse**: Works in areas with poor connectivity.
+*   **Lost Sales Analysis**: Tracks missed opportunities to improve inventory/pricing.
+
+### 6.2 Weaknesses
+*   Proprietary "black box"—no open-source transparency.
+*   Opaque pricing (discovery call required).
+*   Relatively new US market presence.
+*   "AI-Ready" but no shipping AI features.
+
+### 6.3 Modernization Opportunities (The "Gable Advantage")
+1.  **Open Source Trust**: Intact customizes via proprietary Nexus; Gable gives you the code.
+2.  **AI-Native Now**: GenetiQ promises "AI-Ready"; Gable ships VelocityAI today.
+3.  **Community Governance**: Dealers fund and vote on the roadmap via RFC, not vendor roadmap committee.
+
+
+## 7. Expanded Competitive Matrix
+| Dimension | BisTrack | Spruce | Agility | GenetiQ | **GableERP** |
+|:---|:---|:---|:---|:---|:---|
+| **Architecture** | Fat Client (VPN) | Cloud Options | Citrix/RDP | ✅ Cloud-native | ✅ Cloud-native |
+| **API Access** | REST+SOAP | REST+SOAP | Private/Gated | "API-First" (gated) | ✅ Open REST |
+| **API Cost** | Included | Included | $5K–$15K | Unknown | **Free** |
+| **Financials** | ✅ Full GL/AP/AR | ✅ GL/AP/AR | ✅ Integrated | ✅ Full suite + Credit Control | ⚠️ Basic (roadmap) |
+| **Millwork Config** | Via "Production" | ❌ No | ✅ Best-in-class | ✅ Work Orders | ⚠️ Sprint 19 |
+| **POS / Counter** | ⚠️ Slow forms | ✅ Fast POS | ✅ OrderPad | ✅ "Haggle" + Margin | ✅ AI Counter |
+| **E-Commerce** | ✅ WebTrack | ❌ 3rd Party | ✅ Native Portal | ✅ Aphix Integration | ⚠️ Sprint 16 |
+| **Mobile Apps** | ✅ Delivery/WMS | ✅ ProLink | ✅ POD + WMS | ✅ Warehouse + POD | ✅ Driver App |
+| **Offline Mode** | ❌ No | ❌ Limited | ❌ No | ✅ Mobile Warehouse | ⚠️ PWA (planned) |
+| **AI Features** | ⚠️ Roadmap (2025) | ❌ None | ❌ None | ⚠️ "AI-Ready" | ✅ VelocityAI |
+| **Escalator Pricing** | ❌ No | ❌ No | ✅ Native | ❌ No | ⚠️ Sprint 17 |
+| **Open Source** | ❌ | ❌ | ❌ | ❌ | ✅ **Yes** |
+| **Satisfaction** | ~80% | ~75% | **95%** | ~85% (est.) | TBD |
+
+
+## 8. Market Positioning Summary
+
+```mermaid
+quadrantChart
+    title LBM ERP Competitive Landscape
+    x-axis Legacy Architecture --> Modern Architecture
+    y-axis Low Feature Depth --> High Feature Depth
+    quadrant-1 "Leader Territory"
+    quadrant-2 "Legacy Moats"
+    quadrant-3 "Emerging"
+    quadrant-4 "Modern Challengers"
+    "DMSi Agility": [0.25, 0.95]
+    "Epicor BisTrack": [0.30, 0.80]
+    "ECI Spruce": [0.45, 0.55]
+    "Intact GenetiQ": [0.80, 0.70]
+    "GableERP": [0.90, 0.50]
+```

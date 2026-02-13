@@ -57,7 +57,7 @@ func (r *Repository) GetPortalConfig(ctx context.Context) (*PortalConfig, error)
 		if err == pgx.ErrNoRows {
 			// Return a sensible default if no config exists
 			return &PortalConfig{
-				DealerName:   "Lumber Dealer",
+				DealerName:   "GableLBM",
 				PrimaryColor: "#00FFA3",
 			}, nil
 		}

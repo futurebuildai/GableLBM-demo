@@ -4,6 +4,7 @@ import { LayoutDashboard, FileText, ShoppingCart, Truck, LogOut, ChevronLeft, Ch
 import { cn } from '../../lib/utils';
 import { isAuthenticated, clearToken } from '../../services/PortalService';
 import type { PortalConfig, PortalUser } from '../../types/portal';
+import { BrandLogo } from '../ui/BrandLogo';
 
 export const PortalLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
@@ -76,17 +77,12 @@ export const PortalLayout = () => {
                         {config?.logo_url ? (
                             <img src={config.logo_url} alt={config?.dealer_name} className="h-8 w-auto object-contain" />
                         ) : (
-                            <div className="flex items-baseline leading-none text-xl">
-                                <span className="font-bold tracking-tight text-white">{config?.dealer_name || 'Dealer'}</span>
-                                <span className="font-light tracking-widest ml-0.5" style={{ color: primaryColor }}>Portal</span>
-                            </div>
+                            <BrandLogo variant="text" size="md" />
                         )}
                     </div>
                     {!sidebarOpen && (
-                        <div className="mx-auto flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: `${primaryColor}20` }}>
-                            <span className="font-bold text-sm" style={{ color: primaryColor }}>
-                                {(config?.dealer_name || 'D').charAt(0)}
-                            </span>
+                        <div className="mx-auto flex items-center justify-center w-8 h-8">
+                            <BrandLogo variant="mark" size="sm" className="text-white" />
                         </div>
                     )}
                 </div>

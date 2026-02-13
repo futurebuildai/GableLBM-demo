@@ -34,6 +34,9 @@ import VendorList from "./pages/purchasing/VendorList";
 import VendorDetail from "./pages/purchasing/VendorDetail";
 import { ARAgingReportPage } from "./pages/reports/ARAgingReport";
 import { CustomerStatementPage } from "./pages/reports/CustomerStatementPage";
+import { ChartOfAccounts } from "./pages/accounting/ChartOfAccounts";
+import { JournalEntries } from "./pages/accounting/JournalEntries";
+import { TrialBalance } from "./pages/accounting/TrialBalance";
 import { PortalLayout } from "./components/layout/PortalLayout";
 import { PortalLogin } from "./pages/portal/PortalLogin";
 import { PortalDashboard } from "./pages/portal/PortalDashboard";
@@ -79,6 +82,11 @@ function App() {
             <Route path="accounts">
               <Route index element={<AccountsPage />} />
               <Route path=":id" element={<AccountDetailPage />} />
+            </Route>
+            <Route path="accounting">
+              <Route path="chart-of-accounts" element={<ChartOfAccounts />} />
+              <Route path="journal-entries" element={<JournalEntries />} />
+              <Route path="trial-balance" element={<TrialBalance />} />
             </Route>
           </Route>
 

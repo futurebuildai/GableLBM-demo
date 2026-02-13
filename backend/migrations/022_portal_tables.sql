@@ -17,7 +17,7 @@ CREATE INDEX IF NOT EXISTS idx_customer_users_customer_id ON customer_users(cust
 -- Portal Configuration (white-label branding)
 CREATE TABLE IF NOT EXISTS portal_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dealer_name VARCHAR(255) NOT NULL DEFAULT 'Lumber Dealer',
+    dealer_name VARCHAR(255) NOT NULL DEFAULT 'GableLBM',
     logo_url TEXT NOT NULL DEFAULT '',
     primary_color VARCHAR(7) NOT NULL DEFAULT '#00FFA3',
     support_email VARCHAR(255) NOT NULL DEFAULT '',
