@@ -28,6 +28,7 @@ import (
 	"github.com/gablelbm/gable/internal/millwork"
 	"github.com/gablelbm/gable/internal/notification"
 	"github.com/gablelbm/gable/internal/order"
+	"github.com/gablelbm/gable/internal/parsing"
 	"github.com/gablelbm/gable/internal/partner"
 	"github.com/gablelbm/gable/internal/payment"
 	"github.com/gablelbm/gable/internal/portal"
@@ -90,6 +91,11 @@ func main() {
 	productSvc := product.NewService(productRepo)
 	productHandler := product.NewHandler(productSvc)
 	productHandler.RegisterRoutes(mux)
+
+	// AI Parsing Module (Material List Intake)
+	parsingSvc := parsing.NewService(productRepo)
+	parsingHandler := parsing.NewHandler(parsingSvc)
+	parsingHandler.RegisterRoutes(mux)
 
 	locationHandler := location.NewHandler(location.NewService(location.NewRepository(db)))
 	locationHandler.RegisterRoutes(mux)

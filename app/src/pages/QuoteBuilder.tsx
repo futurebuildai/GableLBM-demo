@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CustomerSelect } from '../components/customers/CustomerSelect';
 import { LineItemEditor } from '../components/quotes/LineItemEditor';
 import { EscalatorToggle } from '../components/quotes/EscalatorToggle';
+import { MaterialListUpload } from '../components/quotes/MaterialListUpload';
+import { ParsedResultsPanel } from '../components/quotes/ParsedResultsPanel';
 import { QuoteService } from '../services/QuoteService';
 import { ProductService } from '../services/product.service';
 import type { Customer } from '../types/customer';
 import type { Product } from '../types/product';
 import type { CreateQuoteRequest } from '../types/quote';
 import type { QuoteLineEscalator } from '../types/pricing';
+import type { ParseResponse, ParsedItem } from '../types/parsing';
 import { Save, FileText, Calculator, CreditCard, AlertCircle, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageTransition } from '../components/ui/PageTransition';
@@ -41,6 +44,10 @@ export const QuoteBuilder = () => {
     const [lines, setLines] = useState<LineWithEscalator[]>([]);
     const [loading, setLoading] = useState(false);
 
+    // AI Parsing state
+    const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
+    const [showParsePanel, setShowParsePanel] = useState(false);
+
     useEffect(() => {
         const loadProducts = async () => {
             try {
@@ -71,6 +78,28 @@ export const QuoteBuilder = () => {
         setLines(updated);
     };
 
+    // --- AI Parsing Handlers ---
+    const handleParseComplete = useCallback((result: ParseResponse) => {
+        setParseResult(result);
+        setShowParsePanel(true);
+    }, []);
+
+    const handleAcceptParsed = useCallback((parsedItems: ParsedItem[]) => {
+        const newLines: LineWithEscalator[] = parsedItems.map(item => ({
+            product_id: item.matched_product?.product_id || '',
+            sku: item.matched_product?.sku || 'SPECIAL-ORDER',
+            description: item.matched_product?.description || item.raw_text,
+            quantity: item.quantity,
+            uom: item.matched_product?.uom || item.uom,
+            unit_price: item.matched_product?.base_price || 0,
+            escalator: defaultEscalator(),
+        }));
+        setLines(prev => [...prev, ...newLines]);
+        setShowParsePanel(false);
+        setParseResult(null);
+        showToast(`${parsedItems.length} items added from material list`, 'success');
+    }, [showToast]);
+
     const handleSave = async () => {
         if (!customer) return;
         setLoading(true);
@@ -82,7 +111,7 @@ export const QuoteBuilder = () => {
                     sku: l.sku,
                     description: l.description,
                     quantity: l.quantity,
-                    uom: l.uom,
+                    uom: l.uom as import('../types/product').UOM,
                     unit_price: l.unit_price,
                 })),
             };
@@ -231,7 +260,13 @@ export const QuoteBuilder = () => {
                 <div className="lg:col-span-8 space-y-6">
                     <Card variant="glass" className="h-full">
                         <CardContent className="p-6">
-                            <h2 className="text-lg font-medium text-white mb-6">Line Items</h2>
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-medium text-white">Line Items</h2>
+                                <MaterialListUpload
+                                    onParseComplete={handleParseComplete}
+                                    disabled={loading}
+                                />
+                            </div>
 
                             <LineItemEditor products={products} customerId={customer?.id} onAddLine={handleAddLine} />
 
@@ -303,6 +338,18 @@ export const QuoteBuilder = () => {
                     </Card>
                 </div>
             </div>
+
+            {/* AI Parse Results Overlay */}
+            {showParsePanel && parseResult && (
+                <ParsedResultsPanel
+                    result={parseResult}
+                    onAccept={handleAcceptParsed}
+                    onClose={() => {
+                        setShowParsePanel(false);
+                        setParseResult(null);
+                    }}
+                />
+            )}
         </PageTransition>
     );
 };

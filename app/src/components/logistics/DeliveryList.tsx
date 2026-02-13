@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import type { Delivery } from '../../types/delivery';
 import { deliveryService } from '../../services/deliveryService';
 import { MapPin, Box, FileText, ArrowRight, ArrowUp, ArrowDown, RotateCcw, Play } from 'lucide-react';
@@ -19,27 +19,27 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId, 
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [reordering, setReordering] = useState(false);
 
-    useEffect(() => {
-        const loadDeliveries = async (id: string) => {
-            setLoading(true);
-            try {
-                const data = await deliveryService.listDeliveries(id);
-                setDeliveries(data);
-                onDeliveriesChange?.(data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const loadDeliveries = useCallback(async (id: string) => {
+        setLoading(true);
+        try {
+            const data = await deliveryService.listDeliveries(id);
+            setDeliveries(data);
+            onDeliveriesChange?.(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [onDeliveriesChange]);
 
+    useEffect(() => {
         if (routeId) {
             loadDeliveries(routeId);
         } else {
             setDeliveries([]);
             onDeliveriesChange?.([]);
         }
-    }, [routeId, onDeliveriesChange]);
+    }, [routeId, loadDeliveries, onDeliveriesChange]);
 
     const moveStop = async (index: number, direction: 'up' | 'down') => {
         if (!routeId) return;
