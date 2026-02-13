@@ -14,6 +14,8 @@ import { RouteList } from "./pages/driver/RouteList";
 import { StopList } from "./pages/driver/StopList";
 import { DeliveryDetail } from "./pages/driver/DeliveryDetail";
 import { DoorConfigurator } from "./pages/millwork/DoorConfigurator";
+import { ProductConfigurator } from "./pages/millwork/ProductConfigurator";
+import { BlueprintVerifier } from "./pages/millwork/BlueprintVerifier";
 import { PartnerLayout } from "./components/layout/PartnerLayout";
 import { PartnerDashboard } from "./pages/partner/Dashboard";
 import { ProjectList } from "./pages/partner/ProjectList";
@@ -60,6 +62,8 @@ function App() {
             <Route path="reports/customer-statement" element={<CustomerStatementPage />} />
             <Route path="dispatch" element={<DispatchBoard />} />
             <Route path="millwork/configure" element={<DoorConfigurator />} />
+            <Route path="millwork/configurator" element={<ProductConfigurator />} />
+            <Route path="millwork/blueprint" element={<BlueprintVerifier />} />
             <Route path="purchasing/vendors" element={<VendorList />} />
             <Route path="purchasing/vendors/:id" element={<VendorDetail />} />
             <Route path="purchasing" element={<PurchaseOrderList />} />

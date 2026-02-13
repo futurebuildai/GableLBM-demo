@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <NavItem to="/purchasing" icon={<ShoppingBag size={20} />} label="Purchasing" isOpen={sidebarOpen} active={location.pathname === '/purchasing' || (location.pathname.startsWith('/purchasing') && !location.pathname.includes('/vendors'))} />
                     <NavItem to="/purchasing/vendors" icon={<Store size={20} />} label="Vendors" isOpen={sidebarOpen} active={location.pathname.startsWith('/purchasing/vendors')} />
                     <NavItem to="/invoices" icon={<FileText size={20} />} label="Invoices" isOpen={sidebarOpen} active={location.pathname.startsWith('/invoices')} />
-                    <NavItem to="/millwork/configure" icon={<Hammer size={20} />} label="Millwork" isOpen={sidebarOpen} active={location.pathname.startsWith('/millwork')} />
+                    <NavItem to="/millwork/configurator" icon={<Hammer size={20} />} label="Millwork" isOpen={sidebarOpen} active={location.pathname.startsWith('/millwork')} />
                     <NavItem to="/dispatch" icon={<Truck size={20} />} label="Logistics" isOpen={sidebarOpen} active={location.pathname.startsWith('/dispatch') || location.pathname.startsWith('/logistics')} />
                     <NavItem to="/reports/daily-till" icon={<LayoutDashboard size={20} />} label="Daily Till" isOpen={sidebarOpen} active={location.pathname.startsWith('/reports')} />
                 </nav>

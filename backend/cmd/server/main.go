@@ -14,6 +14,7 @@ import (
 
 	"github.com/gablelbm/gable/internal/account"
 	"github.com/gablelbm/gable/internal/config"
+	"github.com/gablelbm/gable/internal/configurator"
 	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/dashboard"
 	"github.com/gablelbm/gable/internal/delivery"
@@ -39,6 +40,7 @@ import (
 	"github.com/gablelbm/gable/internal/reporting"
 	"github.com/gablelbm/gable/internal/techadmin"
 	"github.com/gablelbm/gable/internal/vendor"
+	"github.com/gablelbm/gable/internal/vision"
 	"github.com/gablelbm/gable/pkg/database"
 	"github.com/gablelbm/gable/pkg/middleware"
 )
@@ -195,6 +197,17 @@ func main() {
 	millworkSvc := millwork.NewService(millworkRepo)
 	millworkHandler := millwork.NewHandler(millworkSvc)
 	millworkHandler.RegisterRoutes(mux)
+
+	// Configurator Module (Sprint 19: Product Configurator)
+	configuratorRepo := configurator.NewRepository(db)
+	configuratorSvc := configurator.NewService(configuratorRepo)
+	configuratorHandler := configurator.NewHandler(configuratorSvc)
+	configuratorHandler.RegisterRoutes(mux)
+
+	// AI Vision Module (Sprint 19: Blueprint Verification Prototype)
+	visionSvc := vision.NewService()
+	visionHandler := vision.NewHandler(visionSvc)
+	visionHandler.RegisterRoutes(mux)
 
 	// Governance Module
 	governanceRepo := governance.NewRepository(db)
