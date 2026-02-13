@@ -67,17 +67,17 @@
 
 ### Objectives
 1.  **Sovereign Dealer Portal (Sprint 16)**:
-    *   [ ] White-labeled Contractor Self-Service Portal.
-    *   [ ] Account History & Document Downloads.
-    *   [ ] Direct B2B Re-ordering ("Buy Again").
+    *   [x] White-labeled Contractor Self-Service Portal.
+    *   [x] Account History & Document Downloads.
+    *   [x] Direct B2B Re-ordering ("Buy Again").
 2.  **Dynamic Pricing Engine (Sprint 17)**:
-    *   [ ] Market Index Integration (Random Lengths mock).
-    *   [ ] Escalator Pricing on Quote Lines.
-    *   [ ] Stale Price Warnings for Sales Reps.
-3.  **VelocityAI ERP Integration (Sprint 18)**:
-    *   [ ] Embed VelocityAI parsing into Sales Order Entry.
-    *   [ ] Photo → Material List → Quote (end-to-end).
-    *   [ ] Confidence scoring & manual override UI.
+    *   [x] Market Index Integration (Random Lengths mock).
+    *   [x] Escalator Pricing on Quote Lines.
+    *   [x] Stale Price Warnings for Sales Reps.
+3.  **AI-Powered Material List Intake (Sprint 18)**:
+    *   [x] Native AI parsing in Sales Order Entry.
+    *   [x] Photo → Material List → Quote (end-to-end).
+    *   [x] Confidence scoring & manual override UI.
 4.  **Sovereign Product Configurator (Sprint 19)**:
     *   [ ] Rules-based engine for Species/Grade/Treatment combos.
     *   [ ] Non-stock item generation from configurator output.
