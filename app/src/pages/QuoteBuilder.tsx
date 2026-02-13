@@ -1,24 +1,44 @@
 import { useState, useEffect } from 'react';
 import { CustomerSelect } from '../components/customers/CustomerSelect';
 import { LineItemEditor } from '../components/quotes/LineItemEditor';
+import { EscalatorToggle } from '../components/quotes/EscalatorToggle';
 import { QuoteService } from '../services/QuoteService';
 import { ProductService } from '../services/product.service';
 import type { Customer } from '../types/customer';
 import type { Product } from '../types/product';
 import type { CreateQuoteRequest } from '../types/quote';
-import { Save, FileText, Calculator, CreditCard, AlertCircle } from 'lucide-react';
+import type { QuoteLineEscalator } from '../types/pricing';
+import { Save, FileText, Calculator, CreditCard, AlertCircle, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageTransition } from '../components/ui/PageTransition';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/ToastContext';
 
+interface LineWithEscalator {
+    product_id: string;
+    sku: string;
+    description: string;
+    quantity: number;
+    uom: string;
+    unit_price: number;
+    escalator: QuoteLineEscalator;
+}
+
+const defaultEscalator = (): QuoteLineEscalator => ({
+    enabled: false,
+    escalation_type: 'PERCENTAGE',
+    escalation_rate: 5,
+    effective_date: new Date().toISOString().split('T')[0],
+    target_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+});
+
 export const QuoteBuilder = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
-    const [lines, setLines] = useState<CreateQuoteRequest['lines']>([]);
+    const [lines, setLines] = useState<LineWithEscalator[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -40,20 +60,34 @@ export const QuoteBuilder = () => {
             description: product.description,
             uom: product.uom_primary,
             quantity,
-            unit_price: unitPrice
+            unit_price: unitPrice,
+            escalator: defaultEscalator(),
         }]);
+    };
+
+    const handleEscalatorChange = (idx: number, escalator: QuoteLineEscalator) => {
+        const updated = [...lines];
+        updated[idx] = { ...updated[idx], escalator };
+        setLines(updated);
     };
 
     const handleSave = async () => {
         if (!customer) return;
         setLoading(true);
         try {
-            await QuoteService.createQuote({
+            const payload: CreateQuoteRequest = {
                 customer_id: customer.id,
-                lines
-            });
-            // Show success or navigate?
-            navigate('/orders'); // Redirect to orders list (or quotes list if we had one)
+                lines: lines.map(l => ({
+                    product_id: l.product_id,
+                    sku: l.sku,
+                    description: l.description,
+                    quantity: l.quantity,
+                    uom: l.uom,
+                    unit_price: l.unit_price,
+                })),
+            };
+            await QuoteService.createQuote(payload);
+            navigate('/orders');
         } catch (err) {
             console.error(err);
             showToast('Failed to save quote', 'error');
@@ -63,6 +97,14 @@ export const QuoteBuilder = () => {
     };
 
     const totalAmount = lines.reduce((sum, line) => sum + (line.quantity * line.unit_price), 0);
+    const escalatedTotal = lines.reduce((sum, line) => {
+        if (line.escalator.enabled && line.escalator.result) {
+            return sum + (line.quantity * line.escalator.result.future_price);
+        }
+        return sum + (line.quantity * line.unit_price);
+    }, 0);
+    const hasEscalators = lines.some(l => l.escalator.enabled && l.escalator.result);
+    const hasStaleLines = lines.some(l => l.escalator.result?.is_stale);
     const isOverLimit = customer ? (customer.balance_due + totalAmount) > customer.credit_limit : false;
 
     return (
@@ -153,6 +195,33 @@ export const QuoteBuilder = () => {
                                 <span className="text-zinc-400">Subtotal</span>
                                 <span className="text-2xl font-mono font-bold text-white">${totalAmount.toFixed(2)}</span>
                             </div>
+
+                            {/* Escalated Total */}
+                            {hasEscalators && (
+                                <div className="mt-3 pt-3 border-t border-white/5">
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="text-zinc-400 flex items-center gap-1.5 text-sm">
+                                            <TrendingUp className="w-3.5 h-3.5 text-gable-green" />
+                                            Escalated Total
+                                        </span>
+                                        <span className="text-xl font-mono font-bold text-emerald-400">
+                                            ${escalatedTotal.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="text-[10px] text-zinc-500 text-right mt-1">
+                                        +${(escalatedTotal - totalAmount).toFixed(2)} from escalators
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Stale Lines Warning */}
+                            {hasStaleLines && (
+                                <div className="mt-3 flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs p-2.5 rounded-lg">
+                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                    Some lines have stale pricing
+                                </div>
+                            )}
+
                             <div className="text-xs text-zinc-500 text-right mt-1">Tax calculated at invoicing</div>
                         </CardContent>
                     </Card>
@@ -190,15 +259,32 @@ export const QuoteBuilder = () => {
                                                 <td className="px-6 py-4">
                                                     <div className="font-mono text-white mb-0.5 group-hover:text-gable-green transition-colors">{line.sku}</div>
                                                     <div className="text-zinc-400 text-xs">{line.description}</div>
+
+                                                    {/* Escalator Toggle */}
+                                                    <EscalatorToggle
+                                                        basePrice={line.unit_price}
+                                                        escalator={line.escalator}
+                                                        onChange={(esc) => handleEscalatorChange(idx, esc)}
+                                                    />
                                                 </td>
-                                                <td className="px-6 py-4 text-right font-mono text-zinc-300">
+                                                <td className="px-6 py-4 text-right font-mono text-zinc-300 align-top">
                                                     {line.quantity} <span className="text-zinc-600 text-[10px] ml-1">{line.uom}</span>
                                                 </td>
-                                                <td className="px-6 py-4 text-right font-mono text-zinc-300">
+                                                <td className="px-6 py-4 text-right font-mono text-zinc-300 align-top">
                                                     ${line.unit_price.toFixed(2)}
+                                                    {line.escalator.result && (
+                                                        <div className="text-xs text-emerald-400 mt-1">
+                                                            → ${line.escalator.result.future_price.toFixed(2)}
+                                                        </div>
+                                                    )}
                                                 </td>
-                                                <td className="px-6 py-4 text-right font-mono font-bold text-emerald-400">
+                                                <td className="px-6 py-4 text-right font-mono font-bold text-emerald-400 align-top">
                                                     ${(line.quantity * line.unit_price).toFixed(2)}
+                                                    {line.escalator.result && (
+                                                        <div className="text-xs text-emerald-300/70 mt-1">
+                                                            → ${(line.quantity * line.escalator.result.future_price).toFixed(2)}
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}

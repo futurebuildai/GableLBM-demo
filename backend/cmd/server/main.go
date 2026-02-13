@@ -131,6 +131,12 @@ func main() {
 	pricingHandler := pricing.NewHandler(pricingSvc, customerSvc, productSvc)
 	pricingHandler.RegisterRoutes(mux)
 
+	// Escalator Pricing Module (Market Indices + Price Escalators)
+	escalatorRepo := pricing.NewEscalatorRepository(db)
+	escalatorSvc := pricing.NewEscalatorService(escalatorRepo)
+	escalatorHandler := pricing.NewEscalatorHandler(escalatorSvc)
+	escalatorHandler.RegisterRoutes(mux)
+
 	// Vendor Module
 	vendorRepo := vendor.NewRepository(db)
 	vendorSvc := vendor.NewService(vendorRepo)
