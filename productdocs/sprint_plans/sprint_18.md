@@ -1,19 +1,19 @@
-# Sprint 18: VelocityAI ERP Integration
+# Sprint 18: AI-Powered Material List Intake
 
-**Goal**: Embed the standalone VelocityAI parsing engine directly into the GableLBM Sales Order Entry flow.
+**Goal**: Build native AI document parsing into the GableLBM Sales Order Entry flow so reps can photograph handwritten material lists and auto-generate quotes.
 
 **Duration**: 1 Week
 **Focus**: AI Integration, Document Parsing, Sales Workflow.
 
 ## 1. Context
-VelocityAI (formerly "Quick-Quote") can parse handwritten material lists into structured line items with confidence scores. Currently it operates as a standalone tool. Integrating it into the ERP's core order flow creates an AI-native sales experience that neither DMSi nor Intact can match. This is the single biggest differentiator in our stack.
+Sales reps frequently receive handwritten material lists from builders on-site. Manually transcribing these into quotes is slow and error-prone. Building an AI parsing pipeline directly into the ERP's order flow creates an AI-native sales experience that neither DMSi nor Intact can match. This is the single biggest differentiator in our stack.
 
 ## 2. Objectives
 
 ### 2.1 Backend Integration
-- [ ] **VelocityAI Service Bridge**:
-    - [ ] Create a `velocity` package in the Go backend that calls the VelocityAI parsing API.
-    - [ ] Map VelocityAI output (parsed items) to GableLBM `OrderLine` schema.
+- [ ] **AI Parsing Service**:
+    - [ ] Create a `parsing` package in the Go backend that handles document upload and AI-based text extraction.
+    - [ ] Map parsed output (extracted items) to GableLBM `OrderLine` schema.
 - [ ] **Confidence Handling**:
     - [ ] Items above 90% confidence auto-populate on the quote.
     - [ ] Items below 90% are flagged for manual SKU selection with alternatives.
