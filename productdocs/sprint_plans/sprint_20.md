@@ -14,7 +14,7 @@ After shipping Sprints 15-19, GableLBM will have a complete suite of competitive
 - [ ] **Individual Feature Pages**:
     - [ ] Sovereign Dealer Portal page (with live screenshot).
     - [ ] Dynamic Pricing page (escalator visual).
-    - [ ] VelocityAI page (demo video of photo → quote flow).
+    - [ ] GableAI page (demo video of photo → quote flow).
     - [ ] Product Configurator page (interactive demo).
 
 ### 2.2 Competitor Comparison

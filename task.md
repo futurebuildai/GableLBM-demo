@@ -28,8 +28,8 @@
 - [ ] Frontend: Escalator toggle on quote lines <!-- id: 17-3 -->
 - [ ] Stale price warnings <!-- id: 17-4 -->
 
-### Sprint 18: VelocityAI ERP Integration
-- [ ] VelocityAI service bridge (Go backend → parsing API) <!-- id: 18-1 -->
+### Sprint 18: GableAI ERP Integration
+- [ ] GableAI service bridge (Go backend → parsing API) <!-- id: 18-1 -->
 - [ ] Confidence handling (auto-populate > 90%, flag < 90%) <!-- id: 18-2 -->
 - [ ] "Upload Material List" button in Sales Order Entry <!-- id: 18-3 -->
 - [ ] Results Review Panel (image vs parsed items) <!-- id: 18-4 -->

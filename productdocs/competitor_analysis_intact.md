@@ -86,7 +86,7 @@ Intact GenetiQ (formerly Intact iQ) is a **cloud-native, browser-based ERP** bui
 |:---|:---|:---|
 | Source | Proprietary (closed) | Open Source (auditable) |
 | Customization | Nexus workflow engine (vendor tool) | Direct code access + RFC governance |
-| AI | "AI-Ready" (future promise) | AI-Native (VelocityAI, Smart Counter) |
+| AI | "AI-Ready" (future promise) | AI-Native (GableAI, Smart Counter) |
 | Pricing | Opaque SaaS tiers | Transparent open core |
 | API | API-first (gated docs) | Open API-first (public Swagger) |
 | POS Innovation | "Haggle" margin tool | AI-powered material list parsing |

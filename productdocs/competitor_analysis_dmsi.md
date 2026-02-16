@@ -258,7 +258,7 @@ DMSi Agility is the **most functionally complete** and **highest-satisfaction** 
 | **API** | Private/Gated ($5K–$15K) | Open REST + Events (free) |
 | **Millwork** | Expensive add-on module | Core "Assembly/Kitting" in open tier |
 | **Pricing Logic** | Escalator pricing (strong) | Escalator + live market index integration |
-| **AI Vision** | TallyExpress (Android-only, tally only) | VelocityAI (multi-modal: tally + material lists + blueprints) |
+| **AI Vision** | TallyExpress (Android-only, tally only) | GableAI (multi-modal: tally + material lists + blueprints) |
 | **Source** | Proprietary | Open Source |
 | **Governance** | Vendor-controlled roadmap | RFC community governance |
 | **E-Commerce** | Commerce Cloud (strong) | Sovereign Dealer Portal (white-labeled, dealer-owned) |
@@ -269,7 +269,7 @@ DMSi Agility is the **most functionally complete** and **highest-satisfaction** 
 1. **Don't compete on millwork depth initially** — Compete on speed, access, and cost
 2. **Position against Citrix** — "Agility's functionality, accessible from any browser"
 3. **Match TallyExpress accuracy** — AI vision tally must hit 99%+ or don't ship it
-4. **Extend beyond tally** — VelocityAI should parse material lists AND blueprints (TallyExpress only counts boards)
+4. **Extend beyond tally** — GableAI should parse material lists AND blueprints (TallyExpress only counts boards)
 5. **Open API advantage** — Every dealer frustrated by DMSi's API fees is a Gable prospect
 6. **iOS tally** — TallyExpress is Android-only; iOS support is an easy win
 7. **Sovereign e-commerce** — Commerce Cloud locks dealers to DMSi; GableERP portal is dealer-owned

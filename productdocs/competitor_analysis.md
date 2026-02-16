@@ -6,7 +6,7 @@ The LBM ERP market is dominated by four incumbents: **Epicor BisTrack** (enterpr
 
 1. **Access Tax**: BisTrack and Agility require Citrix/RDP for full functionality—GableERP is browser-native.
 2. **Integration Tax**: DMSi and Epicor charge $5K–$15K for API access—GableERP is open API-first.
-3. **Innovation Gap**: None ship AI-native features—GableERP leads with VelocityAI and Smart Counter.
+3. **Innovation Gap**: None ship AI-native features—GableERP leads with GableAI and Smart Counter.
 4. **Sovereignty Gap**: All are proprietary—GableERP offers open-source transparency and community governance.
 
 **Closest threat**: Intact GenetiQ shares GableERP's cloud-native philosophy but remains proprietary and opaque on pricing. **Hardest to displace**: DMSi Agility has 95% satisfaction and unmatched millwork depth.
@@ -124,7 +124,7 @@ The LBM ERP market is dominated by four incumbents: **Epicor BisTrack** (enterpr
 
 ### 6.3 Modernization Opportunities (The "Gable Advantage")
 1.  **Open Source Trust**: Intact customizes via proprietary Nexus; Gable gives you the code.
-2.  **AI-Native Now**: GenetiQ promises "AI-Ready"; Gable ships VelocityAI today.
+2.  **AI-Native Now**: GenetiQ promises "AI-Ready"; Gable ships GableAI today.
 3.  **Community Governance**: Dealers fund and vote on the roadmap via RFC, not vendor roadmap committee.
 
 
@@ -140,7 +140,7 @@ The LBM ERP market is dominated by four incumbents: **Epicor BisTrack** (enterpr
 | **E-Commerce** | ✅ WebTrack | ❌ 3rd Party | ✅ Native Portal | ✅ Aphix Integration | ⚠️ Sprint 16 |
 | **Mobile Apps** | ✅ Delivery/WMS | ✅ ProLink | ✅ POD + WMS | ✅ Warehouse + POD | ✅ Driver App |
 | **Offline Mode** | ❌ No | ❌ Limited | ❌ No | ✅ Mobile Warehouse | ⚠️ PWA (planned) |
-| **AI Features** | ⚠️ Roadmap (2025) | ❌ None | ❌ None | ⚠️ "AI-Ready" | ✅ VelocityAI |
+| **AI Features** | ⚠️ Roadmap (2025) | ❌ None | ❌ None | ⚠️ "AI-Ready" | ✅ GableAI |
 | **Escalator Pricing** | ❌ No | ❌ No | ✅ Native | ❌ No | ⚠️ Sprint 17 |
 | **Open Source** | ❌ | ❌ | ❌ | ❌ | ✅ **Yes** |
 | **Satisfaction** | ~80% | ~75% | **95%** | ~85% (est.) | TBD |
