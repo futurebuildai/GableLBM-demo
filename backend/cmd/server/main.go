@@ -52,6 +52,8 @@ func main() {
 
 	// 2. Load Config
 	cfg := config.Load()
+	// Override port for fresh instance
+	cfg.Port = "9091"
 	logger.Info("Starting server...", "port", cfg.Port)
 
 	// 3. Database Connection

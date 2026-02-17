@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS inventory (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    location TEXT NOT NULL, -- e.g. "Yard A-12", "Row 4"
+    location TEXT NOT NULL, -- e.g. "Gable Yard A-12", "Row 4"
     quantity NUMERIC(12, 4) NOT NULL DEFAULT 0.0000,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
