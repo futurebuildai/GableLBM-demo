@@ -14,6 +14,7 @@ import (
 
 	"github.com/gablelbm/gable/internal/account"
 	"github.com/gablelbm/gable/internal/ap"
+	"github.com/gablelbm/gable/internal/bankrecon"
 	"github.com/gablelbm/gable/internal/config"
 	"github.com/gablelbm/gable/internal/configurator"
 	"github.com/gablelbm/gable/internal/customer"
@@ -27,6 +28,7 @@ import (
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
 	"github.com/gablelbm/gable/internal/location"
+	"github.com/gablelbm/gable/internal/matching"
 	"github.com/gablelbm/gable/internal/millwork"
 	"github.com/gablelbm/gable/internal/notification"
 	"github.com/gablelbm/gable/internal/order"
@@ -214,6 +216,18 @@ func main() {
 	apSvc := ap.NewService(db, apRepo, glSvc, logger)
 	apHandler := ap.NewHandler(apSvc)
 	apHandler.RegisterRoutes(mux)
+
+	// 3-Way PO Matching Module
+	matchingRepo := matching.NewRepository(db)
+	matchingSvc := matching.NewService(db, matchingRepo, poSvc, apSvc, logger)
+	matchingHandler := matching.NewHandler(matchingSvc)
+	matchingHandler.RegisterRoutes(mux)
+
+	// Bank Reconciliation Module
+	bankreconRepo := bankrecon.NewRepository(db)
+	bankreconSvc := bankrecon.NewService(db, bankreconRepo, glSvc, logger)
+	bankreconHandler := bankrecon.NewHandler(bankreconSvc)
+	bankreconHandler.RegisterRoutes(mux)
 
 	// Reporting Module
 	reportingRepo := reporting.NewRepository(db)
