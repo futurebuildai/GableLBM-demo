@@ -29,14 +29,17 @@ func (r *PostgresRepository) CreatePayment(ctx context.Context, p *Payment) erro
 	p.CreatedAt = time.Now()
 
 	query := `
-		INSERT INTO payments (id, invoice_id, amount, method, reference, notes, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO payments (id, invoice_id, amount, method, reference, notes, created_at,
+			gateway_tx_id, gateway_status, token_id, card_last4, card_brand, auth_code)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	`
 	// Convert Cents (int64) to Dollars (float64) for DB
 	amountFloat := float64(p.Amount) / 100.0
 
 	_, err := r.db.GetExecutor(ctx).Exec(ctx, query,
 		p.ID, p.InvoiceID, amountFloat, p.Method, p.Reference, p.Notes, p.CreatedAt,
+		nullIfEmpty(p.GatewayTxID), nullIfEmpty(p.GatewayStatus), nullIfEmpty(p.TokenID),
+		nullIfEmpty(p.CardLast4), nullIfEmpty(p.CardBrand), nullIfEmpty(p.AuthCode),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create payment: %w", err)
@@ -46,7 +49,12 @@ func (r *PostgresRepository) CreatePayment(ctx context.Context, p *Payment) erro
 
 func (r *PostgresRepository) GetPaymentsByInvoiceID(ctx context.Context, invoiceID uuid.UUID) ([]Payment, error) {
 	query := `
-		SELECT id, invoice_id, amount, method, reference, notes, created_at
+		SELECT id, invoice_id, amount, method, reference, notes, created_at,
+			COALESCE(gateway_tx_id, '') as gateway_tx_id,
+			COALESCE(gateway_status, '') as gateway_status,
+			COALESCE(card_last4, '') as card_last4,
+			COALESCE(card_brand, '') as card_brand,
+			COALESCE(auth_code, '') as auth_code
 		FROM payments
 		WHERE invoice_id = $1
 		ORDER BY created_at DESC
@@ -63,6 +71,7 @@ func (r *PostgresRepository) GetPaymentsByInvoiceID(ctx context.Context, invoice
 		var amountFloat float64
 		if err := rows.Scan(
 			&p.ID, &p.InvoiceID, &amountFloat, &p.Method, &p.Reference, &p.Notes, &p.CreatedAt,
+			&p.GatewayTxID, &p.GatewayStatus, &p.CardLast4, &p.CardBrand, &p.AuthCode,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan payment: %w", err)
 		}
@@ -71,4 +80,12 @@ func (r *PostgresRepository) GetPaymentsByInvoiceID(ctx context.Context, invoice
 		payments = append(payments, p)
 	}
 	return payments, nil
+}
+
+// nullIfEmpty returns nil for empty strings (so DB stores NULL instead of empty).
+func nullIfEmpty(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
 }

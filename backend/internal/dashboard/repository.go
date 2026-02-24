@@ -38,12 +38,12 @@ func (r *PostgresRepository) GetDashboardSummary(ctx context.Context) (*Dashboar
 
 	query := `
 		WITH today_rev AS (
-			SELECT COALESCE(SUM(amount), 0) AS val
+			SELECT COALESCE(SUM(amount), 0)::bigint AS val
 			FROM payments
 			WHERE created_at >= $1 AND created_at < $2
 		),
 		yesterday_rev AS (
-			SELECT COALESCE(SUM(amount), 0) AS val
+			SELECT COALESCE(SUM(amount), 0)::bigint AS val
 			FROM payments
 			WHERE created_at >= $3 AND created_at < $1
 		),
@@ -58,7 +58,7 @@ func (r *PostgresRepository) GetDashboardSummary(ctx context.Context) (*Dashboar
 			WHERE status IN ('PENDING', 'ASSIGNED')
 		),
 		outstanding AS (
-			SELECT COALESCE(SUM(total_amount), 0) AS amount, COUNT(*) AS cnt
+			SELECT COALESCE(SUM(total_amount), 0)::bigint AS amount, COUNT(*) AS cnt
 			FROM invoices
 			WHERE status IN ('UNPAID', 'PARTIAL', 'OVERDUE')
 		)
@@ -96,7 +96,7 @@ func (r *PostgresRepository) GetDashboardSummary(ctx context.Context) (*Dashboar
 func (r *PostgresRepository) GetInventoryAlerts(ctx context.Context, limit int) ([]InventoryAlert, error) {
 	query := `
 		SELECT 
-			p.id, p.sku, p.name, 
+			p.id, p.sku, p.description, 
 			COALESCE(i.quantity, 0) as current_qty,
 			COALESCE(p.reorder_point, 10) as reorder_qty,
 			CASE 
@@ -137,7 +137,7 @@ func (r *PostgresRepository) GetTopCustomers(ctx context.Context, limit int, day
 	query := `
 		SELECT 
 			c.id, c.name,
-			COALESCE(SUM(inv.total_amount), 0) as total_revenue,
+			COALESCE(SUM(inv.total_amount), 0)::bigint as total_revenue,
 			COUNT(DISTINCT o.id) as order_count
 		FROM customers c
 		LEFT JOIN orders o ON c.id = o.customer_id AND o.created_at >= $1
@@ -177,7 +177,7 @@ func (r *PostgresRepository) GetOrderActivity(ctx context.Context, limit int) (*
 
 	// Recent orders
 	queryRecent := `
-		SELECT o.id, c.name, o.total_amount, o.status, o.created_at
+		SELECT o.id, c.name, o.total_amount::bigint, o.status, o.created_at
 		FROM orders o
 		LEFT JOIN customers c ON o.customer_id = c.id
 		ORDER BY o.created_at DESC
@@ -239,7 +239,7 @@ func (r *PostgresRepository) GetRevenueTrend(ctx context.Context, days int) ([]R
 	query := `
 		SELECT 
 			DATE(created_at) as date,
-			COALESCE(SUM(amount), 0) as revenue
+			COALESCE(SUM(amount), 0)::bigint as revenue
 		FROM payments
 		WHERE created_at >= NOW() - MAKE_INTERVAL(days => $1)
 		GROUP BY DATE(created_at)

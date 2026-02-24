@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes, Outlet, Navigate } from "react-router-dom";
 import { AppShell } from "./components/layout/AppShell";
+import { DemoLanding } from "./pages/DemoLanding";
 import { Dashboard } from "./pages/Dashboard";
 import { Inventory } from "./pages/Inventory";
 import { QuoteBuilder } from "./pages/QuoteBuilder";
@@ -16,10 +17,13 @@ import { DeliveryDetail } from "./pages/driver/DeliveryDetail";
 import { DoorConfigurator } from "./pages/millwork/DoorConfigurator";
 import { ProductConfigurator } from "./pages/millwork/ProductConfigurator";
 import { BlueprintVerifier } from "./pages/millwork/BlueprintVerifier";
-import { PartnerLayout } from "./components/layout/PartnerLayout";
-import { PartnerDashboard } from "./pages/partner/Dashboard";
-import { ProjectList } from "./pages/partner/ProjectList";
-import { PartnerInvoiceList } from "./pages/partner/InvoiceList";
+import { YardLayout } from "./pages/yard/YardLayout";
+import { PickQueue } from "./pages/yard/PickQueue";
+import { PickDetail } from "./pages/yard/PickDetail";
+import { InventoryLookup } from "./pages/yard/InventoryLookup";
+import { CycleCount } from "./pages/yard/CycleCount";
+import { ReceivePO } from "./pages/yard/ReceivePO";
+
 import { RFCDashboard } from "./pages/governance/RFCDashboard";
 import { NewRFC } from "./pages/governance/NewRFC";
 import { RFCDetail } from "./pages/governance/RFCDetail";
@@ -38,7 +42,6 @@ import { ChartOfAccounts } from "./pages/accounting/ChartOfAccounts";
 import { JournalEntries } from "./pages/accounting/JournalEntries";
 import { TrialBalance } from "./pages/accounting/TrialBalance";
 import { PortalLayout } from "./components/layout/PortalLayout";
-import { PortalLogin } from "./pages/portal/PortalLogin";
 import { PortalDashboard } from "./pages/portal/PortalDashboard";
 import { PortalOrders } from "./pages/portal/PortalOrders";
 import { PortalInvoices } from "./pages/portal/PortalInvoices";
@@ -51,7 +54,11 @@ function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<AppShell><Outlet /></AppShell>}>
+          {/* Demo Landing Page */}
+          <Route path="/" element={<DemoLanding />} />
+
+          {/* ERP Desktop (moved from / to /erp) */}
+          <Route path="/erp" element={<AppShell><Outlet /></AppShell>}>
             <Route index element={<Dashboard />} />
             <Route path="inventory" element={<Inventory />} />
             <Route path="quotes" element={<QuoteList />} />
@@ -72,7 +79,7 @@ function App() {
             <Route path="purchasing" element={<PurchaseOrderList />} />
             <Route path="purchasing/new" element={<NewPurchaseOrder />} />
             <Route path="purchasing/:id" element={<PurchaseOrderDetail />} />
-            <Route path="sales" element={<Navigate to="/quotes" replace />} />
+            <Route path="sales" element={<Navigate to="/erp/quotes" replace />} />
             <Route path="governance">
               <Route index element={<RFCDashboard />} />
               <Route path="new" element={<NewRFC />} />
@@ -97,15 +104,16 @@ function App() {
             <Route path="deliveries/:id" element={<DeliveryDetail />} />
           </Route>
 
-          {/* Partner Portal */}
-          <Route path="/partner" element={<PartnerLayout />}>
-            <Route index element={<PartnerDashboard />} />
-            <Route path="projects" element={<ProjectList />} />
-            <Route path="invoices" element={<PartnerInvoiceList />} />
+          {/* Yard Mobile App */}
+          <Route path="/yard" element={<YardLayout />}>
+            <Route index element={<PickQueue />} />
+            <Route path="pick/:id" element={<PickDetail />} />
+            <Route path="inventory" element={<InventoryLookup />} />
+            <Route path="count" element={<CycleCount />} />
+            <Route path="receiving" element={<ReceivePO />} />
           </Route>
 
-          {/* Sovereign Dealer Portal (B2B) */}
-          <Route path="/portal/login" element={<PortalLogin />} />
+          {/* Sovereign Dealer Portal (B2B) - No login required for demo */}
           <Route path="/portal" element={<PortalLayout />}>
             <Route index element={<PortalDashboard />} />
             <Route path="orders" element={<PortalOrders />} />

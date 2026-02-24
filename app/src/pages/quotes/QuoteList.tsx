@@ -34,7 +34,7 @@ export default function QuoteList() {
             const orderPayload = await QuoteService.convertToOrder(quoteId);
             const order = await OrderService.createOrder(orderPayload);
             showToast('Quote converted to order successfully', 'success');
-            navigate(`/orders/${order.id}`);
+            navigate(`/erp/orders/${order.id}`);
         } catch (error) {
             showToast(`Failed to convert: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
         } finally {
@@ -116,7 +116,7 @@ export default function QuoteList() {
                                                 </button>
                                             )}
                                             <button
-                                                onClick={() => navigate(`/quotes/${quote.id}`)}
+                                                onClick={() => navigate(`/erp/quotes/${quote.id}`)}
                                                 className="text-white/50 hover:text-white transition-colors"
                                             >
                                                 <ArrowRight size={18} />

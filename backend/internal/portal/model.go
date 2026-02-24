@@ -76,9 +76,9 @@ type PortalInvoiceDTO struct {
 	ID           uuid.UUID       `json:"id"`
 	OrderID      uuid.UUID       `json:"order_id"`
 	Status       string          `json:"status"`
-	TotalAmount  int64           `json:"total_amount"`
-	Subtotal     int64           `json:"subtotal"`
-	TaxAmount    int64           `json:"tax_amount"`
+	TotalAmount  float64         `json:"total_amount"`
+	Subtotal     float64         `json:"subtotal"`
+	TaxAmount    float64         `json:"tax_amount"`
 	PaymentTerms string          `json:"payment_terms"`
 	DueDate      *time.Time      `json:"due_date"`
 	PaidAt       *time.Time      `json:"paid_at"`

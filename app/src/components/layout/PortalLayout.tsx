@@ -26,16 +26,21 @@ export const PortalLayout = () => {
     });
 
     useEffect(() => {
-        if (!isAuthenticated()) {
-            navigate('/portal/login', { replace: true });
+        // Demo mode: skip auth redirect, set demo defaults if needed
+        if (!localStorage.getItem('portal_user')) {
+            localStorage.setItem('portal_user', JSON.stringify({
+                name: 'Summit Contracting',
+                email: 'summit@gable.com',
+                role: 'admin',
+            }));
         }
-    }, [navigate]);
+    }, []);
 
     const handleLogout = () => {
         clearToken();
         localStorage.removeItem('portal_config');
         localStorage.removeItem('portal_user');
-        navigate('/portal/login', { replace: true });
+        window.location.href = '/';
     };
 
     const primaryColor = config?.primary_color || '#00FFA3';

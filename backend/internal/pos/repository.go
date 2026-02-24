@@ -1,0 +1,268 @@
+package pos
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/gablelbm/gable/pkg/database"
+	"github.com/google/uuid"
+)
+
+// Repository handles POS data persistence.
+type Repository interface {
+	CreateTransaction(ctx context.Context, tx *POSTransaction) error
+	GetTransaction(ctx context.Context, id uuid.UUID) (*POSTransaction, error)
+	UpdateTransaction(ctx context.Context, tx *POSTransaction) error
+	ListTransactions(ctx context.Context, registerID string, date time.Time) ([]TransactionSummary, error)
+
+	AddLineItem(ctx context.Context, item *POSLineItem) error
+	RemoveLineItem(ctx context.Context, itemID uuid.UUID) error
+	GetLineItems(ctx context.Context, txID uuid.UUID) ([]POSLineItem, error)
+
+	AddTender(ctx context.Context, tender *POSTender) error
+	GetTenders(ctx context.Context, txID uuid.UUID) ([]POSTender, error)
+
+	SearchProducts(ctx context.Context, query string, limit int) ([]QuickSearchResult, error)
+}
+
+// PostgresRepository implements Repository for PostgreSQL.
+type PostgresRepository struct {
+	db *database.DB
+}
+
+// NewRepository creates a new POS repository.
+func NewRepository(db *database.DB) *PostgresRepository {
+	return &PostgresRepository{db: db}
+}
+
+func (r *PostgresRepository) CreateTransaction(ctx context.Context, tx *POSTransaction) error {
+	if tx.ID == uuid.Nil {
+		tx.ID = uuid.New()
+	}
+	tx.CreatedAt = time.Now()
+
+	query := `
+		INSERT INTO pos_transactions (id, register_id, cashier_id, customer_id, subtotal, tax_amount, total, status, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`
+	_, err := r.db.GetExecutor(ctx).Exec(ctx, query,
+		tx.ID, tx.RegisterID, tx.CashierID, tx.CustomerID,
+		float64(tx.Subtotal)/100.0, float64(tx.TaxAmount)/100.0, float64(tx.Total)/100.0,
+		tx.Status, tx.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create POS transaction: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) GetTransaction(ctx context.Context, id uuid.UUID) (*POSTransaction, error) {
+	query := `
+		SELECT id, register_id, cashier_id, customer_id, subtotal, tax_amount, total, status, completed_at, created_at
+		FROM pos_transactions
+		WHERE id = $1
+	`
+	var tx POSTransaction
+	var subtotal, taxAmount, total float64
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, query, id).Scan(
+		&tx.ID, &tx.RegisterID, &tx.CashierID, &tx.CustomerID,
+		&subtotal, &taxAmount, &total,
+		&tx.Status, &tx.CompletedAt, &tx.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get POS transaction: %w", err)
+	}
+	tx.Subtotal = int64(subtotal*100.0 + 0.5)
+	tx.TaxAmount = int64(taxAmount*100.0 + 0.5)
+	tx.Total = int64(total*100.0 + 0.5)
+	return &tx, nil
+}
+
+func (r *PostgresRepository) UpdateTransaction(ctx context.Context, tx *POSTransaction) error {
+	query := `
+		UPDATE pos_transactions
+		SET subtotal = $2, tax_amount = $3, total = $4, status = $5, completed_at = $6, customer_id = $7
+		WHERE id = $1
+	`
+	_, err := r.db.GetExecutor(ctx).Exec(ctx, query,
+		tx.ID,
+		float64(tx.Subtotal)/100.0, float64(tx.TaxAmount)/100.0, float64(tx.Total)/100.0,
+		tx.Status, tx.CompletedAt, tx.CustomerID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update POS transaction: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) ListTransactions(ctx context.Context, registerID string, date time.Time) ([]TransactionSummary, error) {
+	query := `
+		SELECT t.id, t.register_id, t.total, t.status, t.completed_at, t.created_at,
+			(SELECT COUNT(*) FROM pos_line_items li WHERE li.transaction_id = t.id) as item_count
+		FROM pos_transactions t
+		WHERE ($1 = '' OR t.register_id = $1)
+		  AND t.created_at >= $2 AND t.created_at < $3
+		ORDER BY t.created_at DESC
+	`
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	rows, err := r.db.GetExecutor(ctx).Query(ctx, query, registerID, startOfDay, endOfDay)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list POS transactions: %w", err)
+	}
+	defer rows.Close()
+
+	var summaries []TransactionSummary
+	for rows.Next() {
+		var s TransactionSummary
+		var total float64
+		if err := rows.Scan(&s.ID, &s.RegisterID, &total, &s.Status, &s.CompletedAt, &s.CreatedAt, &s.ItemCount); err != nil {
+			return nil, fmt.Errorf("failed to scan transaction summary: %w", err)
+		}
+		s.Total = int64(total*100.0 + 0.5)
+		summaries = append(summaries, s)
+	}
+	return summaries, nil
+}
+
+func (r *PostgresRepository) AddLineItem(ctx context.Context, item *POSLineItem) error {
+	if item.ID == uuid.Nil {
+		item.ID = uuid.New()
+	}
+	item.CreatedAt = time.Now()
+
+	query := `
+		INSERT INTO pos_line_items (id, transaction_id, product_id, description, quantity, uom, unit_price, line_total, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`
+	_, err := r.db.GetExecutor(ctx).Exec(ctx, query,
+		item.ID, item.TransactionID, item.ProductID, item.Description,
+		item.Quantity, item.UOM,
+		float64(item.UnitPrice)/100.0, float64(item.LineTotal)/100.0,
+		item.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to add POS line item: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) RemoveLineItem(ctx context.Context, itemID uuid.UUID) error {
+	query := `DELETE FROM pos_line_items WHERE id = $1`
+	_, err := r.db.GetExecutor(ctx).Exec(ctx, query, itemID)
+	if err != nil {
+		return fmt.Errorf("failed to remove POS line item: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) GetLineItems(ctx context.Context, txID uuid.UUID) ([]POSLineItem, error) {
+	query := `
+		SELECT id, transaction_id, product_id, description, quantity, uom, unit_price, line_total, created_at
+		FROM pos_line_items
+		WHERE transaction_id = $1
+		ORDER BY created_at ASC
+	`
+	rows, err := r.db.GetExecutor(ctx).Query(ctx, query, txID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get POS line items: %w", err)
+	}
+	defer rows.Close()
+
+	var items []POSLineItem
+	for rows.Next() {
+		var item POSLineItem
+		var unitPrice, lineTotal float64
+		if err := rows.Scan(
+			&item.ID, &item.TransactionID, &item.ProductID, &item.Description,
+			&item.Quantity, &item.UOM, &unitPrice, &lineTotal, &item.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan POS line item: %w", err)
+		}
+		item.UnitPrice = int64(unitPrice*100.0 + 0.5)
+		item.LineTotal = int64(lineTotal*100.0 + 0.5)
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (r *PostgresRepository) AddTender(ctx context.Context, tender *POSTender) error {
+	if tender.ID == uuid.Nil {
+		tender.ID = uuid.New()
+	}
+	tender.CreatedAt = time.Now()
+
+	query := `
+		INSERT INTO pos_tenders (id, transaction_id, method, amount, reference, card_last4, card_brand, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+	_, err := r.db.GetExecutor(ctx).Exec(ctx, query,
+		tender.ID, tender.TransactionID, tender.Method,
+		float64(tender.Amount)/100.0, tender.Reference,
+		tender.CardLast4, tender.CardBrand, tender.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to add POS tender: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) GetTenders(ctx context.Context, txID uuid.UUID) ([]POSTender, error) {
+	query := `
+		SELECT id, transaction_id, method, amount, COALESCE(reference, '') as reference,
+			COALESCE(card_last4, '') as card_last4, COALESCE(card_brand, '') as card_brand, created_at
+		FROM pos_tenders
+		WHERE transaction_id = $1
+		ORDER BY created_at ASC
+	`
+	rows, err := r.db.GetExecutor(ctx).Query(ctx, query, txID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get POS tenders: %w", err)
+	}
+	defer rows.Close()
+
+	var tenders []POSTender
+	for rows.Next() {
+		var t POSTender
+		var amount float64
+		if err := rows.Scan(
+			&t.ID, &t.TransactionID, &t.Method, &amount, &t.Reference,
+			&t.CardLast4, &t.CardBrand, &t.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan POS tender: %w", err)
+		}
+		t.Amount = int64(amount*100.0 + 0.5)
+		tenders = append(tenders, t)
+	}
+	return tenders, nil
+}
+
+func (r *PostgresRepository) SearchProducts(ctx context.Context, query string, limit int) ([]QuickSearchResult, error) {
+	sql := `
+		SELECT p.id, p.sku, p.description, COALESCE(p.price, 0) as price, COALESCE(p.uom, 'EA') as uom,
+			COALESCE(i.quantity, 0) as in_stock
+		FROM products p
+		LEFT JOIN inventory i ON i.product_id = p.id
+		WHERE p.sku ILIKE $1 OR p.description ILIKE $1
+		ORDER BY p.sku ASC
+		LIMIT $2
+	`
+	searchTerm := "%" + query + "%"
+	rows, err := r.db.GetExecutor(ctx).Query(ctx, sql, searchTerm, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search products: %w", err)
+	}
+	defer rows.Close()
+
+	var results []QuickSearchResult
+	for rows.Next() {
+		var r QuickSearchResult
+		if err := rows.Scan(&r.ProductID, &r.SKU, &r.Description, &r.UnitPrice, &r.UOM, &r.InStock); err != nil {
+			return nil, fmt.Errorf("failed to scan product: %w", err)
+		}
+		results = append(results, r)
+	}
+	return results, nil
+}

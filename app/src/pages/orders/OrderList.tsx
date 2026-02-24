@@ -74,7 +74,7 @@ export default function OrderList() {
                                     </td>
                                     <td className="p-4 text-right">
                                         <button
-                                            onClick={() => navigate(`/orders/${order.id}`)}
+                                            onClick={() => navigate(`/erp/orders/${order.id}`)}
                                             className="text-white/50 hover:text-white transition-colors"
                                         >
                                             <ArrowRight size={18} />

@@ -69,7 +69,7 @@ export function NewPurchaseOrder() {
                 })),
             });
             showToast('Purchase order created', 'success');
-            navigate(`/purchasing/${po.id}`);
+            navigate(`/erp/purchasing/${po.id}`);
         } catch (err) {
             console.error(err);
             showToast('Failed to create purchase order', 'error');

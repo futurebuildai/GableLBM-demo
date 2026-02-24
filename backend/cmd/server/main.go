@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gablelbm/gable/internal/account"
+	"github.com/gablelbm/gable/internal/ap"
 	"github.com/gablelbm/gable/internal/config"
 	"github.com/gablelbm/gable/internal/configurator"
 	"github.com/gablelbm/gable/internal/customer"
@@ -33,6 +34,7 @@ import (
 	"github.com/gablelbm/gable/internal/partner"
 	"github.com/gablelbm/gable/internal/payment"
 	"github.com/gablelbm/gable/internal/portal"
+	"github.com/gablelbm/gable/internal/pos"
 	"github.com/gablelbm/gable/internal/pricing"
 	"github.com/gablelbm/gable/internal/product"
 	"github.com/gablelbm/gable/internal/purchase_order"
@@ -43,6 +45,7 @@ import (
 	"github.com/gablelbm/gable/internal/vision"
 	"github.com/gablelbm/gable/pkg/database"
 	"github.com/gablelbm/gable/pkg/middleware"
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -179,11 +182,38 @@ func main() {
 	docHandler := document.NewHandler(docSvc, orderSvc, invoiceSvc, customerSvc, emailSvc)
 	docHandler.RegisterRoutes(mux)
 
-	// Payment Module
+	// Payment Module (with Run Payments gateway)
 	paymentRepo := payment.NewRepository(db)
 	paymentSvc := payment.NewService(db, paymentRepo, invoiceRepo, accountSvc)
+
+	// Wire Run Payments gateway if API key is configured
+	if cfg.RunPaymentsAPIKey != "" {
+		rpGateway := payment.NewRunPaymentsGateway(payment.GatewayConfig{
+			APIKey:      cfg.RunPaymentsAPIKey,
+			PublicKey:   cfg.RunPaymentsPublicKey,
+			BaseURL:     cfg.RunPaymentsBaseURL,
+			Environment: cfg.RunPaymentsEnvironment,
+		}, logger)
+		paymentSvc.WithGateway(rpGateway, cfg.RunPaymentsPublicKey)
+		logger.Info("Run Payments gateway initialized", "environment", cfg.RunPaymentsEnvironment)
+	} else {
+		logger.Warn("RUN_PAYMENTS_API_KEY not set — card payments disabled (cash/check/account only)")
+	}
+
 	paymentHandler := payment.NewHandler(paymentSvc)
 	paymentHandler.RegisterRoutes(mux)
+
+	// POS Module (Retail Counter Sales)
+	posRepo := pos.NewRepository(db)
+	posSvc := pos.NewService(db, posRepo, productSvc, inventorySvc, invoiceSvc, paymentSvc, logger)
+	posHandler := pos.NewHandler(posSvc)
+	posHandler.RegisterRoutes(mux)
+
+	// Accounts Payable Module
+	apRepo := ap.NewRepository(db)
+	apSvc := ap.NewService(db, apRepo, glSvc, logger)
+	apHandler := ap.NewHandler(apSvc)
+	apHandler.RegisterRoutes(mux)
 
 	// Reporting Module
 	reportingRepo := reporting.NewRepository(db)
@@ -243,12 +273,38 @@ func main() {
 	portalRepo := portal.NewRepository(db)
 	portalSvc := portal.NewService(portalRepo, logger)
 	portalHandler := portal.NewHandler(portalSvc)
-	portalJWTSecret := os.Getenv("PORTAL_JWT_SECRET")
-	if portalJWTSecret == "" {
-		portalJWTSecret = "portal-dev-secret-change-in-production"
+
+	// In dev/demo mode (no JWKS_URL), bypass portal auth and inject demo claims
+	var portalMw func(http.Handler) http.Handler
+	if cfg.JWKSURL == "" {
+		logger.Warn("DEMO MODE: Portal auth bypassed — injecting demo customer claims")
+		// Query first customer from DB for demo claims
+		var demoCustomerID uuid.UUID
+		row := db.Pool.QueryRow(context.Background(), "SELECT id FROM customers LIMIT 1")
+		if err := row.Scan(&demoCustomerID); err != nil {
+			logger.Error("Failed to load demo customer", "error", err)
+			demoCustomerID = uuid.New() // Fallback
+		}
+		portalMw = func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				claims := &middleware.PortalClaims{
+					CustomerID: demoCustomerID,
+					Email:      "demo@gable.com",
+					Name:       "Demo Contractor",
+				}
+				ctx := context.WithValue(r.Context(), middleware.PortalClaimsKey, claims)
+				next.ServeHTTP(w, r.WithContext(ctx))
+			})
+		}
+	} else {
+		portalJWTSecret := os.Getenv("PORTAL_JWT_SECRET")
+		if portalJWTSecret == "" {
+			portalJWTSecret = "portal-dev-secret-change-in-production"
+		}
+		portalAuthMw := middleware.NewPortalAuthMiddleware([]byte(portalJWTSecret), logger)
+		portalMw = portalAuthMw.Handler
 	}
-	portalAuthMw := middleware.NewPortalAuthMiddleware([]byte(portalJWTSecret), logger)
-	portalHandler.RegisterRoutes(mux, portalAuthMw.Handler)
+	portalHandler.RegisterRoutes(mux, portalMw)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

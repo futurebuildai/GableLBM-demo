@@ -69,7 +69,7 @@ func (r *Repository) GetPortalConfig(ctx context.Context) (*PortalConfig, error)
 // GetCustomerARSummary fetches balance, credit limit, and past-due amount.
 func (r *Repository) GetCustomerARSummary(ctx context.Context, customerID uuid.UUID) (balance, creditLimit, pastDue float64, err error) {
 	// Balance and credit limit from customers table
-	custQuery := `SELECT balance_due, credit_limit FROM customers WHERE id = $1`
+	custQuery := `SELECT COALESCE(balance_due, 0)::float8, COALESCE(credit_limit, 0)::float8 FROM customers WHERE id = $1`
 	err = r.db.Pool.QueryRow(ctx, custQuery, customerID).Scan(&balance, &creditLimit)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to get customer AR: %w", err)
@@ -77,18 +77,16 @@ func (r *Repository) GetCustomerARSummary(ctx context.Context, customerID uuid.U
 
 	// Past due: sum of unpaid/overdue invoices past their due date
 	pastDueQuery := `
-		SELECT COALESCE(SUM(total_amount), 0)
+		SELECT COALESCE(SUM(total_amount), 0)::float8
 		FROM invoices
 		WHERE customer_id = $1
 		  AND status IN ('UNPAID', 'OVERDUE')
 		  AND due_date < NOW()
 	`
-	var pastDueCents int64
-	err = r.db.Pool.QueryRow(ctx, pastDueQuery, customerID).Scan(&pastDueCents)
+	err = r.db.Pool.QueryRow(ctx, pastDueQuery, customerID).Scan(&pastDue)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to get past due: %w", err)
 	}
-	pastDue = float64(pastDueCents) / 100.0
 
 	return balance, creditLimit, pastDue, nil
 }
@@ -258,11 +256,9 @@ func (r *Repository) GetInvoiceByIDAndCustomer(ctx context.Context, invoiceID, c
 	inv.Lines = make([]PortalLineDTO, 0)
 	for lineRows.Next() {
 		var l PortalLineDTO
-		var priceEachCents int64
-		if err := lineRows.Scan(&l.ProductID, &l.ProductSKU, &l.ProductName, &l.Quantity, &priceEachCents); err != nil {
+		if err := lineRows.Scan(&l.ProductID, &l.ProductSKU, &l.ProductName, &l.Quantity, &l.PriceEach); err != nil {
 			return nil, fmt.Errorf("failed to scan invoice line: %w", err)
 		}
-		l.PriceEach = float64(priceEachCents) / 100.0
 		inv.Lines = append(inv.Lines, l)
 	}
 	if err := lineRows.Err(); err != nil {
