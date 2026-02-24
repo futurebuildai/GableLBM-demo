@@ -51,6 +51,19 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) h
 	mux.Handle("GET /api/portal/v1/invoices/{id}", authMw(http.HandlerFunc(h.HandleGetInvoice)))
 	mux.Handle("GET /api/portal/v1/deliveries", authMw(http.HandlerFunc(h.HandleListDeliveries)))
 	mux.Handle("GET /api/portal/v1/deliveries/{id}", authMw(http.HandlerFunc(h.HandleGetDelivery)))
+
+	// Catalog endpoints (Sprint 27)
+	mux.Handle("GET /api/portal/v1/catalog", authMw(http.HandlerFunc(h.HandleListCatalog)))
+	mux.Handle("GET /api/portal/v1/catalog/{id}", authMw(http.HandlerFunc(h.HandleGetCatalogProduct)))
+
+	// Cart endpoints (Sprint 27)
+	mux.Handle("GET /api/portal/v1/cart", authMw(http.HandlerFunc(h.HandleGetCart)))
+	mux.Handle("POST /api/portal/v1/cart/items", authMw(http.HandlerFunc(h.HandleAddToCart)))
+	mux.Handle("PUT /api/portal/v1/cart/items/{id}", authMw(http.HandlerFunc(h.HandleUpdateCartItem)))
+	mux.Handle("DELETE /api/portal/v1/cart/items/{id}", authMw(http.HandlerFunc(h.HandleRemoveCartItem)))
+
+	// Checkout endpoint (Sprint 27)
+	mux.Handle("POST /api/portal/v1/checkout", authMw(http.HandlerFunc(h.HandleCheckout)))
 }
 
 // HandleLogin authenticates a contractor and returns JWT + config.
@@ -214,4 +227,138 @@ func getPortalCustomerID(r *http.Request) uuid.UUID {
 		return uuid.Nil
 	}
 	return claims.CustomerID
+}
+
+// --- Catalog Handlers (Sprint 27) ---
+
+// HandleListCatalog returns the product catalog with customer-specific pricing.
+func (h *Handler) HandleListCatalog(w http.ResponseWriter, r *http.Request) {
+	customerID := getPortalCustomerID(r)
+	filter := CatalogFilter{
+		Query:    r.URL.Query().Get("q"),
+		Category: r.URL.Query().Get("category"),
+		Species:  r.URL.Query().Get("species"),
+		Grade:    r.URL.Query().Get("grade"),
+	}
+
+	products, err := h.svc.ListCatalog(r.Context(), customerID, filter)
+	if err != nil {
+		portalWriteError(w, "Failed to load catalog", err, http.StatusInternalServerError)
+		return
+	}
+	portalWriteJSON(w, products)
+}
+
+// HandleGetCatalogProduct returns a single product with customer-specific pricing.
+func (h *Handler) HandleGetCatalogProduct(w http.ResponseWriter, r *http.Request) {
+	customerID := getPortalCustomerID(r)
+	idStr := r.PathValue("id")
+	productID, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		return
+	}
+
+	detail, err := h.svc.GetCatalogProduct(r.Context(), customerID, productID)
+	if err != nil {
+		portalWriteError(w, "Product not found", err, http.StatusNotFound)
+		return
+	}
+	portalWriteJSON(w, detail)
+}
+
+// --- Cart Handlers (Sprint 27) ---
+
+// HandleGetCart returns the current customer's cart.
+func (h *Handler) HandleGetCart(w http.ResponseWriter, r *http.Request) {
+	customerID := getPortalCustomerID(r)
+	cart, err := h.svc.GetCart(r.Context(), customerID)
+	if err != nil {
+		portalWriteError(w, "Failed to load cart", err, http.StatusInternalServerError)
+		return
+	}
+	portalWriteJSON(w, cart)
+}
+
+// HandleAddToCart adds an item to the customer's cart.
+func (h *Handler) HandleAddToCart(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	customerID := getPortalCustomerID(r)
+
+	var req AddToCartRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		portalWriteError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	cart, err := h.svc.AddToCart(r.Context(), customerID, req)
+	if err != nil {
+		portalWriteError(w, "Failed to add to cart", err, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	portalWriteJSON(w, cart)
+}
+
+// HandleUpdateCartItem updates a cart item quantity.
+func (h *Handler) HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	customerID := getPortalCustomerID(r)
+	idStr := r.PathValue("id")
+	itemID, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	var req UpdateCartItemRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		portalWriteError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	cart, err := h.svc.UpdateCartItem(r.Context(), customerID, itemID, req)
+	if err != nil {
+		portalWriteError(w, "Failed to update cart item", err, http.StatusInternalServerError)
+		return
+	}
+	portalWriteJSON(w, cart)
+}
+
+// HandleRemoveCartItem removes an item from the cart.
+func (h *Handler) HandleRemoveCartItem(w http.ResponseWriter, r *http.Request) {
+	customerID := getPortalCustomerID(r)
+	idStr := r.PathValue("id")
+	itemID, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	cart, err := h.svc.RemoveCartItem(r.Context(), customerID, itemID)
+	if err != nil {
+		portalWriteError(w, "Failed to remove cart item", err, http.StatusInternalServerError)
+		return
+	}
+	portalWriteJSON(w, cart)
+}
+
+// HandleCheckout places an order from the current cart.
+func (h *Handler) HandleCheckout(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	customerID := getPortalCustomerID(r)
+
+	var req CheckoutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		portalWriteError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.svc.Checkout(r.Context(), customerID, req)
+	if err != nil {
+		portalWriteError(w, "Checkout failed", err, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	portalWriteJSON(w, resp)
 }

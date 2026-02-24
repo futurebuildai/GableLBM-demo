@@ -77,3 +77,61 @@ export interface ReorderResponse {
     order_id: string;
     message: string;
 }
+
+// --- Catalog Types (Sprint 27) ---
+
+export interface CatalogProduct {
+    id: string;
+    sku: string;
+    name: string;
+    category: string;
+    species: string;
+    grade: string;
+    image_url: string;
+    uom: string;
+    base_price: number;
+    customer_price: number;
+    price_source: string;
+    available: number;
+    in_stock: boolean;
+}
+
+export interface CatalogDetail extends CatalogProduct {
+    weight_lbs: number;
+    upc: string;
+    vendor: string;
+}
+
+// --- Cart Types (Sprint 27) ---
+
+export interface CartItem {
+    id: string;
+    product_id: string;
+    product_sku: string;
+    product_name: string;
+    image_url: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+    available: number;
+}
+
+export interface Cart {
+    id: string;
+    items: CartItem[];
+    item_count: number;
+    subtotal: number;
+}
+
+export interface CheckoutRequest {
+    delivery_method: 'DELIVERY' | 'PICKUP';
+    delivery_address: string;
+    payment_method: 'ACCOUNT' | 'CARD';
+    notes: string;
+}
+
+export interface CheckoutResponse {
+    order_id: string;
+    message: string;
+}
+

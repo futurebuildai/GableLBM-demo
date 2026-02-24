@@ -7,6 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/gablelbm/gable/internal/customer"
+	"github.com/gablelbm/gable/internal/inventory"
+	"github.com/gablelbm/gable/internal/order"
+	"github.com/gablelbm/gable/internal/pricing"
+	"github.com/gablelbm/gable/internal/product"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -14,21 +19,39 @@ import (
 
 // Service encapsulates portal business logic.
 type Service struct {
-	repo      *Repository
-	jwtSecret []byte
-	logger    *slog.Logger
+	repo         *Repository
+	jwtSecret    []byte
+	logger       *slog.Logger
+	pricingSvc   *pricing.Service
+	customerSvc  *customer.Service
+	inventorySvc *inventory.Service
+	orderSvc     *order.Service
+	productSvc   *product.Service
 }
 
 // NewService creates a new portal service.
-func NewService(repo *Repository, logger *slog.Logger) *Service {
+func NewService(
+	repo *Repository,
+	logger *slog.Logger,
+	pricingSvc *pricing.Service,
+	customerSvc *customer.Service,
+	inventorySvc *inventory.Service,
+	orderSvc *order.Service,
+	productSvc *product.Service,
+) *Service {
 	secret := os.Getenv("PORTAL_JWT_SECRET")
 	if secret == "" {
 		secret = "portal-dev-secret-change-in-production"
 	}
 	return &Service{
-		repo:      repo,
-		jwtSecret: []byte(secret),
-		logger:    logger,
+		repo:         repo,
+		jwtSecret:    []byte(secret),
+		logger:       logger,
+		pricingSvc:   pricingSvc,
+		customerSvc:  customerSvc,
+		inventorySvc: inventorySvc,
+		orderSvc:     orderSvc,
+		productSvc:   productSvc,
 	}
 }
 

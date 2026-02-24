@@ -108,3 +108,86 @@ type ReorderResponse struct {
 	OrderID uuid.UUID `json:"order_id"`
 	Message string    `json:"message"`
 }
+
+// --- Catalog DTOs ---
+
+// CatalogFilter holds query parameters for catalog browsing.
+type CatalogFilter struct {
+	Query    string `json:"query"`
+	Category string `json:"category"`
+	Species  string `json:"species"`
+	Grade    string `json:"grade"`
+}
+
+// CatalogProductDTO is a portal-facing product with customer-specific pricing and availability.
+type CatalogProductDTO struct {
+	ID            uuid.UUID `json:"id"`
+	SKU           string    `json:"sku"`
+	Name          string    `json:"name"`
+	Category      string    `json:"category"`
+	Species       string    `json:"species"`
+	Grade         string    `json:"grade"`
+	ImageURL      string    `json:"image_url"`
+	UOM           string    `json:"uom"`
+	BasePrice     float64   `json:"base_price"`
+	CustomerPrice float64   `json:"customer_price"`
+	PriceSource   string    `json:"price_source"`
+	Available     float64   `json:"available"`
+	InStock       bool      `json:"in_stock"`
+}
+
+// CatalogDetailDTO is an extended product detail view for the portal.
+type CatalogDetailDTO struct {
+	CatalogProductDTO
+	WeightLbs float64 `json:"weight_lbs"`
+	UPC       string  `json:"upc"`
+	Vendor    string  `json:"vendor"`
+}
+
+// --- Cart DTOs ---
+
+// CartDTO represents a customer's shopping cart.
+type CartDTO struct {
+	ID        uuid.UUID     `json:"id"`
+	Items     []CartItemDTO `json:"items"`
+	ItemCount int           `json:"item_count"`
+	Subtotal  float64       `json:"subtotal"`
+}
+
+// CartItemDTO represents a single item in the cart.
+type CartItemDTO struct {
+	ID          uuid.UUID `json:"id"`
+	ProductID   uuid.UUID `json:"product_id"`
+	ProductSKU  string    `json:"product_sku"`
+	ProductName string    `json:"product_name"`
+	ImageURL    string    `json:"image_url"`
+	Quantity    float64   `json:"quantity"`
+	UnitPrice   float64   `json:"unit_price"`
+	LineTotal   float64   `json:"line_total"`
+	Available   float64   `json:"available"`
+}
+
+// AddToCartRequest is the payload for adding an item to the cart.
+type AddToCartRequest struct {
+	ProductID uuid.UUID `json:"product_id"`
+	Quantity  float64   `json:"quantity"`
+}
+
+// UpdateCartItemRequest is the payload for updating a cart item quantity.
+type UpdateCartItemRequest struct {
+	Quantity float64 `json:"quantity"`
+}
+
+// CheckoutRequest is the payload for placing an order from the cart.
+type CheckoutRequest struct {
+	DeliveryMethod  string `json:"delivery_method"` // DELIVERY or PICKUP
+	DeliveryAddress string `json:"delivery_address"`
+	PaymentMethod   string `json:"payment_method"` // ACCOUNT or CARD
+	Notes           string `json:"notes"`
+}
+
+// CheckoutResponse confirms a placed order.
+type CheckoutResponse struct {
+	OrderID uuid.UUID `json:"order_id"`
+	Message string    `json:"message"`
+}

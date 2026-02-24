@@ -392,3 +392,203 @@ func (r *Repository) CreateReorder(ctx context.Context, customerID, sourceOrderI
 
 	return newOrderID, nil
 }
+
+// --- Catalog Repository Methods ---
+
+// ListCatalogProducts queries products with optional search/filter and aggregated availability.
+func (r *Repository) ListCatalogProducts(ctx context.Context, filter CatalogFilter) ([]catalogRow, error) {
+	query := `
+		SELECT p.id, p.sku, p.description,
+		       COALESCE(p.category, ''), COALESCE(p.species, ''), COALESCE(p.grade, ''),
+		       COALESCE(p.image_url, ''), p.uom_primary::text, COALESCE(p.base_price, 0)
+		FROM products p
+		WHERE 1=1
+	`
+	args := make([]interface{}, 0)
+	argIdx := 1
+
+	if filter.Query != "" {
+		query += fmt.Sprintf(` AND (p.sku ILIKE $%d OR p.description ILIKE $%d)`, argIdx, argIdx)
+		args = append(args, "%"+filter.Query+"%")
+		argIdx++
+	}
+	if filter.Category != "" {
+		query += fmt.Sprintf(` AND p.category = $%d`, argIdx)
+		args = append(args, filter.Category)
+		argIdx++
+	}
+	if filter.Species != "" {
+		query += fmt.Sprintf(` AND p.species = $%d`, argIdx)
+		args = append(args, filter.Species)
+		argIdx++
+	}
+	if filter.Grade != "" {
+		query += fmt.Sprintf(` AND p.grade = $%d`, argIdx)
+		args = append(args, filter.Grade)
+		argIdx++
+	}
+
+	query += ` ORDER BY p.sku ASC LIMIT 200`
+
+	rows, err := r.db.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list catalog products: %w", err)
+	}
+	defer rows.Close()
+
+	products := make([]catalogRow, 0)
+	for rows.Next() {
+		var p catalogRow
+		if err := rows.Scan(
+			&p.ID, &p.SKU, &p.Name,
+			&p.Category, &p.Species, &p.Grade,
+			&p.ImageURL, &p.UOM, &p.BasePrice,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan catalog product: %w", err)
+		}
+		products = append(products, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("catalog rows error: %w", err)
+	}
+	return products, nil
+}
+
+// GetCatalogProduct fetches a single product detail for the catalog.
+func (r *Repository) GetCatalogProduct(ctx context.Context, productID uuid.UUID) (*catalogRow, error) {
+	query := `
+		SELECT p.id, p.sku, p.description,
+		       COALESCE(p.category, ''), COALESCE(p.species, ''), COALESCE(p.grade, ''),
+		       COALESCE(p.image_url, ''), p.uom_primary::text, COALESCE(p.base_price, 0),
+		       COALESCE(p.weight_lbs, 0), COALESCE(p.upc, ''), COALESCE(p.vendor, '')
+		FROM products p
+		WHERE p.id = $1
+	`
+	var p catalogRow
+	err := r.db.Pool.QueryRow(ctx, query, productID).Scan(
+		&p.ID, &p.SKU, &p.Name,
+		&p.Category, &p.Species, &p.Grade,
+		&p.ImageURL, &p.UOM, &p.BasePrice,
+		&p.WeightLbs, &p.UPC, &p.Vendor,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("product not found: %w", err)
+	}
+	return &p, nil
+}
+
+// --- Cart Repository Methods ---
+
+// GetCartByCustomer fetches a customer's cart with all items.
+func (r *Repository) GetCartByCustomer(ctx context.Context, customerID uuid.UUID) (*CartDTO, error) {
+	var cartID uuid.UUID
+	err := r.db.Pool.QueryRow(ctx,
+		`SELECT id FROM portal_carts WHERE customer_id = $1`, customerID,
+	).Scan(&cartID)
+	if err != nil {
+		return nil, fmt.Errorf("cart not found: %w", err)
+	}
+
+	// Fetch items
+	itemRows, err := r.db.Pool.Query(ctx, `
+		SELECT ci.id, ci.product_id, COALESCE(p.sku, ''), COALESCE(p.description, ''),
+		       COALESCE(p.image_url, ''), ci.quantity, ci.unit_price
+		FROM portal_cart_items ci
+		LEFT JOIN products p ON ci.product_id = p.id
+		WHERE ci.cart_id = $1
+		ORDER BY ci.created_at ASC
+	`, cartID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list cart items: %w", err)
+	}
+	defer itemRows.Close()
+
+	items := make([]CartItemDTO, 0)
+	subtotal := 0.0
+	for itemRows.Next() {
+		var item CartItemDTO
+		if err := itemRows.Scan(
+			&item.ID, &item.ProductID, &item.ProductSKU, &item.ProductName,
+			&item.ImageURL, &item.Quantity, &item.UnitPrice,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan cart item: %w", err)
+		}
+		item.LineTotal = item.Quantity * item.UnitPrice
+		subtotal += item.LineTotal
+		items = append(items, item)
+	}
+	if err := itemRows.Err(); err != nil {
+		return nil, fmt.Errorf("cart items rows error: %w", err)
+	}
+
+	return &CartDTO{
+		ID:        cartID,
+		Items:     items,
+		ItemCount: len(items),
+		Subtotal:  subtotal,
+	}, nil
+}
+
+// CreateCart creates a new empty cart for a customer.
+func (r *Repository) CreateCart(ctx context.Context, customerID uuid.UUID) (uuid.UUID, error) {
+	var cartID uuid.UUID
+	err := r.db.Pool.QueryRow(ctx,
+		`INSERT INTO portal_carts (customer_id) VALUES ($1)
+		 ON CONFLICT (customer_id) DO UPDATE SET updated_at = NOW()
+		 RETURNING id`,
+		customerID,
+	).Scan(&cartID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to create cart: %w", err)
+	}
+	return cartID, nil
+}
+
+// AddCartItem adds or updates a product in the cart.
+func (r *Repository) AddCartItem(ctx context.Context, cartID, productID uuid.UUID, quantity, unitPrice float64) error {
+	_, err := r.db.Pool.Exec(ctx, `
+		INSERT INTO portal_cart_items (cart_id, product_id, quantity, unit_price)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (cart_id, product_id) DO UPDATE SET
+			quantity = portal_cart_items.quantity + EXCLUDED.quantity,
+			unit_price = EXCLUDED.unit_price
+	`, cartID, productID, quantity, unitPrice)
+	if err != nil {
+		return fmt.Errorf("failed to add cart item: %w", err)
+	}
+	return nil
+}
+
+// UpdateCartItemQty updates the quantity of a specific cart item.
+func (r *Repository) UpdateCartItemQty(ctx context.Context, itemID uuid.UUID, quantity float64) error {
+	_, err := r.db.Pool.Exec(ctx,
+		`UPDATE portal_cart_items SET quantity = $1 WHERE id = $2`,
+		quantity, itemID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update cart item: %w", err)
+	}
+	return nil
+}
+
+// RemoveCartItem deletes a specific cart item.
+func (r *Repository) RemoveCartItem(ctx context.Context, itemID uuid.UUID) error {
+	_, err := r.db.Pool.Exec(ctx,
+		`DELETE FROM portal_cart_items WHERE id = $1`, itemID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to remove cart item: %w", err)
+	}
+	return nil
+}
+
+// ClearCart removes all items from a cart.
+func (r *Repository) ClearCart(ctx context.Context, cartID uuid.UUID) error {
+	_, err := r.db.Pool.Exec(ctx,
+		`DELETE FROM portal_cart_items WHERE cart_id = $1`, cartID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to clear cart: %w", err)
+	}
+	return nil
+}

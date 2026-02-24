@@ -46,6 +46,10 @@ import { PortalDashboard } from "./pages/portal/PortalDashboard";
 import { PortalOrders } from "./pages/portal/PortalOrders";
 import { PortalInvoices } from "./pages/portal/PortalInvoices";
 import { PortalDeliveries } from "./pages/portal/PortalDeliveries";
+import { PortalCatalog } from "./pages/portal/PortalCatalog";
+import { PortalProductDetail } from "./pages/portal/PortalProductDetail";
+import { PortalCart } from "./pages/portal/PortalCart";
+import { PortalCheckout } from "./pages/portal/PortalCheckout";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -119,6 +123,10 @@ function App() {
             <Route path="orders" element={<PortalOrders />} />
             <Route path="invoices" element={<PortalInvoices />} />
             <Route path="deliveries" element={<PortalDeliveries />} />
+            <Route path="catalog" element={<PortalCatalog />} />
+            <Route path="catalog/:id" element={<PortalProductDetail />} />
+            <Route path="cart" element={<PortalCart />} />
+            <Route path="checkout" element={<PortalCheckout />} />
           </Route>
         </Routes>
       </BrowserRouter>

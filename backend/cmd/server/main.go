@@ -285,7 +285,7 @@ func main() {
 
 	// Portal Module (Sovereign Dealer Portal)
 	portalRepo := portal.NewRepository(db)
-	portalSvc := portal.NewService(portalRepo, logger)
+	portalSvc := portal.NewService(portalRepo, logger, pricingSvc, customerSvc, inventorySvc, orderSvc, productSvc)
 	portalHandler := portal.NewHandler(portalSvc)
 
 	// In dev/demo mode (no JWKS_URL), bypass portal auth and inject demo claims

@@ -6,6 +6,11 @@ import type {
     PortalInvoice,
     PortalDelivery,
     ReorderResponse,
+    CatalogProduct,
+    CatalogDetail,
+    Cart,
+    CheckoutRequest,
+    CheckoutResponse,
 } from '../types/portal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -97,15 +102,12 @@ async function fetchWithRetry<T>(
 }
 
 export const PortalService = {
-    /** Authenticate contractor and return JWT + user + config. No retries (auth calls). */
+    /** Authenticate contractor and return JWT + user + config. */
     async login(email: string, password: string): Promise<PortalLoginResponse> {
         return fetchWithRetry<PortalLoginResponse>(
             `${API_URL}/api/portal/v1/login`,
-            {
-                method: 'POST',
-                body: JSON.stringify({ email, password }),
-            },
-            0, // No retries for authentication — fail fast on bad credentials
+            { method: 'POST', body: JSON.stringify({ email, password }) },
+            0,
         );
     },
 
@@ -133,10 +135,7 @@ export const PortalService = {
     async reorder(orderId: string): Promise<ReorderResponse> {
         return fetchWithRetry<ReorderResponse>(
             `${API_URL}/api/portal/v1/orders/reorder`,
-            {
-                method: 'POST',
-                body: JSON.stringify({ order_id: orderId }),
-            },
+            { method: 'POST', body: JSON.stringify({ order_id: orderId }) },
         );
     },
 
@@ -158,5 +157,69 @@ export const PortalService = {
     /** Get single delivery with POD info. */
     async getDelivery(id: string): Promise<PortalDelivery> {
         return fetchWithRetry<PortalDelivery>(`${API_URL}/api/portal/v1/deliveries/${id}`);
+    },
+
+    // --- Catalog Methods (Sprint 27) ---
+
+    /** Browse product catalog with optional filters. */
+    async getCatalog(params?: {
+        q?: string;
+        category?: string;
+        species?: string;
+        grade?: string;
+    }): Promise<CatalogProduct[]> {
+        const searchParams = new URLSearchParams();
+        if (params?.q) searchParams.set('q', params.q);
+        if (params?.category) searchParams.set('category', params.category);
+        if (params?.species) searchParams.set('species', params.species);
+        if (params?.grade) searchParams.set('grade', params.grade);
+        const qs = searchParams.toString();
+        return fetchWithRetry<CatalogProduct[]>(
+            `${API_URL}/api/portal/v1/catalog${qs ? `?${qs}` : ''}`,
+        );
+    },
+
+    /** Get single catalog product detail. */
+    async getCatalogProduct(id: string): Promise<CatalogDetail> {
+        return fetchWithRetry<CatalogDetail>(`${API_URL}/api/portal/v1/catalog/${id}`);
+    },
+
+    // --- Cart Methods (Sprint 27) ---
+
+    /** Get current shopping cart. */
+    async getCart(): Promise<Cart> {
+        return fetchWithRetry<Cart>(`${API_URL}/api/portal/v1/cart`);
+    },
+
+    /** Add item to cart. */
+    async addToCart(productId: string, quantity: number): Promise<Cart> {
+        return fetchWithRetry<Cart>(
+            `${API_URL}/api/portal/v1/cart/items`,
+            { method: 'POST', body: JSON.stringify({ product_id: productId, quantity }) },
+        );
+    },
+
+    /** Update cart item quantity. */
+    async updateCartItem(itemId: string, quantity: number): Promise<Cart> {
+        return fetchWithRetry<Cart>(
+            `${API_URL}/api/portal/v1/cart/items/${itemId}`,
+            { method: 'PUT', body: JSON.stringify({ quantity }) },
+        );
+    },
+
+    /** Remove item from cart. */
+    async removeCartItem(itemId: string): Promise<Cart> {
+        return fetchWithRetry<Cart>(
+            `${API_URL}/api/portal/v1/cart/items/${itemId}`,
+            { method: 'DELETE' },
+        );
+    },
+
+    /** Place order from cart. */
+    async checkout(req: CheckoutRequest): Promise<CheckoutResponse> {
+        return fetchWithRetry<CheckoutResponse>(
+            `${API_URL}/api/portal/v1/checkout`,
+            { method: 'POST', body: JSON.stringify(req) },
+        );
     },
 };
