@@ -169,8 +169,12 @@ func main() {
 	ediSvc := edi.NewService("./edi_out", logger) // Stub output dir
 
 	poSvc := purchase_order.NewService(poRepo, ediSvc, inventorySvc, productSvc, vendorSvc)
-	poHandler := purchase_order.NewHandler(poSvc)
+	poRecSvc := purchase_order.NewRecommendationService(poRepo, inventorySvc, productSvc, vendorSvc)
+	poHandler := purchase_order.NewHandler(poSvc, poRecSvc)
 	poHandler.RegisterRoutes(mux)
+
+	// Buying Group EDI Service (832/846 catalog sync)
+	_ = edi.NewBuyingGroupService(logger) // Available for catalog import endpoints
 
 	orderSvc := order.NewService(orderRepo, inventorySvc, invoiceSvc, customerSvc, poSvc)
 	orderHandler := order.NewHandler(orderSvc)

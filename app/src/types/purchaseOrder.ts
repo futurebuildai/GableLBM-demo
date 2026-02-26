@@ -44,3 +44,33 @@ export interface ReceiveLine {
     qty_received: number;
     location_id: string;
 }
+
+export type UrgencyLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface PurchaseRecommendation {
+    product_id: string;
+    product_sku: string;
+    product_name: string;
+    vendor_name?: string;
+    current_stock: number;
+    avg_daily_sales: number;
+    std_dev_sales: number;
+    lead_time_days: number;
+    reorder_point: number;
+    safety_stock: number;
+    suggested_qty: number;
+    estimated_cost: number;
+    urgency: UrgencyLevel;
+    days_until_out: number;
+    catalog_price?: number;
+}
+
+export interface RecommendationSummary {
+    total_items: number;
+    critical_count: number;
+    high_count: number;
+    medium_count: number;
+    low_count: number;
+    total_estimated_cost: number;
+    items: PurchaseRecommendation[];
+}

@@ -1,4 +1,4 @@
-import type { PurchaseOrder, CreatePORequest, ReceivePORequest } from '../types/purchaseOrder';
+import type { PurchaseOrder, CreatePORequest, ReceivePORequest, RecommendationSummary } from '../types/purchaseOrder';
 import type { ReorderAlert } from '../types/product';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -59,6 +59,12 @@ export const PurchaseOrderService = {
             method: 'POST',
         });
         if (!response.ok) throw new Error('Failed to generate reorder POs');
+        return response.json();
+    },
+
+    async getRecommendations(): Promise<RecommendationSummary> {
+        const response = await fetch(`${API_URL}/purchase-orders/recommendations`);
+        if (!response.ok) throw new Error('Failed to fetch purchasing recommendations');
         return response.json();
     },
 };

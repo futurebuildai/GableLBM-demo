@@ -9,15 +9,17 @@ import (
 
 type Handler struct {
 	service *Service
+	recSvc  *RecommendationService
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, recSvc *RecommendationService) *Handler {
+	return &Handler{service: service, recSvc: recSvc}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /purchase-orders", h.HandleListPOs)
 	mux.HandleFunc("POST /purchase-orders", h.HandleCreatePO)
+	mux.HandleFunc("GET /purchase-orders/recommendations", h.HandleGetRecommendations)
 	mux.HandleFunc("GET /purchase-orders/{id}", h.HandleGetPO)
 	mux.HandleFunc("POST /purchase-orders/{id}/submit", h.HandleSubmitPO)
 	mux.HandleFunc("POST /purchase-orders/{id}/receive", h.HandleReceivePO)
@@ -169,4 +171,22 @@ func (h *Handler) HandleCreateReorders(w http.ResponseWriter, r *http.Request) {
 		"status": "success",
 		"count":  count,
 	})
+}
+
+// HandleGetRecommendations returns AI-driven purchasing recommendations
+// based on sales velocity, stock levels, and lead times.
+func (h *Handler) HandleGetRecommendations(w http.ResponseWriter, r *http.Request) {
+	if h.recSvc == nil {
+		http.Error(w, "Recommendation service not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	summary, err := h.recSvc.GenerateRecommendations(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(summary)
 }

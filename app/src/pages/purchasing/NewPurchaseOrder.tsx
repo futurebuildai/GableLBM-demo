@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PurchaseOrderService } from '../../services/PurchaseOrderService';
 import { ProductService } from '../../services/product.service';
 import type { Product } from '../../types/product';
@@ -12,16 +12,40 @@ import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
 
 export function NewPurchaseOrder() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { showToast } = useToast();
     const [vendorId, setVendorId] = useState('');
     const [lines, setLines] = useState<(CreatePOLine & { key: number })[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
-
+    const isFromRecommendation = searchParams.get('from') === 'recommendation';
 
     useEffect(() => {
         ProductService.getProducts().then(setProducts).catch(console.error);
     }, []);
+
+    // Pre-fill from recommendation URL params
+    useEffect(() => {
+        if (isFromRecommendation) {
+            const vendorName = searchParams.get('vendor_name') || '';
+            if (vendorName) setVendorId(vendorName);
+
+            const productId = searchParams.get('product_id') || '';
+            const description = searchParams.get('description') || '';
+            const qty = Number(searchParams.get('qty') || 1);
+            const cost = Number(searchParams.get('cost') || 0);
+
+            if (productId || description) {
+                setLines([{
+                    key: Date.now(),
+                    product_id: productId,
+                    description,
+                    quantity: qty,
+                    cost: Math.round(cost * 100) / 100,
+                }]);
+            }
+        }
+    }, [isFromRecommendation, searchParams]);
 
     const addLine = () => {
         setLines([...lines, { key: Date.now(), product_id: '', description: '', quantity: 1, cost: 0 }]);
