@@ -88,9 +88,17 @@ export const PortalDashboard = () => {
 
     return (
         <div>
-            <div className="mb-8">
-                <h1 className="text-display-large text-white">Welcome back, {userName}</h1>
-                <p className="text-zinc-400 mt-2 text-lg">Here's your account overview.</p>
+            <div className="mb-8 flex justify-between items-start">
+                <div>
+                    <h1 className="text-display-large text-white">Welcome back, {userName}</h1>
+                    <p className="text-zinc-400 mt-2 text-lg">Here's your account overview.</p>
+                </div>
+                <Link
+                    to="/portal/account"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white transition-colors"
+                >
+                    My Account <ArrowRight className="w-4 h-4" />
+                </Link>
             </div>
 
             {/* Stats Row */}

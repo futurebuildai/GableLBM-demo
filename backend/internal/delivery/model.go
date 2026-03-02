@@ -69,14 +69,16 @@ type Driver struct {
 }
 
 type Route struct {
-	ID            uuid.UUID   `json:"id" db:"id"`
-	VehicleID     uuid.UUID   `json:"vehicle_id" db:"vehicle_id"`
-	DriverID      uuid.UUID   `json:"driver_id" db:"driver_id"`
-	ScheduledDate time.Time   `json:"scheduled_date" db:"scheduled_date"` // YYYY-MM-DD
-	Status        RouteStatus `json:"status" db:"status"`
-	Notes         *string     `json:"notes" db:"notes"`
-	CreatedAt     time.Time   `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at" db:"updated_at"`
+	ID                uuid.UUID   `json:"id" db:"id"`
+	VehicleID         uuid.UUID   `json:"vehicle_id" db:"vehicle_id"`
+	DriverID          uuid.UUID   `json:"driver_id" db:"driver_id"`
+	ScheduledDate     time.Time   `json:"scheduled_date" db:"scheduled_date"` // YYYY-MM-DD
+	Status            RouteStatus `json:"status" db:"status"`
+	Notes             *string     `json:"notes" db:"notes"`
+	TotalDurationMins *int        `json:"total_duration_mins,omitempty" db:"total_duration_mins"`
+	TotalDistanceMi   *float64    `json:"total_distance_miles,omitempty" db:"total_distance_miles"`
+	CreatedAt         time.Time   `json:"created_at" db:"created_at"`
+	UpdatedAt         time.Time   `json:"updated_at" db:"updated_at"`
 
 	// Joined fields
 	VehicleName *string `json:"vehicle_name,omitempty" db:"vehicle_name"`
@@ -101,6 +103,9 @@ type Delivery struct {
 	// Geolocation
 	Latitude  *float64 `json:"latitude" db:"latitude"`
 	Longitude *float64 `json:"longitude" db:"longitude"`
+
+	// ETA (from route optimization)
+	EstimatedArrival *time.Time `json:"estimated_arrival,omitempty" db:"estimated_arrival"`
 
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
@@ -190,4 +195,20 @@ type PODUpdate struct {
 	ProofURL string
 	SignedBy string
 	Time     time.Time
+}
+
+// QtyAdjustmentRequest is used by drivers to adjust delivered quantities on-site.
+type QtyAdjustmentRequest struct {
+	DeliveryID  uuid.UUID                `json:"delivery_id"`
+	AdjustedBy  uuid.UUID                `json:"adjusted_by"`
+	Adjustments []DeliveryLineAdjustment `json:"adjustments"`
+}
+
+// DeliveryLineAdjustment represents a single line item quantity change.
+type DeliveryLineAdjustment struct {
+	ProductID   uuid.UUID `json:"product_id"`
+	OriginalQty float64   `json:"original_qty"`
+	AdjustedQty float64   `json:"adjusted_qty"`
+	ReasonCode  string    `json:"reason_code"` // SHORT_SHIP, DAMAGED, REFUSED, WRONG_PRODUCT, OTHER
+	Notes       string    `json:"notes,omitempty"`
 }

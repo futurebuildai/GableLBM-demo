@@ -28,12 +28,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/delivery/routes", h.HandleCreateRoute)
 	mux.HandleFunc("POST /api/v1/delivery/routes/{id}/dispatch", h.HandleDispatchRoute)
 	mux.HandleFunc("POST /api/v1/delivery/routes/{id}/reorder", h.HandleReorderStops)
+	mux.HandleFunc("POST /api/v1/delivery/routes/{id}/optimize", h.HandleOptimizeRoute)
 
 	// Deliveries
 	mux.HandleFunc("GET /api/v1/delivery/routes/{id}/deliveries", h.HandleListDeliveries)
 	mux.HandleFunc("GET /api/v1/delivery/deliveries/{id}", h.HandleGetDelivery)
 	mux.HandleFunc("POST /api/v1/delivery/deliveries", h.HandleAssignOrder)                     // Assign Order to Route
 	mux.HandleFunc("PUT /api/v1/delivery/deliveries/{id}/status", h.HandleUpdateDeliveryStatus) // Complete Delivery
+	mux.HandleFunc("POST /api/v1/delivery/deliveries/{id}/adjust-qty", h.HandleAdjustQuantity)
 }
 
 // Fleet
@@ -261,4 +263,48 @@ func (h *Handler) HandleUpdateDeliveryStatus(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) HandleOptimizeRoute(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.service.OptimizeRoute(r.Context(), id)
+	if err != nil {
+		slog.Error("OptimizeRoute failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func (h *Handler) HandleAdjustQuantity(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	deliveryID, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+
+	var req QtyAdjustmentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	req.DeliveryID = deliveryID
+
+	if err := h.service.AdjustDeliveryQuantity(r.Context(), req); err != nil {
+		slog.Error("AdjustDeliveryQuantity failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "adjusted"})
 }

@@ -13,6 +13,16 @@ type Repository interface {
 	GetSalesSummary(ctx context.Context, start, end time.Time) (*SalesSummaryReport, error)
 	GetARAgingReport(ctx context.Context) (*ARAgingReport, error)
 	GetCustomerStatement(ctx context.Context, customerID string, start, end time.Time) (*CustomerStatement, error)
+
+	// Ad-Hoc Report Builder
+	CreateSavedReport(ctx context.Context, report *SavedReport) error
+	GetSavedReport(ctx context.Context, id string) (*SavedReport, error)
+	ListSavedReports(ctx context.Context) ([]SavedReport, error)
+	UpdateSavedReport(ctx context.Context, report *SavedReport) error
+	DeleteSavedReport(ctx context.Context, id string) error
+	CreateReportSchedule(ctx context.Context, schedule *ReportSchedule) error
+	ListReportSchedules(ctx context.Context) ([]ReportSchedule, error)
+	UpdateReportScheduleNextRun(ctx context.Context, scheduleID string, nextRun time.Time) error
 }
 
 type PostgresRepository struct {
@@ -231,4 +241,133 @@ func (r *PostgresRepository) GetCustomerStatement(ctx context.Context, customerI
 	_ = r.db.Pool.QueryRow(ctx, closeQuery, customerID, end).Scan(&stmt.CloseBalance)
 
 	return stmt, nil
+}
+
+func (r *PostgresRepository) CreateSavedReport(ctx context.Context, report *SavedReport) error {
+	query := `
+INSERT INTO saved_reports (name, description, entity_type, definition_json, created_by)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, created_at, updated_at
+`
+	err := r.db.Pool.QueryRow(ctx, query,
+		report.Name, report.Description, report.EntityType, report.DefinitionJSON, report.CreatedBy).
+		Scan(&report.ID, &report.CreatedAt, &report.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to create saved report: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) GetSavedReport(ctx context.Context, id string) (*SavedReport, error) {
+	query := `
+SELECT id, name, description, entity_type, definition_json, created_by, created_at, updated_at
+FROM saved_reports
+WHERE id = $1
+`
+	report := &SavedReport{}
+	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
+		&report.ID, &report.Name, &report.Description, &report.EntityType,
+		&report.DefinitionJSON, &report.CreatedBy, &report.CreatedAt, &report.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get saved report: %w", err)
+	}
+	return report, nil
+}
+
+func (r *PostgresRepository) ListSavedReports(ctx context.Context) ([]SavedReport, error) {
+	query := `
+SELECT id, name, description, entity_type, definition_json, created_by, created_at, updated_at
+FROM saved_reports
+ORDER BY created_at DESC
+`
+	rows, err := r.db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list saved reports: %w", err)
+	}
+	defer rows.Close()
+
+	var reports []SavedReport
+	for rows.Next() {
+		var report SavedReport
+		if err := rows.Scan(
+			&report.ID, &report.Name, &report.Description, &report.EntityType,
+			&report.DefinitionJSON, &report.CreatedBy, &report.CreatedAt, &report.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan saved report: %w", err)
+		}
+		reports = append(reports, report)
+	}
+	return reports, nil
+}
+
+func (r *PostgresRepository) UpdateSavedReport(ctx context.Context, report *SavedReport) error {
+	query := `
+UPDATE saved_reports
+SET name = $1, description = $2, entity_type = $3, definition_json = $4, updated_at = NOW()
+WHERE id = $5
+RETURNING updated_at
+`
+	err := r.db.Pool.QueryRow(ctx, query,
+		report.Name, report.Description, report.EntityType, report.DefinitionJSON, report.ID).
+		Scan(&report.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to update saved report: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) DeleteSavedReport(ctx context.Context, id string) error {
+	query := `DELETE FROM saved_reports WHERE id = $1`
+	_, err := r.db.Pool.Exec(ctx, query, id)
+	return err
+}
+
+func (r *PostgresRepository) CreateReportSchedule(ctx context.Context, schedule *ReportSchedule) error {
+	query := `
+INSERT INTO report_schedules (report_id, cron_expression, recipients, status)
+VALUES ($1, $2, $3, $4)
+RETURNING id, created_at, updated_at
+`
+	err := r.db.Pool.QueryRow(ctx, query,
+		schedule.ReportID, schedule.CronExpression, schedule.Recipients, schedule.Status).
+		Scan(&schedule.ID, &schedule.CreatedAt, &schedule.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to create report schedule: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) ListReportSchedules(ctx context.Context) ([]ReportSchedule, error) {
+	query := `
+SELECT id, report_id, cron_expression, recipients, status, last_run_at, next_run_at, created_at, updated_at
+FROM report_schedules
+ORDER BY created_at DESC
+`
+	rows, err := r.db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list report schedules: %w", err)
+	}
+	defer rows.Close()
+
+	var schedules []ReportSchedule
+	for rows.Next() {
+		var schedule ReportSchedule
+		if err := rows.Scan(
+			&schedule.ID, &schedule.ReportID, &schedule.CronExpression,
+			&schedule.Recipients, &schedule.Status, &schedule.LastRunAt,
+			&schedule.NextRunAt, &schedule.CreatedAt, &schedule.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan report schedule: %w", err)
+		}
+		schedules = append(schedules, schedule)
+	}
+	return schedules, nil
+}
+
+func (r *PostgresRepository) UpdateReportScheduleNextRun(ctx context.Context, scheduleID string, nextRun time.Time) error {
+	query := `
+UPDATE report_schedules
+SET last_run_at = NOW(), next_run_at = $1, updated_at = NOW()
+WHERE id = $2
+`
+	_, err := r.db.Pool.Exec(ctx, query, nextRun, scheduleID)
+	return err
 }

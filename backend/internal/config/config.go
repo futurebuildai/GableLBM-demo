@@ -17,6 +17,20 @@ type Config struct {
 	RunPaymentsPublicKey   string
 	RunPaymentsBaseURL     string
 	RunPaymentsEnvironment string // "sandbox" or "production"
+
+	// Avalara Sales Tax
+	AvalaraAccountID   string
+	AvalaraLicenseKey  string
+	AvalaraEnvironment string // "sandbox" or "production"
+	AvalaraCompanyCode string
+
+	// Google Maps
+	GoogleMapsAPIKey string
+
+	// Twilio SMS
+	TwilioAccountSID string
+	TwilioAuthToken  string
+	TwilioFromNumber string
 }
 
 func Load() *Config {
@@ -33,6 +47,20 @@ func Load() *Config {
 		RunPaymentsPublicKey:   getEnv("RUN_PAYMENTS_PUBLIC_KEY", ""),
 		RunPaymentsBaseURL:     getEnv("RUN_PAYMENTS_BASE_URL", ""),
 		RunPaymentsEnvironment: getEnv("RUN_PAYMENTS_ENV", "sandbox"),
+
+		// Avalara Sales Tax — defaults to sandbox mode
+		AvalaraAccountID:   getEnv("AVALARA_ACCOUNT_ID", ""),
+		AvalaraLicenseKey:  getEnv("AVALARA_LICENSE_KEY", ""),
+		AvalaraEnvironment: getEnv("AVALARA_ENV", "sandbox"),
+		AvalaraCompanyCode: getEnv("AVALARA_COMPANY_CODE", ""),
+
+		// Google Maps
+		GoogleMapsAPIKey: getEnv("GOOGLE_MAPS_API_KEY", ""),
+
+		// Twilio SMS
+		TwilioAccountSID: getEnv("TWILIO_ACCOUNT_SID", ""),
+		TwilioAuthToken:  getEnv("TWILIO_AUTH_TOKEN", ""),
+		TwilioFromNumber: getEnv("TWILIO_FROM_NUMBER", ""),
 	}
 }
 

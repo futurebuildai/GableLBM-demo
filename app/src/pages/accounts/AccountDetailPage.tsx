@@ -7,8 +7,10 @@ import type { AccountSummary, CustomerTransaction } from '../../types/account';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button'; // Assuming Button component exists
-import { ArrowLeft, CreditCard, Receipt, FileText, Activity, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CreditCard, Receipt, FileText, Activity, AlertCircle, Users, MessageSquare } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { ContactList } from './ContactList';
+import { ActivityFeed } from './ActivityFeed';
 
 export function AccountDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -16,7 +18,7 @@ export function AccountDetailPage() {
     const [summary, setSummary] = useState<AccountSummary | null>(null);
     const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'activity' | 'invoices' | 'payments'>('activity');
+    const [activeTab, setActiveTab] = useState<'ledger' | 'invoices' | 'payments' | 'contacts' | 'crm'>('ledger');
 
     useEffect(() => {
         if (id) {
@@ -117,13 +119,15 @@ export function AccountDetailPage() {
             {/* Tabs & Content */}
             <div className="space-y-4">
                 <div className="flex items-center gap-1 border-b border-white/10 pb-1">
-                    <Tab active={activeTab === 'activity'} onClick={() => setActiveTab('activity')} label="Activity Ledger" icon={<Activity size={16} />} />
+                    <Tab active={activeTab === 'ledger'} onClick={() => setActiveTab('ledger')} label="Activity Ledger" icon={<Activity size={16} />} />
                     <Tab active={activeTab === 'invoices'} onClick={() => setActiveTab('invoices')} label="Invoices" icon={<FileText size={16} />} />
                     <Tab active={activeTab === 'payments'} onClick={() => setActiveTab('payments')} label="Payments" icon={<CreditCard size={16} />} />
+                    <Tab active={activeTab === 'contacts'} onClick={() => setActiveTab('contacts')} label="Contacts" icon={<Users size={16} />} />
+                    <Tab active={activeTab === 'crm'} onClick={() => setActiveTab('crm')} label="CRM Activity" icon={<MessageSquare size={16} />} />
                 </div>
 
                 <div className="min-h-[400px]">
-                    {activeTab === 'activity' && (
+                    {activeTab === 'ledger' && (
                         <div className="border border-white/5 rounded-lg overflow-hidden bg-slate-steel/20">
                             <table className="w-full text-sm">
                                 <thead className="bg-white/5 text-zinc-400 font-medium border-b border-white/5">
@@ -170,7 +174,17 @@ export function AccountDetailPage() {
                             </table>
                         </div>
                     )}
-                    {activeTab !== 'activity' && (
+                    {activeTab === 'contacts' && (
+                        <div className="mt-4">
+                            <ContactList customerId={customer.id} />
+                        </div>
+                    )}
+                    {activeTab === 'crm' && (
+                        <div className="mt-4">
+                            <ActivityFeed customerId={customer.id} />
+                        </div>
+                    )}
+                    {(activeTab !== 'ledger' && activeTab !== 'contacts' && activeTab !== 'crm') && (
                         <div className="flex flex-col items-center justify-center h-64 border border-dashed border-white/10 rounded-lg text-zinc-500">
                             <AlertCircle size={32} className="mb-2 opacity-50" />
                             <p>This view is under construction.</p>

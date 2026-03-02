@@ -20,6 +20,12 @@ type Repository interface {
 	GetPriceLevel(ctx context.Context, id uuid.UUID) (*PriceLevel, error)
 
 	UpdateBalance(ctx context.Context, id uuid.UUID, delta float64) error
+
+	CreateContact(ctx context.Context, c *Contact) error
+	GetContact(ctx context.Context, id uuid.UUID) (*Contact, error)
+	ListContactsByCustomer(ctx context.Context, customerID uuid.UUID) ([]Contact, error)
+	UpdateContact(ctx context.Context, c *Contact) error
+	DeleteContact(ctx context.Context, id uuid.UUID) error
 }
 
 type PostgresRepository struct {

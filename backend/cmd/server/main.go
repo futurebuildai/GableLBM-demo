@@ -17,6 +17,7 @@ import (
 	"github.com/gablelbm/gable/internal/bankrecon"
 	"github.com/gablelbm/gable/internal/config"
 	"github.com/gablelbm/gable/internal/configurator"
+	"github.com/gablelbm/gable/internal/crm"
 	"github.com/gablelbm/gable/internal/customer"
 	"github.com/gablelbm/gable/internal/dashboard"
 	"github.com/gablelbm/gable/internal/delivery"
@@ -42,6 +43,7 @@ import (
 	"github.com/gablelbm/gable/internal/purchase_order"
 	"github.com/gablelbm/gable/internal/quote"
 	"github.com/gablelbm/gable/internal/reporting"
+	"github.com/gablelbm/gable/internal/tax"
 	"github.com/gablelbm/gable/internal/techadmin"
 	"github.com/gablelbm/gable/internal/vendor"
 	"github.com/gablelbm/gable/internal/vision"
@@ -119,6 +121,11 @@ func main() {
 	customerSvc := customer.NewService(customerRepo)
 	customerHandler := customer.NewHandler(customerSvc)
 	customerHandler.RegisterRoutes(mux)
+
+	// CRM Module
+	crmRepo := crm.NewRepository(db)
+	crmHandler := crm.NewHandler(crmRepo)
+	crmHandler.RegisterRoutes(mux)
 
 	// Account Module
 	accountRepo := account.NewRepository(db)
@@ -239,11 +246,56 @@ func main() {
 	reportingHandler := reporting.NewHandler(reportingSvc)
 	reportingHandler.RegisterRoutes(mux)
 
+	// Sales Tax Module (Avalara AvaTax)
+	taxExemptionRepo := tax.NewExemptionRepo(db)
+	var avalaraClient *tax.AvalaraClient
+	if cfg.AvalaraAccountID != "" {
+		avalaraClient = tax.NewAvalaraClient(tax.AvalaraConfig{
+			AccountID:   cfg.AvalaraAccountID,
+			LicenseKey:  cfg.AvalaraLicenseKey,
+			Environment: cfg.AvalaraEnvironment,
+			CompanyCode: cfg.AvalaraCompanyCode,
+		}, logger)
+		logger.Info("Avalara AvaTax initialized", "environment", cfg.AvalaraEnvironment)
+	} else {
+		logger.Warn("AVALARA_ACCOUNT_ID not set — using flat-rate tax fallback (0%)")
+	}
+	taxSvc := tax.NewService(taxExemptionRepo, avalaraClient, cfg.AvalaraCompanyCode, 0.0, logger)
+	taxHandler := tax.NewHandler(taxSvc)
+	taxHandler.RegisterRoutes(mux)
+
 	// Delivery Module
 	deliveryRepo := delivery.NewRepository(db)
 	deliverySvc := delivery.NewService(deliveryRepo)
+
+	// Wire Google Maps for route optimization if API key is set
+	if cfg.GoogleMapsAPIKey != "" {
+		mapsClient := delivery.NewMapsClient(cfg.GoogleMapsAPIKey, logger)
+		deliverySvc.WithMaps(mapsClient, logger)
+		logger.Info("Google Maps route optimization enabled")
+	} else {
+		logger.Warn("GOOGLE_MAPS_API_KEY not set — using mock route optimization")
+	}
+
 	deliveryHandler := delivery.NewHandler(deliverySvc)
 	deliveryHandler.RegisterRoutes(mux)
+
+	// SMS Notification Service
+	var smsSvc notification.SMSService
+	if cfg.TwilioAccountSID != "" {
+		smsSvc = notification.NewTwilioSMSService(notification.TwilioConfig{
+			AccountSID: cfg.TwilioAccountSID,
+			AuthToken:  cfg.TwilioAuthToken,
+			FromNumber: cfg.TwilioFromNumber,
+		}, logger)
+		logger.Info("Twilio SMS service initialized")
+	} else {
+		smsSvc = notification.NewLogSMSService(logger)
+		logger.Warn("TWILIO_ACCOUNT_SID not set — using mock SMS service")
+	}
+
+	// Delivery Notification Orchestrator
+	_ = notification.NewDeliveryNotifier(smsSvc, emailSvc, logger)
 
 	// Millwork Module
 	millworkRepo := millwork.NewRepository(db)

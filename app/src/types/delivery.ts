@@ -30,6 +30,8 @@ export interface Route {
     scheduled_date: string; // YYYY-MM-DD
     status: RouteStatus;
     notes?: string;
+    total_duration_mins?: number;
+    total_distance_miles?: number;
     created_at: string;
     updated_at: string;
 
@@ -62,6 +64,9 @@ export interface Delivery {
     address?: string;
     latitude?: number;
     longitude?: number;
+
+    // ETA (from route optimization)
+    estimated_arrival?: string;
 }
 
 export interface CreateVehicleRequest {

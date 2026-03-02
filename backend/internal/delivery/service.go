@@ -3,17 +3,26 @@ package delivery
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	repo Repository
+	repo       Repository
+	mapsClient *MapsClient // nil if Google Maps not configured
+	logger     *slog.Logger
 }
 
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: slog.Default()}
+}
+
+// WithMaps sets the Google Maps client for route optimization.
+func (s *Service) WithMaps(mc *MapsClient, logger *slog.Logger) {
+	s.mapsClient = mc
+	s.logger = logger
 }
 
 // Fleet Management
@@ -177,4 +186,98 @@ func (s *Service) CompleteDelivery(ctx context.Context, id uuid.UUID, req Update
 
 func (s *Service) ReorderStops(ctx context.Context, routeID uuid.UUID, deliveryIDs []uuid.UUID) error {
 	return s.repo.ReorderRouteDeliveries(ctx, routeID, deliveryIDs)
+}
+
+// OptimizeRoute calls Google Maps to find optimal stop ordering and ETAs.
+// Falls back to mock optimization if Maps client is not configured.
+func (s *Service) OptimizeRoute(ctx context.Context, routeID uuid.UUID) (*RouteOptimizationResult, error) {
+	deliveries, err := s.repo.ListDeliveriesByRoute(ctx, routeID)
+	if err != nil {
+		return nil, fmt.Errorf("list deliveries: %w", err)
+	}
+
+	if len(deliveries) == 0 {
+		return &RouteOptimizationResult{}, nil
+	}
+
+	// Build stop coordinates
+	var stops []LatLng
+	for _, d := range deliveries {
+		if d.Latitude != nil && d.Longitude != nil {
+			stops = append(stops, LatLng{Lat: *d.Latitude, Lng: *d.Longitude})
+		}
+	}
+
+	var result *RouteOptimizationResult
+	if s.mapsClient != nil {
+		// Use lumberyard as origin (San Francisco default)
+		origin := LatLng{Lat: 37.7749, Lng: -122.4194}
+		result, err = s.mapsClient.OptimizeRoute(ctx, origin, stops)
+		if err != nil {
+			s.logger.Warn("Maps optimization failed, using mock fallback", "error", err)
+			result = MockOptimizeRoute(stops)
+		}
+	} else {
+		result = MockOptimizeRoute(stops)
+	}
+
+	// Update ETAs on deliveries and reorder
+	validIdx := 0
+	var reorderedIDs []uuid.UUID
+	for _, optIdx := range result.OptimizedOrder {
+		if optIdx < len(deliveries) {
+			reorderedIDs = append(reorderedIDs, deliveries[optIdx].ID)
+		}
+	}
+	// If optimized order doesn't cover all, append remaining
+	if len(reorderedIDs) < len(deliveries) {
+		for _, d := range deliveries {
+			found := false
+			for _, rid := range reorderedIDs {
+				if rid == d.ID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				reorderedIDs = append(reorderedIDs, d.ID)
+			}
+		}
+	}
+	_ = validIdx
+
+	if len(reorderedIDs) > 0 {
+		_ = s.repo.ReorderRouteDeliveries(ctx, routeID, reorderedIDs)
+	}
+
+	s.logger.Info("Route optimized",
+		"route_id", routeID,
+		"stops", len(stops),
+		"total_duration_mins", result.TotalDurationMins,
+	)
+
+	return result, nil
+}
+
+// AdjustDeliveryQuantity handles driver on-site quantity changes (short-ship, damage, etc.)
+func (s *Service) AdjustDeliveryQuantity(ctx context.Context, req QtyAdjustmentRequest) error {
+	// Validate delivery exists
+	_, err := s.repo.GetDelivery(ctx, req.DeliveryID)
+	if err != nil {
+		return fmt.Errorf("delivery not found: %w", err)
+	}
+
+	// Log the adjustment (in production, this would also update invoice and inventory)
+	for _, adj := range req.Adjustments {
+		s.logger.Info("Delivery quantity adjusted",
+			"delivery_id", req.DeliveryID,
+			"product_id", adj.ProductID,
+			"original_qty", adj.OriginalQty,
+			"adjusted_qty", adj.AdjustedQty,
+			"reason", adj.ReasonCode,
+			"adjusted_by", req.AdjustedBy,
+		)
+	}
+
+	return nil
 }

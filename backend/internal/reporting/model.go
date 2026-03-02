@@ -56,3 +56,49 @@ type CustomerStatement struct {
 	CloseBalance float64         `json:"close_balance"`
 	Lines        []StatementLine `json:"lines"`
 }
+
+// Ad-Hoc Report Builder Models
+type SavedReport struct {
+ID             string                 `json:"id"`
+Name           string                 `json:"name"`
+Description    string                 `json:"description"`
+EntityType     string                 `json:"entity_type"`
+DefinitionJSON map[string]interface{} `json:"definition_json"`
+CreatedBy      string                 `json:"created_by"`
+CreatedAt      string                 `json:"created_at"`
+UpdatedAt      string                 `json:"updated_at"`
+}
+
+type ReportSchedule struct {
+ID             string                 `json:"id"`
+ReportID       string                 `json:"report_id"`
+CronExpression string                 `json:"cron_expression"`
+Recipients     []string               `json:"recipients"`
+Status         string                 `json:"status"`
+LastRunAt      *string                `json:"last_run_at,omitempty"`
+NextRunAt      *string                `json:"next_run_at,omitempty"`
+CreatedAt      string                 `json:"created_at"`
+UpdatedAt      string                 `json:"updated_at"`
+}
+
+type ReportDefinition struct {
+Columns   []ReportColumn   `json:"columns"`
+Filters   []ReportFilter   `json:"filters"`
+Groupings []ReportGrouping `json:"groupings"`
+}
+
+type ReportColumn struct {
+Field       string `json:"field"`
+Label       string `json:"label"`
+Aggregation string `json:"aggregation,omitempty"` // SUM, COUNT, AVG, etc.
+}
+
+type ReportFilter struct {
+Field    string      `json:"field"`
+Operator string      `json:"operator"` // =, !=, >, <, IN, LIKE, etc.
+Value    interface{} `json:"value"`
+}
+
+type ReportGrouping struct {
+Field string `json:"field"`
+}

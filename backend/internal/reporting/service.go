@@ -158,3 +158,40 @@ func (s *Service) GetCustomerStatement(ctx context.Context, customerID, startStr
 
 	return s.repo.GetCustomerStatement(ctx, customerID, start, end)
 }
+
+func (s *Service) CreateSavedReport(ctx context.Context, report *SavedReport) error {
+return s.repo.CreateSavedReport(ctx, report)
+}
+
+func (s *Service) GetSavedReport(ctx context.Context, id string) (*SavedReport, error) {
+return s.repo.GetSavedReport(ctx, id)
+}
+
+func (s *Service) ListSavedReports(ctx context.Context) ([]SavedReport, error) {
+return s.repo.ListSavedReports(ctx)
+}
+
+func (s *Service) UpdateSavedReport(ctx context.Context, report *SavedReport) error {
+return s.repo.UpdateSavedReport(ctx, report)
+}
+
+func (s *Service) DeleteSavedReport(ctx context.Context, id string) error {
+return s.repo.DeleteSavedReport(ctx, id)
+}
+
+func (s *Service) CreateReportSchedule(ctx context.Context, schedule *ReportSchedule) error {
+return s.repo.CreateReportSchedule(ctx, schedule)
+}
+
+func (s *Service) ListReportSchedules(ctx context.Context) ([]ReportSchedule, error) {
+return s.repo.ListReportSchedules(ctx)
+}
+
+func (s *Service) UpdateReportScheduleNextRun(ctx context.Context, scheduleID string, nextRun time.Time) error {
+return s.repo.UpdateReportScheduleNextRun(ctx, scheduleID, nextRun)
+}
+
+func (s *Service) ExecuteReportDefinition(ctx context.Context, def *ReportDefinition, entityType string) ([]map[string]interface{}, error) {
+// Call Builder logic
+return BuildAndExecuteQuery(ctx, s.repo.(*PostgresRepository).db.Pool, def, entityType)
+}

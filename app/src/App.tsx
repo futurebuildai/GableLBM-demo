@@ -38,6 +38,8 @@ import VendorList from "./pages/purchasing/VendorList";
 import VendorDetail from "./pages/purchasing/VendorDetail";
 import { ARAgingReportPage } from "./pages/reports/ARAgingReport";
 import { CustomerStatementPage } from "./pages/reports/CustomerStatementPage";
+import SavedReports from "./pages/reports/SavedReports";
+import ReportBuilder from "./pages/reports/ReportBuilder";
 import { ChartOfAccounts } from "./pages/accounting/ChartOfAccounts";
 import { JournalEntries } from "./pages/accounting/JournalEntries";
 import { TrialBalance } from "./pages/accounting/TrialBalance";
@@ -50,6 +52,7 @@ import { PortalCatalog } from "./pages/portal/PortalCatalog";
 import { PortalProductDetail } from "./pages/portal/PortalProductDetail";
 import { PortalCart } from "./pages/portal/PortalCart";
 import { PortalCheckout } from "./pages/portal/PortalCheckout";
+import { PortalMyAccount } from "./pages/portal/PortalMyAccount";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -74,6 +77,8 @@ function App() {
             <Route path="reports/daily-till" element={<DailyTill />} />
             <Route path="reports/ar-aging" element={<ARAgingReportPage />} />
             <Route path="reports/customer-statement" element={<CustomerStatementPage />} />
+            <Route path="reports/saved" element={<SavedReports />} />
+            <Route path="reports/builder" element={<ReportBuilder />} />
             <Route path="dispatch" element={<DispatchBoard />} />
             <Route path="millwork/configure" element={<DoorConfigurator />} />
             <Route path="millwork/configurator" element={<ProductConfigurator />} />
@@ -127,6 +132,7 @@ function App() {
             <Route path="catalog/:id" element={<PortalProductDetail />} />
             <Route path="cart" element={<PortalCart />} />
             <Route path="checkout" element={<PortalCheckout />} />
+            <Route path="account" element={<PortalMyAccount />} />
           </Route>
         </Routes>
       </BrowserRouter>
