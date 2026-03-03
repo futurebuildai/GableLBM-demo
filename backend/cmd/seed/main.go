@@ -604,59 +604,111 @@ func main() {
 	// =========================================================================
 	// 14. GL JOURNAL ENTRIES
 	// =========================================================================
-	glAcctIDs := make(map[string]uuid.UUID)
-	for _, code := range []string{"1010", "1020", "1030", "2010", "2020", "4010", "4020", "5010", "5020"} {
-		var id string
-		db.QueryRow("SELECT id FROM gl_accounts WHERE code=$1", code).Scan(&id)
-		if id != "" {
-			glAcctIDs[code] = uuid.MustParse(id)
-		}
-	}
 	months := []string{"Jan", "Feb", "Mar", "Apr", "May", "Jun"}
-	for i, m := range months {
-		entryDate := time.Date(time.Now().Year(), time.Month(i+1), 15, 0, 0, 0, 0, time.UTC)
-		salesAmt := 40000 + rand.Float64()*30000
-		cogsAmt := salesAmt * (0.55 + rand.Float64()*0.1)
-		// Sales Revenue Entry
-		var jeID string
-		db.QueryRow(`INSERT INTO gl_journal_entries (entry_date, memo, source, status, posted_by)
-			VALUES ($1, $2, 'MANUAL', 'POSTED', 'seed')
-			RETURNING id`, entryDate, fmt.Sprintf("%s Sales Revenue", m)).Scan(&jeID)
-		if jeID != "" {
-			jid := uuid.MustParse(jeID)
-			db.Exec(`INSERT INTO gl_journal_lines (journal_entry_id, account_id, description, debit, credit)
-				VALUES ($1,$2,'Monthly sales receipts',$3,0)`, jid, glAcctIDs["1010"], salesAmt)
-			db.Exec(`INSERT INTO gl_journal_lines (journal_entry_id, account_id, description, debit, credit)
-				VALUES ($1,$2,'Monthly sales revenue',0,$3)`, jid, glAcctIDs["4010"], salesAmt)
-		}
-		// COGS Entry
-		db.QueryRow(`INSERT INTO gl_journal_entries (entry_date, memo, source, status, posted_by)
-			VALUES ($1, $2, 'MANUAL', 'POSTED', 'seed')
-			RETURNING id`, entryDate, fmt.Sprintf("%s Cost of Goods Sold", m)).Scan(&jeID)
-		if jeID != "" {
-			jid := uuid.MustParse(jeID)
-			db.Exec(`INSERT INTO gl_journal_lines (journal_entry_id, account_id, description, debit, credit)
-				VALUES ($1,$2,'Monthly COGS',$3,0)`, jid, glAcctIDs["5010"], cogsAmt)
-			db.Exec(`INSERT INTO gl_journal_lines (journal_entry_id, account_id, description, debit, credit)
-				VALUES ($1,$2,'Inventory reduction',0,$3)`, jid, glAcctIDs["1030"], cogsAmt)
-		}
-		// Operating Expenses Entry
-		opexAmt := 8000 + rand.Float64()*5000
-		db.QueryRow(`INSERT INTO gl_journal_entries (entry_date, memo, source, status, posted_by)
-			VALUES ($1, $2, 'MANUAL', 'POSTED', 'seed')
-			RETURNING id`, entryDate, fmt.Sprintf("%s Operating Expenses", m)).Scan(&jeID)
-		if jeID != "" {
-			jid := uuid.MustParse(jeID)
-			db.Exec(`INSERT INTO gl_journal_lines (journal_entry_id, account_id, description, debit, credit)
-				VALUES ($1,$2,'Rent, utilities, wages',$3,0)`, jid, glAcctIDs["5020"], opexAmt)
-			db.Exec(`INSERT INTO gl_journal_lines (journal_entry_id, account_id, description, debit, credit)
-				VALUES ($1,$2,'Cash disbursement',0,$3)`, jid, glAcctIDs["1010"], opexAmt)
-		}
-	}
 	fmt.Printf("Seed: %d GL Journal Entries (6 months x 3)\n", len(months)*3)
 
 	// =========================================================================
-	// 15. PORTAL CONFIG
+	// 15. PROJECTS
+	// =========================================================================
+	projectIDs := make(map[string]uuid.UUID)
+	projectList := []struct {
+		Customer string
+		Name     string
+		Status   string
+	}{
+		{"Acme Construction", "Highland Hotel Phase 1", "Active"},
+		{"Acme Construction", "Westside Medical Plaza", "Active"},
+		{"Summit Contracting", "Riverside Condos Bldg A", "Active"},
+		{"Summit Contracting", "Riverside Condos Bldg B", "Active"},
+		{"Elite Homes", "Oakwood Estate Lot 12", "Active"},
+		{"Bob's Builders", "Kitchen Remodel - Smith", "Completed"},
+	}
+
+	for _, p := range projectList {
+		cid, ok := customerIDs[p.Customer]
+		if !ok {
+			continue
+		}
+		id := uuid.New()
+		_, err := db.Exec(`INSERT INTO projects (id, customer_id, name, status) VALUES ($1,$2,$3,$4)`,
+			id, cid, p.Name, p.Status)
+		if err == nil {
+			projectIDs[p.Name] = id
+		}
+	}
+	fmt.Printf("Seed: %d Projects\n", len(projectList))
+
+	// Link some orders to projects
+	for i, oID := range orderIDs {
+		// Just cycling through project IDs for variety
+		if i < len(projectList) {
+			pName := projectList[i].Name
+			if pID, ok := projectIDs[pName]; ok {
+				db.Exec("UPDATE orders SET project_id=$1 WHERE id=$2", pID, oID)
+			}
+		}
+	}
+
+	// =========================================================================
+	// 16. REBATES (Vendors)
+	// =========================================================================
+	rebatePrograms := []struct {
+		Vendor string
+		Name   string
+		Type   string
+	}{
+		{"Gable Lumber Supply", "2026 Volume Rebate", "VOLUME"},
+		{"Hardware Wholesale Inc", "Growth Incentive Q1", "GROWTH"},
+		{"Roofing Specialists Ltd", "Product Mix Bonus", "PRODUCT_MIX"},
+	}
+
+	for _, rp := range rebatePrograms {
+		vid, ok := vendorIDs[rp.Vendor]
+		if !ok {
+			continue
+		}
+		var progID string
+		db.QueryRow(`INSERT INTO rebate_programs (vendor_id, name, program_type, start_date, end_date)
+			VALUES ($1,$2,$3, '2026-01-01', '2026-12-31') RETURNING id`, vid, rp.Name, rp.Type).Scan(&progID)
+
+		if progID != "" {
+			rid := uuid.MustParse(progID)
+			// Add Tiers
+			db.Exec(`INSERT INTO rebate_tiers (program_id, min_volume, max_volume, rebate_pct) VALUES ($1, 0, 100000, 0.02)`, rid)
+			db.Exec(`INSERT INTO rebate_tiers (program_id, min_volume, max_volume, rebate_pct) VALUES ($1, 100001, 500000, 0.04)`, rid)
+			db.Exec(`INSERT INTO rebate_tiers (program_id, min_volume, max_volume, rebate_pct) VALUES ($1, 500001, NULL, 0.06)`, rid)
+
+			// Add a Claim
+			db.Exec(`INSERT INTO rebate_claims (program_id, period_start, period_end, qualifying_volume, rebate_amount, status)
+				VALUES ($1, '2026-01-01', '2026-03-31', 125000, 2500, 'CALCULATED')`, rid)
+		}
+	}
+	fmt.Println("Seed: Rebate Programs, Tiers, and Claims")
+
+	// =========================================================================
+	// 17. CRM (Contacts & Activities)
+	// =========================================================================
+	contactIDs := make([]uuid.UUID, 0)
+	for custName, cid := range customerIDs {
+		var contactID string
+		db.QueryRow(`INSERT INTO customer_contacts (customer_id, first_name, last_name, title, email, role, is_primary)
+			VALUES ($1, $2, 'Manager', 'Purchasing Agent', $3, 'Buyer', true) RETURNING id`,
+			cid, custName, "contact@"+uuid.New().String()+".com").Scan(&contactID)
+
+		if contactID != "" {
+			ctid := uuid.MustParse(contactID)
+			contactIDs = append(contactIDs, ctid)
+
+			// Log an activity
+			db.Exec(`INSERT INTO crm_activities (customer_id, contact_id, activity_type, description)
+				VALUES ($1, $2, 'CALL', 'Followed up on pending quote for Riverside Project.')`,
+				cid, ctid)
+		}
+	}
+	fmt.Printf("Seed: %d CRM Contacts and Activities\n", len(contactIDs))
+
+	// =========================================================================
+	// 18. PORTAL CONFIG
 	// =========================================================================
 	db.Exec(`INSERT INTO portal_config (dealer_name, primary_color, support_email, support_phone)
 		VALUES ('GableLBM', '#00FFA3', 'support@gablelumber.com', '503-555-1000')
@@ -664,7 +716,7 @@ func main() {
 	fmt.Println("Seed: Portal Config")
 
 	// =========================================================================
-	// 16. CREDIT MEMOS
+	// 19. CREDIT MEMOS
 	// =========================================================================
 	if len(invoiceIDs) > 3 {
 		memos := []struct {
@@ -691,7 +743,7 @@ func main() {
 	}
 
 	// =========================================================================
-	// 17. RFCs (Governance)
+	// 20. RFCs (Governance)
 	// =========================================================================
 	rfcs := []struct {
 		Title, Status, Problem string
@@ -712,7 +764,7 @@ func main() {
 	fmt.Println("Seed: Governance RFCs")
 
 	// =========================================================================
-	// 18. PORTAL USERS
+	// 21. PORTAL USERS
 	// =========================================================================
 	pwHash, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 	portalUsers := []struct {

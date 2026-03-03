@@ -57,6 +57,7 @@ import { PortalTeam } from "./pages/portal/PortalTeam";
 import { PortalInvite } from "./pages/portal/PortalInvite";
 import { ProjectList } from "./pages/projects/ProjectList";
 import { ProjectDashboard } from "./pages/projects/ProjectDashboard";
+import POSTerminal from "./pages/pos/POSTerminal";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -67,6 +68,9 @@ function App() {
         <Routes>
           {/* Demo Landing Page */}
           <Route path="/" element={<DemoLanding />} />
+
+          {/* POS Terminal */}
+          <Route path="/pos" element={<POSTerminal />} />
 
           {/* ERP Desktop (moved from / to /erp) */}
           <Route path="/erp" element={<AppShell><Outlet /></AppShell>}>

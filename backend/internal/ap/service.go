@@ -7,20 +7,24 @@ import (
 	"time"
 
 	"github.com/gablelbm/gable/internal/gl"
-	"github.com/gablelbm/gable/pkg/database"
 	"github.com/google/uuid"
 )
 
+// Database interface for transaction support.
+type Database interface {
+	RunInTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 // Service handles AP business logic.
 type Service struct {
-	db     *database.DB
+	db     Database
 	repo   Repository
 	glSvc  *gl.Service
 	logger *slog.Logger
 }
 
 // NewService creates a new AP service.
-func NewService(db *database.DB, repo Repository, glSvc *gl.Service, logger *slog.Logger) *Service {
+func NewService(db Database, repo Repository, glSvc *gl.Service, logger *slog.Logger) *Service {
 	return &Service{
 		db:     db,
 		repo:   repo,
@@ -122,8 +126,19 @@ func (s *Service) ApproveInvoice(ctx context.Context, invoiceID uuid.UUID, appro
 	}
 
 	// Post to GL: DR Expense/Inventory, CR Accounts Payable
-	// This will be fully implemented when we have GL account linkage
-	s.logger.Info("Vendor invoice approved",
+	var glLines []gl.VendorInvoiceLineDetail
+	for _, line := range inv.Lines {
+		glLines = append(glLines, gl.VendorInvoiceLineDetail{
+			Description: line.Description,
+			AmountCents: line.LineTotal,
+			GLAccountID: line.GLAccountID,
+		})
+	}
+	if err := s.glSvc.SyncVendorInvoice(ctx, inv.ID, inv.Total, glLines); err != nil {
+		s.logger.Warn("Failed to sync vendor invoice to GL", "error", err, "invoice_id", inv.ID)
+	}
+
+	s.logger.Info("Vendor invoice approved and synced to GL",
 		"id", invoiceID,
 		"approved_by", approverID,
 		"total_cents", inv.Total,
@@ -198,7 +213,12 @@ func (s *Service) PayVendor(ctx context.Context, req CreateAPPaymentRequest) (*A
 			remaining -= apply
 		}
 
-		s.logger.Info("Vendor payment created",
+		// Post to GL: DR Accounts Payable, CR Cash
+		if err := s.glSvc.SyncVendorPayment(ctx, pmt.ID, pmt.Amount); err != nil {
+			s.logger.Warn("Failed to sync vendor payment to GL", "error", err, "payment_id", pmt.ID)
+		}
+
+		s.logger.Info("Vendor payment created and synced to GL",
 			"id", pmt.ID,
 			"vendor_id", pmt.VendorID,
 			"amount_cents", amountCents,

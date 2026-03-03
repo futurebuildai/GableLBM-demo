@@ -46,6 +46,17 @@ const surfaces = [
         stats: "5 views",
         badge: "Mobile",
     },
+    {
+        id: "pos",
+        title: "POS Terminal",
+        subtitle: "Retail Counter Sales",
+        description: "Optimized for speed: barcode scanning, quick product search, and multi-method tender processing.",
+        icon: ShoppingBag,
+        color: "#238636",
+        path: "/pos",
+        stats: "NEW",
+        badge: "Point of Sale",
+    },
 ];
 
 export function DemoLanding() {
@@ -156,6 +167,14 @@ export function DemoLanding() {
                         <span className="flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                             12 customers
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                            6 active projects
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                            3 rebate programs
                         </span>
                         <span className="flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />

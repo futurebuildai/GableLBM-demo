@@ -28,6 +28,8 @@ const (
 	SourcePayment    = "PAYMENT"
 	SourceAdjustment = "ADJUSTMENT"
 	SourceClosing    = "CLOSING"
+	SourceVendorInv  = "VENDOR_INVOICE"
+	SourceVendorPmt  = "VENDOR_PAYMENT"
 )
 
 // Journal entry statuses
@@ -61,19 +63,19 @@ type GLAccount struct {
 
 // JournalEntry represents a double-entry journal entry header.
 type JournalEntry struct {
-	ID          uuid.UUID    `json:"id"`
-	EntryNumber int          `json:"entry_number"`
-	EntryDate   time.Time    `json:"entry_date"`
-	Memo        string       `json:"memo"`
-	Source      string       `json:"source"`
-	SourceRefID *uuid.UUID   `json:"source_ref_id,omitempty"`
-	Status      string       `json:"status"`
-	PostedBy    string       `json:"posted_by"`
-	TotalDebit  int64        `json:"total_debit"`  // Computed, cents
-	TotalCredit int64        `json:"total_credit"` // Computed, cents
+	ID          uuid.UUID     `json:"id"`
+	EntryNumber int           `json:"entry_number"`
+	EntryDate   time.Time     `json:"entry_date"`
+	Memo        string        `json:"memo"`
+	Source      string        `json:"source"`
+	SourceRefID *uuid.UUID    `json:"source_ref_id,omitempty"`
+	Status      string        `json:"status"`
+	PostedBy    string        `json:"posted_by"`
+	TotalDebit  int64         `json:"total_debit"`  // Computed, cents
+	TotalCredit int64         `json:"total_credit"` // Computed, cents
 	Lines       []JournalLine `json:"lines,omitempty"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
+	CreatedAt   time.Time     `json:"created_at"`
+	UpdatedAt   time.Time     `json:"updated_at"`
 }
 
 // JournalLine represents a single debit or credit line in a journal entry.
