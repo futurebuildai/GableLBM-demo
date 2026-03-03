@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, Truck, Store, CreditCard, Building2, CheckCircle } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { PortalService } from '../../services/PortalService';
@@ -9,7 +9,6 @@ const formatCurrency = (val: number): string =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
 export const PortalCheckout = () => {
-    const navigate = useNavigate();
     const [cart, setCart] = useState<Cart | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -154,8 +153,8 @@ export const PortalCheckout = () => {
                                 type="button"
                                 onClick={() => setDeliveryMethod('DELIVERY')}
                                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${deliveryMethod === 'DELIVERY'
-                                        ? 'border-gable-green bg-gable-green/5 text-gable-green'
-                                        : 'border-white/10 text-zinc-400 hover:border-white/20'
+                                    ? 'border-gable-green bg-gable-green/5 text-gable-green'
+                                    : 'border-white/10 text-zinc-400 hover:border-white/20'
                                     }`}
                             >
                                 <Truck className="w-6 h-6" />
@@ -165,8 +164,8 @@ export const PortalCheckout = () => {
                                 type="button"
                                 onClick={() => setDeliveryMethod('PICKUP')}
                                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${deliveryMethod === 'PICKUP'
-                                        ? 'border-gable-green bg-gable-green/5 text-gable-green'
-                                        : 'border-white/10 text-zinc-400 hover:border-white/20'
+                                    ? 'border-gable-green bg-gable-green/5 text-gable-green'
+                                    : 'border-white/10 text-zinc-400 hover:border-white/20'
                                     }`}
                             >
                                 <Store className="w-6 h-6" />
@@ -200,8 +199,8 @@ export const PortalCheckout = () => {
                                 type="button"
                                 onClick={() => setPaymentMethod('ACCOUNT')}
                                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${paymentMethod === 'ACCOUNT'
-                                        ? 'border-gable-green bg-gable-green/5 text-gable-green'
-                                        : 'border-white/10 text-zinc-400 hover:border-white/20'
+                                    ? 'border-gable-green bg-gable-green/5 text-gable-green'
+                                    : 'border-white/10 text-zinc-400 hover:border-white/20'
                                     }`}
                             >
                                 <Building2 className="w-6 h-6" />
@@ -211,8 +210,8 @@ export const PortalCheckout = () => {
                                 type="button"
                                 onClick={() => setPaymentMethod('CARD')}
                                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${paymentMethod === 'CARD'
-                                        ? 'border-gable-green bg-gable-green/5 text-gable-green'
-                                        : 'border-white/10 text-zinc-400 hover:border-white/20'
+                                    ? 'border-gable-green bg-gable-green/5 text-gable-green'
+                                    : 'border-white/10 text-zinc-400 hover:border-white/20'
                                     }`}
                             >
                                 <CreditCard className="w-6 h-6" />

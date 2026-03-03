@@ -104,7 +104,7 @@ export function PortalMyAccount() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Tier / Price Level</label>
                             <input
                                 type="text"
-                                value={`${customer.tier} ${customer.price_level ? `(${customer.price_level.name})` : ''}`}
+                                value={customer.price_level ? `(${customer.price_level.name})` : ''}
                                 readOnly
                                 className="w-full px-3 py-2 border border-gray-200 bg-gray-50 text-gray-500 rounded cursor-not-allowed"
                             />

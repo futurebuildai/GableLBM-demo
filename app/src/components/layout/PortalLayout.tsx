@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, ShoppingCart, Truck, LogOut, ChevronLeft, ChevronRight, Bell } from 'lucide-react';
+import { Outlet, Link, useLocation } from 'react-router-dom';
+import { LayoutDashboard, FileText, ShoppingCart, Truck, LogOut, ChevronLeft, ChevronRight, Bell, Users, FolderGit2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { isAuthenticated, clearToken } from '../../services/PortalService';
+import { clearToken } from '../../services/PortalService';
 import type { PortalConfig, PortalUser } from '../../types/portal';
 import { BrandLogo } from '../ui/BrandLogo';
 
 export const PortalLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
     const location = useLocation();
-    const navigate = useNavigate();
+
 
     // Lazy-init from localStorage (avoids setState-in-effect lint rule)
     const [config] = useState<PortalConfig | null>(() => {
@@ -47,9 +47,11 @@ export const PortalLayout = () => {
 
     const navItems = [
         { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/portal' },
+        { icon: <FolderGit2 size={20} />, label: 'Projects', path: '/portal/projects' },
         { icon: <ShoppingCart size={20} />, label: 'Orders', path: '/portal/orders' },
         { icon: <FileText size={20} />, label: 'Invoices', path: '/portal/invoices' },
         { icon: <Truck size={20} />, label: 'Deliveries', path: '/portal/deliveries' },
+        { icon: <Users size={20} />, label: 'Team', path: '/portal/team' },
     ];
 
     return (

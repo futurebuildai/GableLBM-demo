@@ -40,6 +40,7 @@ import (
 	"github.com/gablelbm/gable/internal/pos"
 	"github.com/gablelbm/gable/internal/pricing"
 	"github.com/gablelbm/gable/internal/product"
+	"github.com/gablelbm/gable/internal/project"
 	"github.com/gablelbm/gable/internal/purchase_order"
 	"github.com/gablelbm/gable/internal/quote"
 	"github.com/gablelbm/gable/internal/reporting"
@@ -155,6 +156,12 @@ func main() {
 	pricingSvc := pricing.NewService(pricingRepo)
 	pricingHandler := pricing.NewHandler(pricingSvc, customerSvc, productSvc)
 	pricingHandler.RegisterRoutes(mux)
+
+	// Rebate Module
+	rebateRepo := pricing.NewRebateRepository(db)
+	rebateSvc := pricing.NewRebateService(rebateRepo)
+	rebateHandler := pricing.NewRebateHandler(rebateSvc)
+	rebateHandler.RegisterRoutes(mux)
 
 	// Escalator Pricing Module (Market Indices + Price Escalators)
 	escalatorRepo := pricing.NewEscalatorRepository(db)
@@ -375,6 +382,12 @@ func main() {
 		portalMw = portalAuthMw.Handler
 	}
 	portalHandler.RegisterRoutes(mux, portalMw)
+
+	// Project Module (Sprint 34: Project Management Dashboard)
+	projectRepo := project.NewRepository(db)
+	projectSvc := project.NewService(projectRepo)
+	projectHandler := project.NewHandler(projectSvc)
+	projectHandler.RegisterRoutes(mux, portalMw)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

@@ -64,6 +64,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) h
 
 	// Checkout endpoint (Sprint 27)
 	mux.Handle("POST /api/portal/v1/checkout", authMw(http.HandlerFunc(h.HandleCheckout)))
+
+	// User Management endpoints (Sprint 34)
+	mux.Handle("GET /api/portal/v1/users", authMw(http.HandlerFunc(h.HandleListUsers)))
+	mux.Handle("GET /api/portal/v1/invites", authMw(http.HandlerFunc(h.HandleListInvites)))
+	mux.Handle("POST /api/portal/v1/invites", authMw(http.HandlerFunc(h.HandleInviteUser)))
+	mux.Handle("PUT /api/portal/v1/users/{id}/role", authMw(http.HandlerFunc(h.HandleUpdateUserRole)))
+	mux.Handle("PUT /api/portal/v1/users/{id}/status", authMw(http.HandlerFunc(h.HandleUpdateUserStatus)))
 }
 
 // HandleLogin authenticates a contractor and returns JWT + config.
@@ -361,4 +368,94 @@ func (h *Handler) HandleCheckout(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusCreated)
 	portalWriteJSON(w, resp)
+}
+
+// --- User Management Handlers (Sprint 34) ---
+
+func (h *Handler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
+	customerID := getPortalCustomerID(r)
+	users, err := h.svc.ListCustomerUsers(r.Context(), customerID)
+	if err != nil {
+		portalWriteError(w, "Failed to load users", err, http.StatusInternalServerError)
+		return
+	}
+	portalWriteJSON(w, users)
+}
+
+func (h *Handler) HandleListInvites(w http.ResponseWriter, r *http.Request) {
+	customerID := getPortalCustomerID(r)
+	invites, err := h.svc.ListPortalInvites(r.Context(), customerID)
+	if err != nil {
+		portalWriteError(w, "Failed to load invites", err, http.StatusInternalServerError)
+		return
+	}
+	portalWriteJSON(w, invites)
+}
+
+func (h *Handler) HandleInviteUser(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	customerID := getPortalCustomerID(r)
+
+	var req InviteUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		portalWriteError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	invite, err := h.svc.InviteUser(r.Context(), customerID, req)
+	if err != nil {
+		portalWriteError(w, "Failed to invite user", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	portalWriteJSON(w, invite)
+}
+
+func (h *Handler) HandleUpdateUserRole(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	customerID := getPortalCustomerID(r)
+	idStr := r.PathValue("id")
+	userID, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	var req UpdateUserRoleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		portalWriteError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.UpdateUserRole(r.Context(), customerID, userID, req.Role); err != nil {
+		portalWriteError(w, "Failed to update role", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) HandleUpdateUserStatus(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	customerID := getPortalCustomerID(r)
+	idStr := r.PathValue("id")
+	userID, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	var req UpdateUserStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		portalWriteError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.UpdateUserStatus(r.Context(), customerID, userID, req.Status); err != nil {
+		portalWriteError(w, "Failed to update status", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

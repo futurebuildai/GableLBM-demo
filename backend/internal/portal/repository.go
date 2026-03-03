@@ -23,13 +23,13 @@ func NewRepository(db *database.DB) *Repository {
 // GetCustomerUserByEmail fetches a customer user by email for login.
 func (r *Repository) GetCustomerUserByEmail(ctx context.Context, email string) (*CustomerUser, error) {
 	query := `
-		SELECT id, customer_id, email, password_hash, name, role, created_at, updated_at
+		SELECT id, customer_id, email, password_hash, name, role, status, created_at, updated_at
 		FROM customer_users
 		WHERE email = $1
 	`
 	var u CustomerUser
 	err := r.db.Pool.QueryRow(ctx, query, email).Scan(
-		&u.ID, &u.CustomerID, &u.Email, &u.PasswordHash, &u.Name, &u.Role,
+		&u.ID, &u.CustomerID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Status,
 		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
@@ -591,4 +591,86 @@ func (r *Repository) ClearCart(ctx context.Context, cartID uuid.UUID) error {
 		return fmt.Errorf("failed to clear cart: %w", err)
 	}
 	return nil
+}
+
+// --- Portal User Management Methods ---
+
+// ListCustomerUsers fetches all portal users for a customer.
+func (r *Repository) ListCustomerUsers(ctx context.Context, customerID uuid.UUID) ([]CustomerUser, error) {
+	query := `
+		SELECT id, customer_id, email, name, role, status, created_at, updated_at
+		FROM customer_users
+		WHERE customer_id = $1
+		ORDER BY created_at DESC
+	`
+	rows, err := r.db.Pool.Query(ctx, query, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list users: %w", err)
+	}
+	defer rows.Close()
+
+	users := make([]CustomerUser, 0)
+	for rows.Next() {
+		var u CustomerUser
+		if err := rows.Scan(&u.ID, &u.CustomerID, &u.Email, &u.Name, &u.Role, &u.Status, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+// UpdateUserRole updates an existing user's role.
+func (r *Repository) UpdateUserRole(ctx context.Context, userID, customerID uuid.UUID, role string) error {
+	_, err := r.db.Pool.Exec(ctx, `UPDATE customer_users SET role = $1, updated_at = NOW() WHERE id = $2 AND customer_id = $3`, role, userID, customerID)
+	if err != nil {
+		return fmt.Errorf("failed to update user role: %w", err)
+	}
+	return nil
+}
+
+// UpdateUserStatus changes the user's status.
+func (r *Repository) UpdateUserStatus(ctx context.Context, userID, customerID uuid.UUID, status string) error {
+	_, err := r.db.Pool.Exec(ctx, `UPDATE customer_users SET status = $1, updated_at = NOW() WHERE id = $2 AND customer_id = $3`, status, userID, customerID)
+	if err != nil {
+		return fmt.Errorf("failed to update user status: %w", err)
+	}
+	return nil
+}
+
+// CreatePortalInvite stores a new invite token.
+func (r *Repository) CreatePortalInvite(ctx context.Context, invite PortalInvite) error {
+	_, err := r.db.Pool.Exec(ctx, `
+		INSERT INTO portal_invites (id, customer_id, email, role, token, expires_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+	`, invite.ID, invite.CustomerID, invite.Email, invite.Role, invite.Token, invite.ExpiresAt)
+	if err != nil {
+		return fmt.Errorf("failed to create invite: %w", err)
+	}
+	return nil
+}
+
+// ListPortalInvites fetches active invites for a customer.
+func (r *Repository) ListPortalInvites(ctx context.Context, customerID uuid.UUID) ([]PortalInvite, error) {
+	query := `
+		SELECT id, customer_id, email, role, token, expires_at, created_at
+		FROM portal_invites
+		WHERE customer_id = $1 AND expires_at > NOW()
+		ORDER BY created_at DESC
+	`
+	rows, err := r.db.Pool.Query(ctx, query, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list invites: %w", err)
+	}
+	defer rows.Close()
+
+	invites := make([]PortalInvite, 0)
+	for rows.Next() {
+		var i PortalInvite
+		if err := rows.Scan(&i.ID, &i.CustomerID, &i.Email, &i.Role, &i.Token, &i.ExpiresAt, &i.CreatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan invite: %w", err)
+		}
+		invites = append(invites, i)
+	}
+	return invites, nil
 }

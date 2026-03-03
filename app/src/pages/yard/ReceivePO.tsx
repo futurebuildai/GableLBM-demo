@@ -3,7 +3,9 @@ import { PageTransition } from "../../components/ui/PageTransition";
 import { Card, CardContent } from "../../components/ui/Card";
 import { PurchaseOrderService } from "../../services/PurchaseOrderService";
 import type { PurchaseOrder } from "../../types/purchaseOrder";
-import { ScanBarcode, ChevronRight, ArrowLeft, Check, Package, Loader2 } from "lucide-react";
+import { ScanBarcode, ChevronRight, ArrowLeft, Check, Package, Loader2, ScanLine } from "lucide-react";
+import { BarcodeScanner } from "../../components/BarcodeScanner";
+import { useToast } from "../../components/ui/ToastContext";
 
 export function ReceivePO() {
     const [pos, setPOs] = useState<PurchaseOrder[]>([]);
@@ -12,6 +14,36 @@ export function ReceivePO() {
     const [receivedQtys, setReceivedQtys] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const { showToast } = useToast();
+
+    const handleScan = (barcode: string) => {
+        if (!selectedPO || !selectedPO.lines) return;
+
+        // Find the line item by product id/sku (assuming product_id is what barcode returns for now)
+        const lineItem = selectedPO.lines.find(l =>
+            l.product_id === barcode ||
+            (l.description && l.description.toLowerCase().includes(barcode.toLowerCase()))
+        );
+
+        if (lineItem) {
+            setReceivedQtys(prev => {
+                const currentQty = parseFloat(prev[lineItem.id] || "0");
+                const newQty = currentQty + 1;
+
+                // Don't exceed ordered quantity
+                if (newQty > lineItem.quantity) {
+                    showToast(`Cannot receive more than ordered for: ${lineItem.description}`, 'error');
+                    return prev;
+                }
+
+                showToast(`Scanned: ${lineItem.description} (+1)`, 'success');
+                return { ...prev, [lineItem.id]: String(newQty) };
+            });
+        } else {
+            showToast(`Item not found on this PO: ${barcode}`, 'error');
+        }
+    };
 
     useEffect(() => {
         PurchaseOrderService.listPOs()
@@ -135,20 +167,39 @@ export function ReceivePO() {
                 ) : (
                     <>
                         {/* PO Detail */}
-                        <div className="flex items-center gap-3 mb-1">
-                            <button
-                                onClick={() => setSelectedPO(null)}
-                                className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 transition-colors"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
-                            </button>
-                            <div className="flex-1">
-                                <div className="font-bold text-lg text-white">{selectedPO.vendor_name || "Vendor"}</div>
-                                <div className="text-xs text-zinc-500 font-mono">
-                                    PO #{selectedPO.id.slice(-6).toUpperCase()}
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setSelectedPO(null)}
+                                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 transition-colors"
+                                >
+                                    <ArrowLeft className="w-5 h-5" />
+                                </button>
+                                <div>
+                                    <div className="font-bold text-lg text-white">{selectedPO.vendor_name || "Vendor"}</div>
+                                    <div className="text-xs text-zinc-500 font-mono">
+                                        PO #{selectedPO.id.slice(-6).toUpperCase()}
+                                    </div>
                                 </div>
                             </div>
+                            <button
+                                onClick={() => setIsScanning(true)}
+                                className="flex items-center gap-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-amber-400 py-1.5 px-3 rounded-lg border border-white/10 transition-colors"
+                            >
+                                <ScanLine className="w-4 h-4" />
+                                Scan Line
+                            </button>
                         </div>
+
+                        {isScanning && (
+                            <BarcodeScanner
+                                onScan={(barcode) => {
+                                    setIsScanning(false);
+                                    handleScan(barcode);
+                                }}
+                                onClose={() => setIsScanning(false)}
+                            />
+                        )}
 
                         <div className="space-y-2">
                             {(selectedPO.lines || []).map(line => {

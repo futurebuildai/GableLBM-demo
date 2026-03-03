@@ -6,8 +6,32 @@ export interface PortalUser {
     email: string;
     name: string;
     role: string;
+    status: string;
     created_at: string;
     updated_at: string;
+}
+
+export interface PortalInvite {
+    id: string;
+    customer_id: string;
+    email: string;
+    role: string;
+    token: string;
+    expires_at: string;
+    created_at: string;
+}
+
+export interface InviteUserRequest {
+    email: string;
+    role: string;
+}
+
+export interface UpdateUserRoleRequest {
+    role: string;
+}
+
+export interface UpdateUserStatusRequest {
+    status: string;
 }
 
 export interface PortalConfig {

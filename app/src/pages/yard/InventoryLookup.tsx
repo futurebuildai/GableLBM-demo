@@ -1,14 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { PageTransition } from "../../components/ui/PageTransition";
 import { Card, CardContent } from "../../components/ui/Card";
-import { Search, Package, MapPin, Minus, Plus, ArrowRightLeft, X, Loader2 } from "lucide-react";
+import { Search, Package, MapPin, Minus, Plus, ArrowRightLeft, X, Loader2, ScanLine } from "lucide-react";
 import type { Product, Inventory } from "../../types/product";
 import { InventoryService } from "../../services/InventoryService";
+import { BarcodeScanner } from "../../components/BarcodeScanner";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export function InventoryLookup() {
     const [query, setQuery] = useState("");
+    const [isScanning, setIsScanning] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState<string | null>(null);
@@ -81,21 +83,40 @@ export function InventoryLookup() {
                 </h1>
 
                 {/* Search */}
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                    <input
-                        type="text"
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                        placeholder="Search SKU or description..."
-                        className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:border-amber-400/50 transition-colors placeholder:text-zinc-600"
-                    />
-                    {query && (
-                        <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300">
-                            <X className="w-4 h-4" />
-                        </button>
-                    )}
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                            placeholder="Search SKU or description..."
+                            className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:border-amber-400/50 transition-colors placeholder:text-zinc-600"
+                        />
+                        {query && (
+                            <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300">
+                                <X className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => setIsScanning(true)}
+                        className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 p-3 rounded-xl border border-white/10 transition-colors flex items-center justify-center isolate"
+                        title="Scan Barcode"
+                    >
+                        <ScanLine className="w-5 h-5" />
+                    </button>
                 </div>
+
+                {isScanning && (
+                    <BarcodeScanner
+                        onScan={(barcode) => {
+                            setIsScanning(false);
+                            setQuery(barcode);
+                        }}
+                        onClose={() => setIsScanning(false)}
+                    />
+                )}
 
                 {loading && (
                     <div className="flex justify-center py-8">
@@ -172,8 +193,8 @@ export function InventoryLookup() {
                                             onClick={(e) => { e.stopPropagation(); handleAdjust(p.id, adjustQty); }}
                                             disabled={adjustQty === 0 || adjusting}
                                             className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${adjustQty !== 0
-                                                    ? "bg-amber-400 text-black hover:bg-amber-300 active:scale-95"
-                                                    : "bg-white/5 text-zinc-600 cursor-not-allowed"
+                                                ? "bg-amber-400 text-black hover:bg-amber-300 active:scale-95"
+                                                : "bg-white/5 text-zinc-600 cursor-not-allowed"
                                                 }`}
                                         >
                                             {adjusting ? <Loader2 className="w-3 h-3 animate-spin" /> : "Apply"}

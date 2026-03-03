@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { reportingApi, SavedReport } from '../../services/reportingApi';
+import { useState, useEffect } from 'react';
+import { reportingApi } from '../../services/reportingApi';
+import type { SavedReport } from '../../services/reportingApi';
 import { Link } from 'react-router-dom';
 
 export default function SavedReports() {

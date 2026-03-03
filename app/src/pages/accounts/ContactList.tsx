@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Contact, CreateContactRequest, ContactRole } from '../../../types/crm';
-import { crmApi } from '../../../services/crmApi';
+import type { Contact, CreateContactRequest } from '../../types/crm';
+import { crmApi } from '../../services/crmApi';
 
 interface ContactListProps {
     customerId: string;

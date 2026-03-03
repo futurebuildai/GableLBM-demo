@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { reportingApi, ReportDefinition, ReportColumn, ReportFilter, ReportGrouping } from '../../services/reportingApi';
+import { reportingApi } from '../../services/reportingApi';
+import type { ReportDefinition, ReportColumn, ReportFilter, ReportGrouping } from '../../services/reportingApi';
 
 // Simplified Schema Metadata for the UI (mirrors backend entitySchemas)
 const SCHEMA_METADATA: Record<string, { label: string; fields: { name: string; type: string }[] }> = {
@@ -38,11 +39,11 @@ const SCHEMA_METADATA: Record<string, { label: string; fields: { name: string; t
 export default function ReportBuilder() {
   const [entityType, setEntityType] = useState('invoices');
   const [reportName, setReportName] = useState('New Custom Report');
-  
+
   const [columns, setColumns] = useState<ReportColumn[]>([]);
   const [filters, setFilters] = useState<ReportFilter[]>([]);
   const [groupings, setGroupings] = useState<ReportGrouping[]>([]);
-  
+
   const [previewData, setPreviewData] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export default function ReportBuilder() {
   const handleRemoveColumn = (field: string) => {
     setColumns(columns.filter(c => c.field !== field));
   };
-  
+
   const handleUpdateColumnAgg = (field: string, agg: string) => {
     setColumns(columns.map(c => c.field === field ? { ...c, aggregation: agg } : c));
   };
@@ -106,7 +107,7 @@ export default function ReportBuilder() {
       setError('Please select at least one column.');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
     try {
@@ -121,7 +122,7 @@ export default function ReportBuilder() {
 
   const handleExport = async (format: 'csv' | 'xlsx') => {
     if (columns.length === 0) return;
-    
+
     setLoading(true);
     try {
       const blob = await reportingApi.exportReport(entityType, format, buildDefinition());
@@ -161,8 +162,8 @@ export default function ReportBuilder() {
   return (
     <div className="flex flex-col h-full bg-gray-50 p-6 overflow-auto">
       <div className="flex justify-between items-center mb-6">
-        <input 
-          type="text" 
+        <input
+          type="text"
           value={reportName}
           onChange={(e) => setReportName(e.target.value)}
           className="text-2xl font-bold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none px-1"
@@ -177,12 +178,12 @@ export default function ReportBuilder() {
       <div className="grid grid-cols-12 gap-6">
         {/* Left Sidebar: Controls */}
         <div className="col-span-4 space-y-6">
-          
+
           {/* Base Entity Selection */}
           <div className="bg-white p-4 rounded shadow-sm">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Settings</h3>
             <label className="block text-sm font-medium text-gray-700 mb-1">Base Data Source</label>
-            <select 
+            <select
               className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
               value={entityType}
               onChange={(e) => {
@@ -216,7 +217,7 @@ export default function ReportBuilder() {
                 <li key={col.field} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded border border-gray-100">
                   <span className="font-medium text-gray-800">{col.label}</span>
                   <div className="flex items-center space-x-2">
-                    <select 
+                    <select
                       className="text-xs py-1 border-gray-300 rounded"
                       value={col.aggregation || ''}
                       onChange={(e) => handleUpdateColumnAgg(col.field, e.target.value)}
@@ -244,15 +245,15 @@ export default function ReportBuilder() {
               {filters.map((filter, idx) => (
                 <div key={idx} className="flex flex-col space-y-2 bg-gray-50 p-2 rounded border border-gray-100 relative">
                   <button onClick={() => handleRemoveFilter(idx)} className="absolute top-1 right-2 text-red-500 hover:text-red-700 text-lg">&times;</button>
-                  <select 
-                    value={filter.field} 
+                  <select
+                    value={filter.field}
                     onChange={(e) => handleUpdateFilter(idx, 'field', e.target.value)}
                     className="text-sm border-gray-300 rounded w-full pr-6"
                   >
                     {availableFields.map(f => (<option key={f.name} value={f.name}>{f.name}</option>))}
                   </select>
                   <div className="flex space-x-2">
-                    <select 
+                    <select
                       value={filter.operator}
                       onChange={(e) => handleUpdateFilter(idx, 'operator', e.target.value)}
                       className="text-sm border-gray-300 rounded w-1/3"
@@ -263,9 +264,9 @@ export default function ReportBuilder() {
                       <option value="<">&lt;</option>
                       <option value="LIKE">Contains</option>
                     </select>
-                    <input 
-                      type="text" 
-                      value={filter.value} 
+                    <input
+                      type="text"
+                      value={filter.value}
                       onChange={(e) => handleUpdateFilter(idx, 'value', e.target.value)}
                       placeholder="Value..."
                       className="text-sm border-gray-300 rounded w-2/3"
@@ -311,7 +312,7 @@ export default function ReportBuilder() {
           <div className="bg-white rounded shadow-sm border border-gray-200 h-full flex flex-col">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
               <h2 className="text-lg font-medium text-gray-800">Data Preview</h2>
-              <button 
+              <button
                 onClick={handlePreview}
                 disabled={loading || columns.length === 0}
                 className={`px-4 py-2 rounded text-white font-medium ${loading || columns.length === 0 ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-sm'}`}
@@ -319,18 +320,18 @@ export default function ReportBuilder() {
                 {loading ? 'Running...' : 'Run Report'}
               </button>
             </div>
-            
+
             <div className="flex-1 p-4 overflow-auto">
               {error && (
                 <div className="bg-red-50 text-red-700 p-4 rounded mb-4">
                   {error}
                 </div>
               )}
-              
+
               {!previewData ? (
-                 <div className="h-full flex items-center justify-center text-gray-400">
-                    <p>Select columns and click Run Report to preview data (Limit 50 rows).</p>
-                 </div>
+                <div className="h-full flex items-center justify-center text-gray-400">
+                  <p>Select columns and click Run Report to preview data (Limit 50 rows).</p>
+                </div>
               ) : previewData.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-gray-500">
                   No records found matching criteria.

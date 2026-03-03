@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { posService } from '../../services/POSService';
 import type { POSTransaction, QuickSearchResult, POSLineItem } from '../../types/pos';
+import { BarcodeScanner } from '../../components/BarcodeScanner';
 
 /**
  * POSTerminal — Full-screen retail counter sales interface.
@@ -21,7 +22,24 @@ const POSTerminal: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [isScanning, setIsScanning] = useState(false);
     const searchRef = useRef<HTMLInputElement>(null);
+
+    const handleScan = async (barcode: string) => {
+        try {
+            // A quick direct lookup, if API supports it. For now, search and take first.
+            const results = await posService.searchProducts(barcode);
+            if (results && results.length > 0) {
+                const exactMatch = results.find(r => r.sku === barcode || r.product_id === barcode) || results[0];
+                await addItem(exactMatch);
+            } else {
+                setError(`Product not found for barcode: ${barcode}`);
+                setTimeout(() => setError(null), 3000);
+            }
+        } catch (err: any) {
+            setError(err.message || 'Error scanning barcode');
+        }
+    };
 
     // Auto-start a new transaction on mount
     useEffect(() => {
@@ -177,15 +195,43 @@ const POSTerminal: React.FC = () => {
                 <div style={styles.cartPanel}>
                     {/* Search Bar */}
                     <div style={styles.searchContainer}>
-                        <input
-                            ref={searchRef}
-                            type="text"
-                            placeholder="🔍 Search product by SKU or description..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            style={styles.searchInput}
-                            autoFocus
-                        />
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                                ref={searchRef}
+                                type="text"
+                                placeholder="🔍 Search product by SKU or description..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                style={{ ...styles.searchInput, flex: 1 }}
+                                autoFocus
+                            />
+                            <button
+                                onClick={() => setIsScanning(true)}
+                                style={{
+                                    background: '#238636',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    color: '#fff',
+                                    padding: '0 16px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                📷 Scan
+                            </button>
+                        </div>
+                        {isScanning && (
+                            <BarcodeScanner
+                                onScan={(barcode) => {
+                                    setIsScanning(false);
+                                    handleScan(barcode);
+                                }}
+                                onClose={() => setIsScanning(false)}
+                            />
+                        )}
                         {searchResults.length > 0 && (
                             <div style={styles.searchDropdown}>
                                 {searchResults.map(result => (

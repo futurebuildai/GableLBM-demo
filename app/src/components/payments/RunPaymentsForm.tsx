@@ -34,8 +34,8 @@ const RunPaymentsForm: React.FC<RunPaymentsFormProps> = ({
     onCancel,
 }) => {
     const [loading, setLoading] = useState(false);
-    const [publicKey, setPublicKey] = useState<string | null>(null);
-    const [initError, setInitError] = useState<string | null>(null);
+    const [, setPublicKey] = useState<string | null>(null);
+    const [initError] = useState<string | null>(null);
     const [notes, setNotes] = useState('');
 
     // Demo/fallback state (when gateway is not configured)

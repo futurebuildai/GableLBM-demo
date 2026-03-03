@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 const API_BASE = '/api/reporting';
 
 export interface ReportDefinition {
@@ -41,50 +39,77 @@ export interface ReportSchedule {
   status: string;
 }
 
+const fetchJson = async <T>(url: string, options?: RequestInit): Promise<T> => {
+  const token = localStorage.getItem('token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> || {}),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(url, { ...options, headers });
+  if (!response.ok) throw new Error(`API Error: ${response.status}`);
+  return response.json();
+};
+
 export const reportingApi = {
   // Ad-hoc query preview
   previewReport: async (entityType: string, definition: ReportDefinition) => {
-    const response = await axios.post(`${API_BASE}/builder/preview`, {
-      entity_type: entityType,
-      definition,
+    return fetchJson<any>(`${API_BASE}/builder/preview`, {
+      method: 'POST',
+      body: JSON.stringify({ entity_type: entityType, definition })
     });
-    return response.data;
   },
 
   // Export
   exportReport: async (entityType: string, format: 'csv' | 'xlsx', definition: ReportDefinition) => {
-    const response = await axios.post(`${API_BASE}/builder/export`, {
-      entity_type: entityType,
-      format,
-      definition,
-    }, {
-      responseType: 'blob', // Important for file downloads
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE}/builder/export`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ entity_type: entityType, format, definition })
     });
-    return response.data;
+    if (!response.ok) throw new Error(`Export failed`);
+    return response.blob();
   },
 
   // Saved Reports CRUD
   listSavedReports: async (): Promise<SavedReport[]> => {
-    const response = await axios.get(`${API_BASE}/saved`);
-    return response.data;
+    return fetchJson<SavedReport[]>(`${API_BASE}/saved`);
   },
 
   getSavedReport: async (id: string): Promise<SavedReport> => {
-    const response = await axios.get(`${API_BASE}/saved/${id}`);
-    return response.data;
+    return fetchJson<SavedReport>(`${API_BASE}/saved/${id}`);
   },
 
   saveReport: async (report: Partial<SavedReport>): Promise<SavedReport> => {
-    const response = await axios.post(`${API_BASE}/save`, report);
-    return response.data;
+    return fetchJson<SavedReport>(`${API_BASE}/save`, {
+      method: 'POST',
+      body: JSON.stringify(report)
+    });
   },
-  
+
   updateSavedReport: async (id: string, report: Partial<SavedReport>) => {
-    const response = await axios.put(`${API_BASE}/saved/${id}`, report);
-    return response.data;
+    return fetchJson<SavedReport>(`${API_BASE}/saved/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(report)
+    });
   },
 
   deleteSavedReport: async (id: string) => {
-    await axios.delete(`${API_BASE}/saved/${id}`);
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE}/saved/${id}`, {
+      method: 'DELETE',
+      headers
+    });
+    if (!response.ok) throw new Error(`Delete failed`);
   }
 };

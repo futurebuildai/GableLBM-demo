@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Contact } from '../../../types/crm';
-import { crmApi } from '../../../services/crmApi';
+import type { Activity, Contact } from '../../types/crm';
+import { crmApi } from '../../services/crmApi';
 import { LogActivityModal } from '../../components/crm/LogActivityModal';
 import { format } from 'date-fns';
 

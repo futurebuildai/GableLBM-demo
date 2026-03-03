@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { PageTransition } from "../../components/ui/PageTransition";
 import { Card, CardContent } from "../../components/ui/Card";
-import { ClipboardCheck, MapPin, ChevronRight, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { ClipboardCheck, MapPin, ChevronRight, Check, AlertTriangle, Loader2, ScanLine } from "lucide-react";
 import type { Product } from "../../types/product";
 import { InventoryService } from "../../services/InventoryService";
+import { BarcodeScanner } from "../../components/BarcodeScanner";
+import { useToast } from "../../components/ui/ToastContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
@@ -29,6 +31,29 @@ export function CycleCount() {
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const { showToast } = useToast();
+
+    const handleScan = (barcode: string) => {
+        // Find item by ID or SKU
+        const index = items.findIndex(i =>
+            i.product.id === barcode ||
+            i.product.sku.toLowerCase() === barcode.toLowerCase()
+        );
+
+        if (index >= 0) {
+            setItems(prev => {
+                const next = [...prev];
+                const currentCount = parseFloat(next[index].counted);
+                const newCount = isNaN(currentCount) ? 1 : currentCount + 1;
+                next[index] = { ...next[index], counted: newCount.toString() };
+                return next;
+            });
+            showToast(`Scanned: ${items[index].product.description} (+1)`, 'success');
+        } else {
+            showToast(`Item not found in current zone: ${barcode}`, 'error');
+        }
+    };
 
     useEffect(() => {
         if (!selectedZone) return;
@@ -130,10 +155,30 @@ export function CycleCount() {
                             >
                                 ← Change Zone
                             </button>
-                            <span className="text-xs font-mono text-zinc-500">
-                                {ZONES.find(z => z.code === selectedZone)?.label}
-                            </span>
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setIsScanning(true)}
+                                    className="flex items-center gap-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-amber-400 py-1.5 px-3 rounded-lg border border-white/10 transition-colors"
+                                >
+                                    <ScanLine className="w-3.5 h-3.5" />
+                                    Scan Item
+                                </button>
+                                <span className="text-xs font-mono text-zinc-500">
+                                    {ZONES.find(z => z.code === selectedZone)?.label}
+                                </span>
+                            </div>
                         </div>
+
+                        {isScanning && (
+                            <BarcodeScanner
+                                onScan={(barcode) => {
+                                    setIsScanning(false);
+                                    handleScan(barcode);
+                                }}
+                                onClose={() => setIsScanning(false)}
+                            />
+                        )}
 
                         {loading ? (
                             <div className="flex justify-center py-12">
@@ -193,10 +238,10 @@ export function CycleCount() {
                                                             onChange={e => updateCount(idx, e.target.value)}
                                                             placeholder="—"
                                                             className={`w-20 text-center bg-black/20 border rounded-lg py-2 font-mono text-sm focus:outline-none transition-colors ${hasDiscrep
-                                                                    ? "border-amber-400/50 text-amber-400 focus:border-amber-400"
-                                                                    : item.counted !== ""
-                                                                        ? "border-emerald-500/30 text-emerald-400"
-                                                                        : "border-white/10 text-white focus:border-amber-400/50"
+                                                                ? "border-amber-400/50 text-amber-400 focus:border-amber-400"
+                                                                : item.counted !== ""
+                                                                    ? "border-emerald-500/30 text-emerald-400"
+                                                                    : "border-white/10 text-white focus:border-amber-400/50"
                                                                 }`}
                                                         />
                                                     </div>
@@ -212,8 +257,8 @@ export function CycleCount() {
                                         onClick={handleSubmit}
                                         disabled={countedCount === 0 || submitting}
                                         className={`w-full py-4 rounded-xl font-bold text-lg font-mono uppercase tracking-wider transition-all ${countedCount > 0
-                                                ? "bg-amber-400 text-black hover:bg-amber-300 active:scale-[0.98] shadow-lg shadow-amber-400/20"
-                                                : "bg-white/5 text-zinc-600 border border-white/10 cursor-not-allowed"
+                                            ? "bg-amber-400 text-black hover:bg-amber-300 active:scale-[0.98] shadow-lg shadow-amber-400/20"
+                                            : "bg-white/5 text-zinc-600 border border-white/10 cursor-not-allowed"
                                             }`}
                                     >
                                         {submitting ? (

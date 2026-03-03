@@ -1,5 +1,6 @@
 import type {
     PortalLoginResponse,
+    PortalUser,
     PortalConfig,
     PortalDashboard,
     PortalOrder,
@@ -11,6 +12,10 @@ import type {
     Cart,
     CheckoutRequest,
     CheckoutResponse,
+    PortalInvite,
+    InviteUserRequest,
+    UpdateUserRoleRequest,
+    UpdateUserStatusRequest,
 } from '../types/portal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -220,6 +225,42 @@ export const PortalService = {
         return fetchWithRetry<CheckoutResponse>(
             `${API_URL}/api/portal/v1/checkout`,
             { method: 'POST', body: JSON.stringify(req) },
+        );
+    },
+
+    // --- User Management Methods (Sprint 34) ---
+
+    /** Get portal users. */
+    async getUsers(): Promise<PortalUser[]> {
+        return fetchWithRetry<PortalUser[]>(`${API_URL}/api/portal/v1/users`);
+    },
+
+    /** Get active invites. */
+    async getInvites(): Promise<PortalInvite[]> {
+        return fetchWithRetry<PortalInvite[]>(`${API_URL}/api/portal/v1/invites`);
+    },
+
+    /** Invite a new user. */
+    async inviteUser(req: InviteUserRequest): Promise<PortalInvite> {
+        return fetchWithRetry<PortalInvite>(
+            `${API_URL}/api/portal/v1/invites`,
+            { method: 'POST', body: JSON.stringify(req) },
+        );
+    },
+
+    /** Update a user's role. */
+    async updateUserRole(id: string, req: UpdateUserRoleRequest): Promise<void> {
+        return fetchWithRetry<void>(
+            `${API_URL}/api/portal/v1/users/${id}/role`,
+            { method: 'PUT', body: JSON.stringify(req) },
+        );
+    },
+
+    /** Update a user's status. */
+    async updateUserStatus(id: string, req: UpdateUserStatusRequest): Promise<void> {
+        return fetchWithRetry<void>(
+            `${API_URL}/api/portal/v1/users/${id}/status`,
+            { method: 'PUT', body: JSON.stringify(req) },
         );
     },
 };

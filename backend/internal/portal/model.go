@@ -14,8 +14,20 @@ type CustomerUser struct {
 	PasswordHash string    `json:"-"` // Never serialize
 	Name         string    `json:"name"`
 	Role         string    `json:"role"`
+	Status       string    `json:"status"` // Active, Inactive
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// PortalInvite represents an invitation for a team member to join the portal.
+type PortalInvite struct {
+	ID         uuid.UUID `json:"id"`
+	CustomerID uuid.UUID `json:"customer_id"`
+	Email      string    `json:"email"`
+	Role       string    `json:"role"`
+	Token      string    `json:"token"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // PortalConfig holds white-label branding for the dealer portal.
