@@ -1,4 +1,4 @@
-const API_BASE = '/api/reporting';
+const API_BASE = 'https://backend-production-bdf8.up.railway.app';
 
 export interface ReportDefinition {
   columns: ReportColumn[];

@@ -5,6 +5,7 @@ import { InventoryTable } from '../components/inventory/InventoryTable';
 import { AddProductModal } from '../components/inventory/AddProductModal';
 import { StockAdjustmentModal } from '../components/inventory/StockAdjustmentModal';
 import { InventoryTransferModal } from '../components/inventory/InventoryTransferModal';
+import { ProductMarginModal } from '../components/inventory/ProductMarginModal';
 import { Plus, Search, Package } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { PageTransition } from '../components/ui/PageTransition';
@@ -17,9 +18,9 @@ export const Inventory = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [error, setError] = useState('');
 
-    // Stock Adjustment State
     const [isStockModalOpen, setIsStockModalOpen] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [isMarginModalOpen, setIsMarginModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
     const loadProducts = async () => {
@@ -53,6 +54,11 @@ export const Inventory = () => {
     const handleTransferStock = (product: Product) => {
         setSelectedProduct(product);
         setIsTransferModalOpen(true);
+    };
+
+    const handleEditMargins = (product: Product) => {
+        setSelectedProduct(product);
+        setIsMarginModalOpen(true);
     };
 
     return (
@@ -113,6 +119,7 @@ export const Inventory = () => {
                             }
                             onAdjustStock={handleAdjustStock}
                             onTransferStock={handleTransferStock}
+                            onEditMargins={handleEditMargins}
                         />
                     )}
                 </div>
@@ -136,6 +143,15 @@ export const Inventory = () => {
             <InventoryTransferModal
                 isOpen={isTransferModalOpen}
                 onClose={() => setIsTransferModalOpen(false)}
+                product={selectedProduct}
+                onSuccess={() => {
+                    loadProducts();
+                }}
+            />
+
+            <ProductMarginModal
+                isOpen={isMarginModalOpen}
+                onClose={() => setIsMarginModalOpen(false)}
                 product={selectedProduct}
                 onSuccess={() => {
                     loadProducts();

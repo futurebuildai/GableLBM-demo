@@ -1,0 +1,22 @@
+server {
+    listen ${PORT};
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # SPA fallback — send all non-file requests to index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain application/json application/javascript text/css application/xml text/javascript;
+    gzip_min_length 256;
+}

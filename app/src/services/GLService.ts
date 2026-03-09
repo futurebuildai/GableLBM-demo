@@ -7,7 +7,7 @@ import type {
     CreateJournalEntryRequest,
 } from '../types/gl';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API = 'https://backend-production-bdf8.up.railway.app';
 
 // --- Accounts ---
 

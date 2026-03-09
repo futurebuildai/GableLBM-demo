@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS bank_transactions (
     amount BIGINT NOT NULL,                          -- cents (positive=deposit, negative=withdrawal)
     description VARCHAR(256),
     reference VARCHAR(128),
-    matched_journal_entry_id UUID REFERENCES journal_entries(id),
+    matched_journal_entry_id UUID REFERENCES gl_journal_entries(id),
     status VARCHAR(16) NOT NULL DEFAULT 'UNMATCHED', -- UNMATCHED, MATCHED, EXCLUDED
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

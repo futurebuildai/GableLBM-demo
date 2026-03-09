@@ -17,11 +17,11 @@ export interface StockMovementRequest {
     is_delta?: boolean; // Added matching what likely exists or removing
 }
 
-const API_URL = '/api/v1/inventory'; // Use relative path via proxy or updated base
+const API_URL = 'https://backend-production-bdf8.up.railway.app'; // Use relative path via proxy or updated base
 
 export const InventoryService = {
     async adjustStock(data: StockAdjustmentRequest): Promise<void> {
-        const response = await fetch(`${API_URL}/adjust`, {
+        const response = await fetch(`${API_URL}/api/v1/inventory/adjust`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -32,7 +32,7 @@ export const InventoryService = {
     },
 
     async transferStock(data: StockMovementRequest): Promise<void> {
-        const response = await fetch(`${API_URL}/transfer`, {
+        const response = await fetch(`${API_URL}/api/v1/inventory/transfer`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -43,7 +43,7 @@ export const InventoryService = {
     },
 
     async getInventoryByProduct(productId: string): Promise<Inventory[]> {
-        const response = await fetch(`${API_URL}?product_id=${productId}`);
+        const response = await fetch(`${API_URL}/api/v1/inventory?product_id=${productId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch inventory');
         }

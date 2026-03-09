@@ -1,6 +1,6 @@
 module github.com/gablelbm/gable
 
-go 1.25.6
+go 1.24.0
 
 require (
 	github.com/MicahParks/keyfunc/v3 v3.7.0

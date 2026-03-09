@@ -5,7 +5,7 @@ import type {
     CreateExemptionRequest,
 } from '../types/tax';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:9091';
+const API_BASE = 'https://backend-production-bdf8.up.railway.app';
 
 /**
  * Preview tax calculation for a cart or invoice.

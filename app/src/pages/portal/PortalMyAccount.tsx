@@ -43,7 +43,8 @@ export function PortalMyAccount() {
             setSuccessMsg('');
             setError(null);
 
-            const res = await fetch(`http://localhost:9091/api/v1/customers`, {
+            const API_BASE = 'https://backend-production-bdf8.up.railway.app';
+            const res = await fetch(`${API_BASE}/api/v1/customers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(customer),

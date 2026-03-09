@@ -29,6 +29,9 @@ export interface Product {
     reorder_qty?: number;
     total_quantity?: number;
     total_allocated?: number;
+    average_unit_cost: number;
+    target_margin: number;
+    commission_rate: number;
     created_at: string;
     updated_at: string;
 }

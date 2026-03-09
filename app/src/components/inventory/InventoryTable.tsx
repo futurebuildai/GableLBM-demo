@@ -6,9 +6,10 @@ interface InventoryTableProps {
     products: Product[];
     onAdjustStock: (product: Product) => void;
     onTransferStock: (product: Product) => void;
+    onEditMargins: (product: Product) => void;
 }
 
-export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdjustStock, onTransferStock }) => {
+export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdjustStock, onTransferStock, onEditMargins }) => {
     return (
         <div className="w-full overflow-hidden">
             <div className="overflow-x-auto">
@@ -19,8 +20,9 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdju
                             <th className="px-6 py-4">Category / Desc</th>
                             <th className="px-6 py-4">Vendor</th>
                             <th className="px-6 py-4 text-center">UOM</th>
-                            <th className="px-6 py-4 text-right">On Hand</th>
-                            <th className="px-6 py-4 text-right">Allocated</th>
+                            <th className="px-6 py-4 text-right">Avg Cost</th>
+                            <th className="px-6 py-4 text-right">Target Margin</th>
+                            <th className="px-6 py-4 text-right">Visible Price</th>
                             <th className="px-6 py-4 text-right">Available</th>
                             <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
@@ -64,11 +66,17 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdju
                                                 {p.uom_primary}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-zinc-300">
-                                            {(p.total_quantity || 0).toLocaleString()}
+                                        <td className="px-6 py-4 text-right font-mono text-emerald-400">
+                                            ${(p.average_unit_cost || 0).toFixed(2)}
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-amber-500/80">
-                                            {(p.total_allocated || 0).toLocaleString()}
+                                        <td className="px-6 py-4 text-right font-mono text-zinc-300">
+                                            {(p.target_margin || 0).toFixed(1)}% <br />
+                                            <span className="text-xs text-zinc-500">{(p.commission_rate || 0).toFixed(1)}% Comm</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className="font-mono text-white group-hover:text-gable-green transition-colors">
+                                                ${(p.base_price || 0).toFixed(2)}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <span className={`font-mono font-bold ${isLowStock ? 'text-rose-500' : 'text-emerald-400'}`}>
@@ -90,6 +98,13 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdju
                                                     title="Transfer Stock"
                                                 >
                                                     <ArrowRightLeft className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => onEditMargins(p)}
+                                                    className="p-1.5 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                                                    title="Edit Margins and Commissions"
+                                                >
+                                                    <span className="text-xs font-bold leading-none px-1 py-0.5 rounded bg-zinc-800 text-gable-green border border-gable-green/30">$</span>
                                                 </button>
                                             </div>
                                         </td>

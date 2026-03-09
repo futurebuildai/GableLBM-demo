@@ -3,6 +3,8 @@ package product
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 // Handler manages HTTP requests for products
@@ -20,6 +22,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /products", h.HandleListProducts)
 	mux.HandleFunc("POST /products", h.HandleCreateProduct)
 	mux.HandleFunc("GET /products/reorder-alerts", h.HandleReorderAlerts)
+	mux.HandleFunc("PATCH /products/{id}/margins", h.HandleUpdateMarginRules)
 }
 
 // HandleCreateProduct handles POST /products
@@ -61,4 +64,36 @@ func (h *Handler) HandleListProducts(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(products)
+}
+
+// HandleUpdateMarginRules handles PATCH /products/{id}/margins
+func (h *Handler) HandleUpdateMarginRules(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "invalid id format", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		TargetMargin   float64 `json:"target_margin"`
+		CommissionRate float64 `json:"commission_rate"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.UpdateMarginRules(r.Context(), id, req.TargetMargin, req.CommissionRate); err != nil {
+		http.Error(w, "Failed to update margin rules", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

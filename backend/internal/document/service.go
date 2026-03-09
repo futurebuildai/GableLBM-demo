@@ -118,13 +118,15 @@ func (s *Service) GeneratePickTicketPDF(ctx context.Context, o *order.Order, cus
 	for _, line := range o.Lines {
 		prod, err := s.productRepo.GetProduct(ctx, line.ProductID)
 		desc := "Unknown Product"
-		if err == nil {
+		uom := "EA"
+		if err == nil && prod != nil {
 			desc = fmt.Sprintf("%s - %s", prod.SKU, prod.Description)
+			uom = string(prod.UOMPrimary)
 		}
 
 		m.AddRow(18,
 			text.NewCol(8, desc, props.Text{Size: 12}),
-			text.NewCol(4, fmt.Sprintf("%.2f [%s]", line.Quantity, prod.UOMPrimary), props.Text{Size: 14, Style: fontstyle.Bold, Align: align.Center}),
+			text.NewCol(4, fmt.Sprintf("%.2f [%s]", line.Quantity, uom), props.Text{Size: 14, Style: fontstyle.Bold, Align: align.Center}),
 		)
 	}
 

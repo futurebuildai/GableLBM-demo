@@ -44,3 +44,13 @@ func (s *Service) GetProduct(ctx context.Context, id uuid.UUID) (*Product, error
 func (s *Service) ListBelowReorder(ctx context.Context) ([]ReorderAlert, error) {
 	return s.repo.ListBelowReorder(ctx)
 }
+
+// UpdateAverageCost updates the average unit cost for a product
+func (s *Service) UpdateAverageCost(ctx context.Context, id uuid.UUID, avgCost float64) error {
+	return s.repo.UpdateAverageCost(ctx, id, avgCost)
+}
+
+// UpdateMarginRules updates the target margin and commission rate for a product
+func (s *Service) UpdateMarginRules(ctx context.Context, id uuid.UUID, targetMargin float64, commissionRate float64) error {
+	return s.repo.UpdateMarginRules(ctx, id, targetMargin, commissionRate)
+}

@@ -401,6 +401,29 @@ func (s *Service) ReceivePO(ctx context.Context, poID uuid.UUID, receivedLines [
 			if err != nil {
 				return fmt.Errorf("failed to create inventory for line %s: %w", rl.LineID, err)
 			}
+
+			// Recalculate Weighted Average Unit Cost
+			if s.productSvc != nil {
+				prod, err := s.productSvc.GetProduct(ctx, *poLine.ProductID)
+				if err == nil && prod != nil {
+					currentTotalQty := prod.TotalQuantity
+					currentAvgCost := prod.AverageUnitCost
+					receivedQty := rl.QtyReceived
+					poLineCost := poLine.Cost
+
+					var newAvgCost float64
+					if currentTotalQty <= 0 {
+						// If no existing stock, new average is just the PO line cost
+						newAvgCost = poLineCost
+					} else {
+						// Weighted average calculation
+						newAvgCost = ((currentTotalQty * currentAvgCost) + (receivedQty * poLineCost)) / (currentTotalQty + receivedQty)
+					}
+
+					// Update the product with the new average cost
+					_ = s.productSvc.UpdateAverageCost(ctx, *poLine.ProductID, newAvgCost)
+				}
+			}
 		}
 
 		if newQtyReceived < poLine.Quantity {

@@ -23,7 +23,10 @@
             },
             "build": {
                 "context": "app",
-                "dockerfilePath": "Dockerfile"
+                "dockerfilePath": "Dockerfile",
+                "buildArgs": {
+                    "VITE_API_URL": "https://backend-production-bdf8.up.railway.app"
+                }
             }
         }
     }

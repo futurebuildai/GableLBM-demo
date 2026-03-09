@@ -1,6 +1,6 @@
 import type { Order, CreateOrderRequest } from '../types/order';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = 'https://backend-production-bdf8.up.railway.app';
 
 export const OrderService = {
     async createOrder(request: CreateOrderRequest): Promise<Order> {

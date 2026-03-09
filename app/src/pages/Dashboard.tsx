@@ -97,6 +97,7 @@ export const Dashboard = () => {
     };
 
     const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const BUILD_VER = "REL_2026_03_03_1150"; // Definitive Prefix Fix
 
     return (
         <motion.div
@@ -114,7 +115,7 @@ export const Dashboard = () => {
                         className="flex items-center gap-2 text-zinc-400 text-sm font-medium mb-1"
                     >
                         <Calendar className="w-4 h-4" />
-                        {currentDate}
+                        {currentDate} | <span className="text-blue-500 font-mono text-xs">Build: {BUILD_VER}</span>
                     </motion.div>
                     <h1 className="text-display-large text-white bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">
                         Good Afternoon, Colton

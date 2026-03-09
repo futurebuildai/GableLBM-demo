@@ -8,7 +8,7 @@ import type {
     ImportResult,
 } from '../types/bankrecon';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API = 'https://backend-production-bdf8.up.railway.app';
 
 // --- Bank Accounts ---
 

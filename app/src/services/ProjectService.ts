@@ -5,7 +5,7 @@ import type {
     UpdateProjectRequest
 } from '../types/project';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = 'https://backend-production-bdf8.up.railway.app';
 const TOKEN_KEY = 'portal_token';
 
 async function fetchWithAuth<T>(url: string, options: RequestInit = {}): Promise<T> {

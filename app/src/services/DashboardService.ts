@@ -6,7 +6,7 @@ import type {
     RevenueTrendPoint,
 } from '../types/dashboard';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = 'https://backend-production-bdf8.up.railway.app';
 const REQUEST_TIMEOUT_MS = 10_000; // 10 seconds
 const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 2_000;

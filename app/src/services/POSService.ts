@@ -6,7 +6,7 @@ import type {
     TransactionSummary
 } from '../types/pos';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = 'https://backend-production-bdf8.up.railway.app';
 
 export const posService = {
     startTransaction: async (registerID = 'REG-01', cashierID?: string, customerID?: string): Promise<POSTransaction> => {

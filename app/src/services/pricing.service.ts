@@ -1,6 +1,6 @@
 import type { CalculatedPrice, MarketIndex, EscalationRequest, EscalationResult } from '../types/pricing';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = 'https://backend-production-bdf8.up.railway.app';
 
 export const PricingService = {
     calculatePrice: async (customerId: string, productId: string, quantity?: number, jobId?: string): Promise<CalculatedPrice> => {

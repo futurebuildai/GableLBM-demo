@@ -1,6 +1,6 @@
 import type { Location } from '../types/location';
 
-const API_URL = 'http://localhost:8080'; // TODO: use environment variable
+const API_URL = 'https://backend-production-bdf8.up.railway.app'; // TODO: use environment variable
 
 export const LocationService = {
     async listLocations(): Promise<Location[]> {

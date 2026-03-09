@@ -1,6 +1,6 @@
 import type { MatchResult, MatchException, MatchConfig, UpdateMatchConfigRequest } from '../types/matching';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API = 'https://backend-production-bdf8.up.railway.app';
 
 export async function runMatch(poId: string): Promise<MatchResult> {
     const res = await fetch(`${API}/api/matching/run/${poId}`, { method: 'POST' });

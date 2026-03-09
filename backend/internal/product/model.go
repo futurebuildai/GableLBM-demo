@@ -42,6 +42,9 @@ type Product struct {
 	ReorderQty     float64   `json:"reorder_qty"`
 	TotalQuantity  float64   `json:"total_quantity" db:"-"` // Aggregated from inventory
 	TotalAllocated float64   `json:"total_allocated" db:"-"`
+	AverageUnitCost float64  `json:"average_unit_cost"`
+	TargetMargin    float64  `json:"target_margin"`
+	CommissionRate  float64  `json:"commission_rate"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }

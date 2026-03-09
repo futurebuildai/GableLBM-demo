@@ -2,8 +2,8 @@
 -- Sprint 30: Dispatch Maps + Delivery Notifications
 
 -- Add route optimization fields
-ALTER TABLE routes ADD COLUMN IF NOT EXISTS total_duration_mins INT;
-ALTER TABLE routes ADD COLUMN IF NOT EXISTS total_distance_miles DECIMAL(10,2);
+ALTER TABLE delivery_routes ADD COLUMN IF NOT EXISTS total_duration_mins INT;
+ALTER TABLE delivery_routes ADD COLUMN IF NOT EXISTS total_distance_miles DECIMAL(10,2);
 
 -- Add ETA to deliveries
 ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS estimated_arrival TIMESTAMPTZ;

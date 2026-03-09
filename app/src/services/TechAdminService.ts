@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = 'https://backend-production-bdf8.up.railway.app';
 
 export interface APIKey {
     id: string;
@@ -21,7 +21,8 @@ export const techAdminService = {
         if (!response.ok) {
             throw new Error('Failed to fetch API keys');
         }
-        return response.json();
+        const data = await response.json();
+        return data || [];
     },
 
     async createKey(name: string, scopes: string[]): Promise<CreateKeyResponse> {

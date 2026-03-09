@@ -31,7 +31,15 @@ func (m *mockProductRepo) ListProducts(_ context.Context) ([]product.Product, er
 }
 
 func (m *mockProductRepo) ListBelowReorder(_ context.Context) ([]product.ReorderAlert, error) {
-	return nil, nil
+	return nil, nil // Not used in this test
+}
+
+func (m *mockProductRepo) UpdateAverageCost(ctx context.Context, id uuid.UUID, avgCost float64) error {
+	return nil
+}
+
+func (m *mockProductRepo) UpdateMarginRules(ctx context.Context, id uuid.UUID, targetMargin float64, commissionRate float64) error {
+	return nil
 }
 
 // testCatalog returns a realistic LBM product catalog for matching tests.

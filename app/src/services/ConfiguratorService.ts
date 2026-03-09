@@ -1,6 +1,6 @@
 import type { ValidateConfigResponse, BuildSKUResponse, AvailableOption, ConfiguratorRule, ConfiguratorPreset } from '../types/configurator';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = 'https://backend-production-bdf8.up.railway.app';
 
 export const ConfiguratorService = {
     async getRules(): Promise<ConfiguratorRule[]> {
