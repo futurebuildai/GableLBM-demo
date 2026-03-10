@@ -1,6 +1,6 @@
 import type { Quote, CreateQuoteRequest } from '../types/quote';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export const QuoteService = {
     async createQuote(request: CreateQuoteRequest): Promise<Quote> {

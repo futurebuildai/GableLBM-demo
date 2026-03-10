@@ -6,7 +6,7 @@ import type { Product, Inventory } from "../../types/product";
 import { InventoryService } from "../../services/InventoryService";
 import { BarcodeScanner } from "../../components/BarcodeScanner";
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export function InventoryLookup() {
     const [query, setQuery] = useState("");

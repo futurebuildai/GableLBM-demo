@@ -5,7 +5,7 @@ import type {
     CreateExemptionRequest,
 } from '../types/tax';
 
-const API_BASE = 'https://backend-production-bdf8.up.railway.app';
+const API_BASE = 'http://localhost:8080';
 
 /**
  * Preview tax calculation for a cart or invoice.

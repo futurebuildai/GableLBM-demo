@@ -7,7 +7,7 @@ import type {
     CreateJournalEntryRequest,
 } from '../types/gl';
 
-const API = 'https://backend-production-bdf8.up.railway.app';
+const API = 'http://localhost:8080';
 
 // --- Accounts ---
 

@@ -43,7 +43,7 @@ export function PortalMyAccount() {
             setSuccessMsg('');
             setError(null);
 
-            const API_BASE = 'https://backend-production-bdf8.up.railway.app';
+            const API_BASE = 'http://localhost:8080';
             const res = await fetch(`${API_BASE}/api/v1/customers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

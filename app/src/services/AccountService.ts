@@ -1,6 +1,6 @@
 import type { AccountSummary, CustomerTransaction } from '../types/account';
 
-const API_BASE_URL = 'https://backend-production-bdf8.up.railway.app/api';
+const API_BASE_URL = 'http://localhost:8080/api';
 
 export const AccountService = {
     getAccountSummary: async (customerId: string): Promise<AccountSummary> => {

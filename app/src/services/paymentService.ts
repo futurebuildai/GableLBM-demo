@@ -8,7 +8,7 @@ import type {
     Refund
 } from '../types/payment';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export const paymentService = {
     // ---- Existing: Non-card payments (cash, check, account) ----

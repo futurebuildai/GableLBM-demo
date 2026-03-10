@@ -1,6 +1,6 @@
 import type { CalculatedPrice, MarketIndex, EscalationRequest, EscalationResult } from '../types/pricing';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export const PricingService = {
     calculatePrice: async (customerId: string, productId: string, quantity?: number, jobId?: string): Promise<CalculatedPrice> => {

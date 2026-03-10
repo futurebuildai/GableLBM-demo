@@ -17,7 +17,7 @@ export interface StockMovementRequest {
     is_delta?: boolean; // Added matching what likely exists or removing
 }
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app'; // Use relative path via proxy or updated base
+const API_URL = 'http://localhost:8080'; // Use relative path via proxy or updated base
 
 export const InventoryService = {
     async adjustStock(data: StockAdjustmentRequest): Promise<void> {

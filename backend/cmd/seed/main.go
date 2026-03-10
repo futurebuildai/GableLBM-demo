@@ -138,9 +138,17 @@ func main() {
 		{"Joist Hanger 2x10", "HANGER-210", "PCS", "Hardware Wholesale Inc", "Hardware", 1.10, 1.85, 0.7, 100, 300},
 		{"Hurricane Tie H1", "TIE-H1", "PCS", "Hardware Wholesale Inc", "Hardware", 0.65, 1.15, 0.3, 200, 500},
 		{"Simpson Strong-Tie LUS28", "SIMP-LUS28", "PCS", "Hardware Wholesale Inc", "Hardware", 0.90, 1.50, 0.4, 150, 400},
+		{"Architectural Shingles 30yr", "RF-ARCH-30", "BUNDLE", "Roofing Specialists Ltd", "Roofing", 28.00, 42.00, 70.0, 50, 100},
 		{"Architectural Shingles (Black)", "RF-SH-BLK", "BUNDLE", "Roofing Specialists Ltd", "Roofing", 28.00, 42.00, 70.0, 50, 100},
 		{"Architectural Shingles (Weathered Wood)", "RF-SH-WW", "BUNDLE", "Roofing Specialists Ltd", "Roofing", 28.00, 42.00, 70.0, 50, 100},
-		{"Roofing Felt 15lb", "RF-FELT-15", "RL", "Roofing Specialists Ltd", "Roofing", 15.00, 22.50, 15.0, 30, 80},
+		{"Roofing Felt #15", "RF-FELT-15", "RL", "Roofing Specialists Ltd", "Roofing", 15.00, 22.50, 15.0, 30, 80},
+		{"Ice & Water Shield 65'", "RF-ICE-65", "RL", "Roofing Specialists Ltd", "Roofing", 65.00, 98.00, 36.0, 20, 50},
+		{"Roof Edge Drip 10'", "RF-DRIP-10", "PCS", "Roofing Specialists Ltd", "Roofing", 4.50, 7.50, 2.0, 60, 150},
+		{"Ridge Vent 4'", "RF-RIDGE-4", "PCS", "Roofing Specialists Ltd", "Roofing", 8.00, 13.50, 3.0, 40, 80},
+		{"Starter Strip", "RF-START", "PCS", "Roofing Specialists Ltd", "Roofing", 6.00, 10.00, 2.5, 40, 80},
+		{"1.25\" Roofing Nails 5lb", "RF-NAIL-125", "BOX", "Roofing Specialists Ltd", "Roofing", 12.00, 19.00, 5.0, 30, 60},
+		{"Step Flashing", "RF-FLASH-STEP", "PCS", "Roofing Specialists Ltd", "Roofing", 2.50, 4.50, 0.5, 60, 120},
+		{"Pipe Boot Flashing", "RF-FLASH-PIPE", "PCS", "Roofing Specialists Ltd", "Roofing", 8.00, 14.00, 1.5, 20, 40},
 		{"Ice & Water Shield", "RF-ICE-WTR", "RL", "Roofing Specialists Ltd", "Roofing", 65.00, 98.00, 36.0, 20, 50},
 		{"Roof Edge Drip 10'", "RF-EDGE-WHT", "PCS", "Roofing Specialists Ltd", "Roofing", 4.50, 7.50, 2.0, 60, 150},
 		{"R-13 Fiberglass Batts 15x93", "INS-R13-15", "BAG", "Valley Insulation", "Insulation", 45.00, 68.00, 32.0, 30, 60},
@@ -158,10 +166,10 @@ func main() {
 	productPrices := make(map[string]float64)
 	for _, p := range products {
 		var id string
-		err := db.QueryRow(`INSERT INTO products (sku, description, uom_primary, weight_lbs, reorder_point, reorder_qty)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (sku) DO UPDATE SET description=$2, weight_lbs=$4, reorder_point=$5, reorder_qty=$6
-			RETURNING id`, p.SKU, p.Desc, p.UOM, p.Weight, p.ReorderPt, p.ReorderQty).Scan(&id)
+		err := db.QueryRow(`INSERT INTO products (sku, description, uom_primary, weight_lbs, reorder_point, reorder_qty, base_price, category)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			ON CONFLICT (sku) DO UPDATE SET description=$2, weight_lbs=$4, reorder_point=$5, reorder_qty=$6, base_price=$7, category=$8
+			RETURNING id`, p.SKU, p.Desc, p.UOM, p.Weight, p.ReorderPt, p.ReorderQty, p.Price, p.Category).Scan(&id)
 		if err != nil {
 			log.Printf("Product %s: %v", p.Desc, err)
 			continue
@@ -211,6 +219,7 @@ func main() {
 		Projects                                                []string
 	}
 	customers := []cust{
+		{"Acme Builders", "ACM-001", "admin@acme-builders.demo", "619-555-0100", "2100 River Road, San Diego CA 92101", "GOLD", "NET30", "Contractor", 100000, []string{"Riverside New Home Build"}},
 		{"Acme Construction", "ACME-001", "billing@acme.com", "503-555-2100", "1400 Builder Ave, Portland OR 97201", "GOLD", "NET30", "Contractor", 50000, []string{"Smith Residence", "Downtown Lofts", "City Park Gazebo"}},
 		{"Bob's Builders", "BOB-001", "bob@bobsbuilders.com", "503-555-2200", "820 Hammer St, Beaverton OR 97005", "SILVER", "NET30", "Contractor", 25000, []string{"Miller Deck", "Kitchen Remodel 123", "Garage Addition"}},
 		{"DIY Homeowner", "DIY-888", "diy@gmail.com", "503-555-2300", "45 Maple Ln, Lake Oswego OR 97034", "RETAIL", "COD", "Retail", 5000, []string{"Garden Shed"}},

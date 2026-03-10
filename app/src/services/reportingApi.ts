@@ -1,4 +1,4 @@
-const API_BASE = 'https://backend-production-bdf8.up.railway.app';
+const API_BASE = 'http://localhost:8080';
 
 export interface ReportDefinition {
   columns: ReportColumn[];

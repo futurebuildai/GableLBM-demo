@@ -5,7 +5,7 @@ import type {
     CreateActivityRequest,
 } from '../types/crm';
 
-const API_BASE = 'https://backend-production-bdf8.up.railway.app';
+const API_BASE = 'http://localhost:8080';
 
 export const crmApi = {
     // Contacts

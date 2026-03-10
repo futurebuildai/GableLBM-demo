@@ -6,7 +6,7 @@ import type {
     TransactionSummary
 } from '../types/pos';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export const posService = {
     startTransaction: async (registerID = 'REG-01', cashierID?: string, customerID?: string): Promise<POSTransaction> => {

@@ -1,7 +1,7 @@
 import type { DailyTillReport, SalesSummaryReport } from '../types/reporting';
 import type { ARAgingReport, CustomerStatement, CreditMemo } from '../types/invoice';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export const ReportingService = {
     async getDailyTill(date?: string): Promise<DailyTillReport> {

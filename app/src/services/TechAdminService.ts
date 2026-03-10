@@ -1,4 +1,4 @@
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export interface APIKey {
     id: string;

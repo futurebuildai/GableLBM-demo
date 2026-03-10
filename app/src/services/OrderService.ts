@@ -1,6 +1,6 @@
 import type { Order, CreateOrderRequest } from '../types/order';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export const OrderService = {
     async createOrder(request: CreateOrderRequest): Promise<Order> {

@@ -1,6 +1,6 @@
 import type { RebateProgram, RebateTier, RebateClaim, CalculateClaimRequest } from '../types/rebate';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export const RebateService = {
     createProgram: async (program: RebateProgram, tiers: RebateTier[]): Promise<RebateProgram> => {

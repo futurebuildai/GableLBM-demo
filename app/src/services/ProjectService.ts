@@ -5,7 +5,7 @@ import type {
     UpdateProjectRequest
 } from '../types/project';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 const TOKEN_KEY = 'portal_token';
 
 async function fetchWithAuth<T>(url: string, options: RequestInit = {}): Promise<T> {

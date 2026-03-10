@@ -18,7 +18,7 @@ import type {
     UpdateUserStatusRequest,
 } from '../types/portal';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 2_000;

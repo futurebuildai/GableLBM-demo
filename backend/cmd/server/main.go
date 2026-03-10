@@ -25,6 +25,7 @@ import (
 	"github.com/gablelbm/gable/internal/edi"
 	"github.com/gablelbm/gable/internal/gl"
 	"github.com/gablelbm/gable/internal/governance"
+	"github.com/gablelbm/gable/internal/integrations"
 	glint "github.com/gablelbm/gable/internal/integrations/gl"
 	"github.com/gablelbm/gable/internal/inventory"
 	"github.com/gablelbm/gable/internal/invoice"
@@ -386,6 +387,10 @@ func main() {
 	projectSvc := project.NewService(projectRepo)
 	projectHandler := project.NewHandler(projectSvc)
 	projectHandler.RegisterRoutes(mux, portalMw)
+
+	// Integration API (FB-Brain cross-system endpoints)
+	integrationHandler := integrations.NewHandler(db, pricingSvc, quote.NewService(quoteRepo), orderSvc, customerSvc, productSvc)
+	integrationHandler.RegisterRoutes(mux)
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

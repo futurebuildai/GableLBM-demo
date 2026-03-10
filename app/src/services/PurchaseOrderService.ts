@@ -1,7 +1,7 @@
 import type { PurchaseOrder, CreatePORequest, ReceivePORequest, RecommendationSummary } from '../types/purchaseOrder';
 import type { ReorderAlert } from '../types/product';
 
-const API_URL = 'https://backend-production-bdf8.up.railway.app';
+const API_URL = 'http://localhost:8080';
 
 export const PurchaseOrderService = {
     async listPOs(): Promise<PurchaseOrder[]> {
