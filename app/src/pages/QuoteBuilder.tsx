@@ -11,12 +11,16 @@ import type { Product } from '../types/product';
 import type { CreateQuoteRequest } from '../types/quote';
 import type { QuoteLineEscalator } from '../types/pricing';
 import type { ParseResponse, ParsedItem } from '../types/parsing';
-import { Save, FileText, Calculator, CreditCard, AlertCircle, TrendingUp } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Save, FileText, Calculator, CreditCard, AlertCircle, TrendingUp, Truck, Package } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { PageTransition } from '../components/ui/PageTransition';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/ToastContext';
+import { CustomerService } from '../services/CustomerService';
+import { deliveryService } from '../services/deliveryService';
+import type { Vehicle } from '../types/delivery';
+import { QuoteViewTabs } from './quotes/QuoteList';
 
 interface LineWithEscalator {
     product_id: string;
@@ -38,11 +42,20 @@ const defaultEscalator = (): QuoteLineEscalator => ({
 
 export const QuoteBuilder = () => {
     const navigate = useNavigate();
+    const { id: editId } = useParams<{ id?: string }>();
+    const isEditing = !!editId;
     const { showToast } = useToast();
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
     const [lines, setLines] = useState<LineWithEscalator[]>([]);
     const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(!!editId);
+
+    // Delivery state
+    const [deliveryType, setDeliveryType] = useState<'PICKUP' | 'DELIVERY'>('PICKUP');
+    const [freightAmount, setFreightAmount] = useState(0);
+    const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>();
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
     // AI Parsing state
     const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
@@ -61,6 +74,62 @@ export const QuoteBuilder = () => {
         };
         loadProducts();
     }, []);
+
+    useEffect(() => {
+        const loadVehicles = async () => {
+            try {
+                const data = await deliveryService.listVehicles();
+                setVehicles(data || []);
+            } catch (err) {
+                console.error("Failed to load vehicles", err);
+            }
+        };
+        loadVehicles();
+    }, []);
+
+    // Load existing quote when editing
+    useEffect(() => {
+        if (!editId) return;
+        const loadQuote = async () => {
+            try {
+                const quote = await QuoteService.getQuote(editId);
+                if (quote.state !== 'DRAFT') {
+                    showToast('Only draft quotes can be edited', 'error');
+                    navigate(`/erp/quotes/${editId}`);
+                    return;
+                }
+                // Load customer
+                try {
+                    const c = await CustomerService.getCustomer(quote.customer_id);
+                    setCustomer(c);
+                } catch { /* customer might not load, that's ok */ }
+
+                // Load lines
+                if (quote.lines) {
+                    setLines(quote.lines.map(l => ({
+                        product_id: l.product_id,
+                        sku: l.sku,
+                        description: l.description,
+                        quantity: l.quantity,
+                        uom: l.uom,
+                        unit_price: l.unit_price,
+                        escalator: defaultEscalator(),
+                    })));
+                }
+                if (quote.source === 'ai') setAiSource(true);
+                if (quote.delivery_type) setDeliveryType(quote.delivery_type);
+                if (quote.freight_amount) setFreightAmount(quote.freight_amount);
+                if (quote.vehicle_id) setSelectedVehicleId(quote.vehicle_id);
+            } catch (err) {
+                console.error('Failed to load quote for editing', err);
+                showToast('Failed to load quote', 'error');
+                navigate('/erp/quotes');
+            } finally {
+                setInitialLoading(false);
+            }
+        };
+        loadQuote();
+    }, [editId]);
 
     const handleAddLine = (product: Product, quantity: number, unitPrice: number) => {
         setLines([...lines, {
@@ -111,6 +180,9 @@ export const QuoteBuilder = () => {
             const payload: CreateQuoteRequest = {
                 customer_id: customer.id,
                 source: aiSource ? 'ai' : 'manual',
+                delivery_type: deliveryType,
+                freight_amount: deliveryType === 'DELIVERY' ? freightAmount : 0,
+                vehicle_id: deliveryType === 'DELIVERY' ? selectedVehicleId : undefined,
                 lines: lines.map(l => ({
                     product_id: l.product_id,
                     sku: l.sku,
@@ -124,7 +196,6 @@ export const QuoteBuilder = () => {
             // Attach AI parse data if available
             if (aiSource && lastParseResult) {
                 payload.parse_map = lastParseResult.items;
-                // Store original file as base64 (source_image is already a data URI)
                 if (lastParseResult.source_image) {
                     const [header, data] = lastParseResult.source_image.split(',');
                     const contentType = header?.match(/data:([^;]+)/)?.[1] || 'application/octet-stream';
@@ -134,8 +205,14 @@ export const QuoteBuilder = () => {
                 }
             }
 
-            const quote = await QuoteService.createQuote(payload);
-            showToast('Draft quote created', 'success');
+            let quote;
+            if (isEditing && editId) {
+                quote = await QuoteService.updateQuote(editId, payload);
+                showToast('Quote updated', 'success');
+            } else {
+                quote = await QuoteService.createQuote(payload);
+                showToast('Draft quote created', 'success');
+            }
             navigate(`/erp/quotes/${quote.id}`);
         } catch (err) {
             console.error(err);
@@ -145,7 +222,9 @@ export const QuoteBuilder = () => {
         }
     };
 
-    const totalAmount = lines.reduce((sum, line) => sum + (line.quantity * line.unit_price), 0);
+    const subtotalAmount = lines.reduce((sum, line) => sum + (line.quantity * line.unit_price), 0);
+    const effectiveFreight = deliveryType === 'DELIVERY' ? freightAmount : 0;
+    const totalAmount = subtotalAmount + effectiveFreight;
     const escalatedTotal = lines.reduce((sum, line) => {
         if (line.escalator.enabled && line.escalator.result) {
             return sum + (line.quantity * line.escalator.result.future_price);
@@ -156,16 +235,27 @@ export const QuoteBuilder = () => {
     const hasStaleLines = lines.some(l => l.escalator.result?.is_stale);
     const isOverLimit = customer ? (customer.balance_due + totalAmount) > customer.credit_limit : false;
 
+    if (initialLoading) {
+        return (
+            <PageTransition>
+                <QuoteViewTabs active="new" />
+                <div className="text-slate-400 p-12 text-center">Loading quote...</div>
+            </PageTransition>
+        );
+    }
+
     return (
         <PageTransition>
+            {!isEditing && <QuoteViewTabs active="new" />}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-display-large text-white flex items-center gap-3">
                         <FileText className="w-10 h-10 text-gable-green" />
-                        New Quote
+                        {isEditing ? 'Edit Quote' : 'New Quote'}
                     </h1>
                     <p className="text-zinc-500 mt-1 max-w-2xl text-lg">
-                        Draft a new pricing proposal.
+                        {isEditing ? 'Update this draft quote.' : 'Draft a new pricing proposal.'}
                     </p>
                 </div>
                 <Button
@@ -175,7 +265,7 @@ export const QuoteBuilder = () => {
                     className="shadow-glow"
                 >
                     <Save className="w-4 h-4 mr-2" />
-                    Create Quote
+                    {isEditing ? 'Save Changes' : 'Create Quote'}
                 </Button>
             </div>
 
@@ -234,6 +324,77 @@ export const QuoteBuilder = () => {
                         </CardContent>
                     </Card>
 
+                    <Card variant="glass">
+                        <CardContent className="p-6">
+                            <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                                <Truck className="w-5 h-5 text-zinc-400" />
+                                Fulfillment
+                            </h2>
+
+                            {/* Delivery Type Toggle */}
+                            <div className="flex gap-1 bg-white/5 rounded-lg p-1 border border-white/10 mb-4">
+                                <button
+                                    onClick={() => { setDeliveryType('PICKUP'); setFreightAmount(0); setSelectedVehicleId(undefined); }}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                                        deliveryType === 'PICKUP'
+                                            ? 'bg-gable-green/10 text-gable-green border border-gable-green/20'
+                                            : 'text-zinc-400 hover:text-white'
+                                    }`}
+                                >
+                                    <Package size={14} /> Pickup
+                                </button>
+                                <button
+                                    onClick={() => setDeliveryType('DELIVERY')}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                                        deliveryType === 'DELIVERY'
+                                            ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                            : 'text-zinc-400 hover:text-white'
+                                    }`}
+                                >
+                                    <Truck size={14} /> Delivery
+                                </button>
+                            </div>
+
+                            {deliveryType === 'DELIVERY' && (
+                                <div className="space-y-4">
+                                    {/* Vehicle Selector */}
+                                    <div>
+                                        <label className="block text-xs text-zinc-500 mb-1.5">Assign Truck</label>
+                                        <select
+                                            value={selectedVehicleId || ''}
+                                            onChange={e => setSelectedVehicleId(e.target.value || undefined)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                                        >
+                                            <option value="">Select a truck...</option>
+                                            {vehicles.map(v => (
+                                                <option key={v.id} value={v.id}>
+                                                    {v.name} — {v.vehicle_type.replace(/_/g, ' ')} ({v.license_plate})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {vehicles.length === 0 && (
+                                            <p className="text-xs text-zinc-500 mt-1">No vehicles in fleet. Add vehicles in Fleet Management.</p>
+                                        )}
+                                    </div>
+
+                                    {/* Freight Charge */}
+                                    <div>
+                                        <label className="block text-xs text-zinc-500 mb-1.5">Freight Charge ($)</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={freightAmount || ''}
+                                            onChange={e => setFreightAmount(parseFloat(e.target.value) || 0)}
+                                            placeholder="0.00"
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     <Card variant="glass" className="bg-gradient-to-br from-gable-green/5 to-emerald-900/5 border-gable-green/20">
                         <CardContent className="p-6">
                             <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
@@ -242,8 +403,25 @@ export const QuoteBuilder = () => {
                             </h2>
                             <div className="flex items-baseline justify-between">
                                 <span className="text-zinc-400">Subtotal</span>
-                                <span className="text-2xl font-mono font-bold text-white">${totalAmount.toFixed(2)}</span>
+                                <span className={`font-mono font-bold ${effectiveFreight > 0 ? 'text-lg text-zinc-300' : 'text-2xl text-white'}`}>${subtotalAmount.toFixed(2)}</span>
                             </div>
+
+                            {effectiveFreight > 0 && (
+                                <div className="flex items-baseline justify-between mt-2">
+                                    <span className="text-zinc-400 flex items-center gap-1.5 text-sm">
+                                        <Truck className="w-3.5 h-3.5 text-blue-400" />
+                                        Freight
+                                    </span>
+                                    <span className="font-mono font-bold text-lg text-blue-400">${effectiveFreight.toFixed(2)}</span>
+                                </div>
+                            )}
+
+                            {effectiveFreight > 0 && (
+                                <div className="flex items-baseline justify-between mt-2 pt-2 border-t border-white/5">
+                                    <span className="text-zinc-400 font-medium">Total</span>
+                                    <span className="text-2xl font-mono font-bold text-white">${totalAmount.toFixed(2)}</span>
+                                </div>
+                            )}
 
                             {/* Escalated Total */}
                             {hasEscalators && (
@@ -347,9 +525,25 @@ export const QuoteBuilder = () => {
                                     {lines.length > 0 && (
                                         <tfoot className="bg-white/5 border-t border-white/10">
                                             <tr>
-                                                <td colSpan={3} className="px-6 py-4 text-right font-medium text-zinc-400 uppercase tracking-wider text-xs">Total Amount</td>
-                                                <td className="px-6 py-4 text-right font-mono text-xl font-bold text-gable-green">${totalAmount.toFixed(2)}</td>
+                                                <td colSpan={3} className="px-6 py-4 text-right font-medium text-zinc-400 uppercase tracking-wider text-xs">
+                                                    {effectiveFreight > 0 ? 'Lines Subtotal' : 'Total Amount'}
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-mono text-xl font-bold text-gable-green">${subtotalAmount.toFixed(2)}</td>
                                             </tr>
+                                            {effectiveFreight > 0 && (
+                                                <>
+                                                    <tr className="border-t border-white/5">
+                                                        <td colSpan={3} className="px-6 py-2 text-right text-zinc-400 text-xs flex items-center justify-end gap-1.5">
+                                                            <Truck className="w-3 h-3 text-blue-400" /> Freight
+                                                        </td>
+                                                        <td className="px-6 py-2 text-right font-mono text-sm text-blue-400">${effectiveFreight.toFixed(2)}</td>
+                                                    </tr>
+                                                    <tr className="border-t border-white/5">
+                                                        <td colSpan={3} className="px-6 py-4 text-right font-medium text-zinc-400 uppercase tracking-wider text-xs">Total Amount</td>
+                                                        <td className="px-6 py-4 text-right font-mono text-xl font-bold text-gable-green">${totalAmount.toFixed(2)}</td>
+                                                    </tr>
+                                                </>
+                                            )}
                                         </tfoot>
                                     )}
                                 </table>

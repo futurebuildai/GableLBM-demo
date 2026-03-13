@@ -61,6 +61,19 @@ export const QuoteService = {
         return `${API_URL}/quotes/${quoteId}/file`;
     },
 
+    async updateQuote(id: string, request: CreateQuoteRequest): Promise<Quote> {
+        const response = await fetch(`${API_URL}/quotes/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'Failed to update quote');
+        }
+        return response.json();
+    },
+
     async convertToOrder(quoteId: string): Promise<{ customer_id: string; quote_id: string; lines: { product_id: string; quantity: number; price_each: number }[] }> {
         const response = await fetch(`${API_URL}/quotes/${quoteId}/convert`, {
             method: 'POST',

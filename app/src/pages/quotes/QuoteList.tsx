@@ -1,10 +1,38 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, ArrowRight, ShoppingCart, BarChart3, Sparkles, Send, Check, X } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { ArrowRight, ShoppingCart, BarChart3, Sparkles, Send, Check, X, List, FilePlus, Pencil, Truck, Package } from 'lucide-react';
 import { QuoteService } from '../../services/QuoteService';
 import { OrderService } from '../../services/OrderService';
 import type { Quote, QuoteState } from '../../types/quote';
 import { useToast } from '../../components/ui/ToastContext';
+import { cn } from '../../lib/utils';
+
+export function QuoteViewTabs({ active }: { active: 'list' | 'new' }) {
+    return (
+        <div className="flex gap-1 mb-6 border-b border-white/10">
+            <Link
+                to="/erp/quotes"
+                className={cn(
+                    "flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors relative",
+                    active === 'list' ? "text-gable-green" : "text-zinc-400 hover:text-white"
+                )}
+            >
+                <List size={16} /> All Quotes
+                {active === 'list' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gable-green" />}
+            </Link>
+            <Link
+                to="/erp/quotes/new"
+                className={cn(
+                    "flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors relative",
+                    active === 'new' ? "text-gable-green" : "text-zinc-400 hover:text-white"
+                )}
+            >
+                <FilePlus size={16} /> New Quote
+                {active === 'new' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gable-green" />}
+            </Link>
+        </div>
+    );
+}
 
 export default function QuoteList() {
     const navigate = useNavigate();
@@ -66,6 +94,8 @@ export default function QuoteList() {
 
     return (
         <div className="space-y-6">
+            <QuoteViewTabs active="list" />
+
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white font-mono">Quotes</h1>
@@ -78,12 +108,6 @@ export default function QuoteList() {
                     >
                         <BarChart3 size={16} /> Analytics
                     </button>
-                    <button
-                        onClick={() => navigate('/erp/quotes/new')}
-                        className="bg-gable-green text-black font-bold px-4 py-2 rounded hover:bg-gable-green/90 transition-colors flex items-center gap-2"
-                    >
-                        <Plus size={16} /> New Quote
-                    </button>
                 </div>
             </div>
 
@@ -95,6 +119,7 @@ export default function QuoteList() {
                             <th className="p-4 font-medium text-muted-foreground">Date</th>
                             <th className="p-4 font-medium text-muted-foreground">Customer</th>
                             <th className="p-4 font-medium text-muted-foreground">Source</th>
+                            <th className="p-4 font-medium text-muted-foreground">Fulfillment</th>
                             <th className="p-4 font-medium text-muted-foreground">State</th>
                             <th className="p-4 font-medium text-muted-foreground text-right">Total</th>
                             <th className="p-4 font-medium text-muted-foreground text-right">Actions</th>
@@ -103,11 +128,11 @@ export default function QuoteList() {
                     <tbody className="divide-y divide-white/5">
                         {loading ? (
                             <tr>
-                                <td colSpan={7} className="p-8 text-center text-muted-foreground">Loading quotes...</td>
+                                <td colSpan={8} className="p-8 text-center text-muted-foreground">Loading quotes...</td>
                             </tr>
                         ) : quotes.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                                <td colSpan={8} className="p-8 text-center text-muted-foreground">
                                     No quotes found. Create your first quote to get started.
                                 </td>
                             </tr>
@@ -129,6 +154,17 @@ export default function QuoteList() {
                                             )}
                                         </td>
                                         <td className="p-4">
+                                            {quote.delivery_type === 'DELIVERY' ? (
+                                                <span className="inline-flex items-center gap-1 text-xs text-blue-400">
+                                                    <Truck size={12} /> Delivery
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
+                                                    <Package size={12} /> Pickup
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="p-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${stateColors[quote.state] || ''}`}>
                                                 {quote.state}
                                             </span>
@@ -138,6 +174,12 @@ export default function QuoteList() {
                                         </td>
                                         <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-end gap-1.5">
+                                                {quote.state === 'DRAFT' && (
+                                                    <button onClick={() => navigate(`/erp/quotes/${quote.id}/edit`)} disabled={isBusy}
+                                                        className="text-amber-400 hover:text-amber-300 transition-colors p-1 rounded hover:bg-white/5 disabled:opacity-50" title="Edit Draft">
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                )}
                                                 {quote.state === 'DRAFT' && (
                                                     <button onClick={() => handleStateChange(quote.id, 'SENT')} disabled={isBusy}
                                                         className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded hover:bg-white/5 disabled:opacity-50" title="Mark Sent">

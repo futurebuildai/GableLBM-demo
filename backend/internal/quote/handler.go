@@ -22,6 +22,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /quotes", h.HandleListQuotes)
 	mux.HandleFunc("GET /quotes/{id}", h.HandleGetQuotePath)
 	mux.HandleFunc("GET /quotes/{id}/file", h.HandleDownloadOriginalFile)
+	mux.HandleFunc("PUT /quotes/{id}", h.HandleUpdateQuote)
 	mux.HandleFunc("PUT /quotes/{id}/state", h.HandleUpdateState)
 	mux.HandleFunc("POST /quotes/{id}/convert", h.HandleConvertToOrder)
 }
@@ -140,6 +141,43 @@ func (h *Handler) HandleConvertToOrder(w http.ResponseWriter, r *http.Request) {
 	// Return the order payload - the frontend will POST it to /orders
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(payload)
+}
+
+func (h *Handler) HandleUpdateQuote(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		return
+	}
+
+	var req createQuoteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	q := &req.Quote
+	q.ID = id
+
+	if err := h.service.UpdateQuote(r.Context(), q); err != nil {
+		if err.Error() == "only DRAFT quotes can be edited" {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Return updated quote with lines
+	updated, err := h.service.GetQuote(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updated)
 }
 
 func (h *Handler) HandleUpdateState(w http.ResponseWriter, r *http.Request) {

@@ -24,6 +24,8 @@ func (s *Service) CreateQuote(ctx context.Context, q *Quote) error {
 		line.LineTotal = line.Quantity * line.UnitPrice
 		total += line.LineTotal
 	}
+	// Include freight in total
+	total += q.FreightAmount
 	q.TotalAmount = total
 
 	// 2. Set Defaults
@@ -32,6 +34,14 @@ func (s *Service) CreateQuote(ctx context.Context, q *Quote) error {
 	}
 	if q.Source == "" {
 		q.Source = "manual"
+	}
+	if q.DeliveryType == "" {
+		q.DeliveryType = "PICKUP"
+	}
+	// Clear vehicle if pickup
+	if q.DeliveryType == "PICKUP" {
+		q.VehicleID = nil
+		q.FreightAmount = 0
 	}
 
 	return s.repo.CreateQuote(ctx, q)
@@ -70,6 +80,36 @@ func (s *Service) UpdateState(ctx context.Context, id uuid.UUID, state QuoteStat
 	}
 
 	return s.repo.UpdateQuote(ctx, q)
+}
+
+func (s *Service) UpdateQuote(ctx context.Context, q *Quote) error {
+	existing, err := s.repo.GetQuote(ctx, q.ID)
+	if err != nil {
+		return fmt.Errorf("quote not found: %w", err)
+	}
+	if existing.State != QuoteStateDraft {
+		return fmt.Errorf("only DRAFT quotes can be edited")
+	}
+
+	// Recalculate totals
+	var total float64
+	for i := range q.Lines {
+		line := &q.Lines[i]
+		line.LineTotal = line.Quantity * line.UnitPrice
+		total += line.LineTotal
+	}
+	// Include freight in total
+	total += q.FreightAmount
+	q.TotalAmount = total
+	q.State = QuoteStateDraft
+
+	// Clear vehicle if pickup
+	if q.DeliveryType == "PICKUP" {
+		q.VehicleID = nil
+		q.FreightAmount = 0
+	}
+
+	return s.repo.UpdateQuoteWithLines(ctx, q)
 }
 
 func (s *Service) GetAnalytics(ctx context.Context) (*QuoteAnalytics, error) {

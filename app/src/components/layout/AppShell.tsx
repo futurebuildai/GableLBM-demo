@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {sidebarOpen && "Operations"}
                     </div>
 
-                    <NavItem to="/erp/quotes/new" icon={<FileText size={20} />} label="Quotes" isOpen={sidebarOpen} active={location.pathname.startsWith('/erp/quotes')} />
+                    <NavItem to="/erp/quotes" icon={<FileText size={20} />} label="Quotes" isOpen={sidebarOpen} active={location.pathname.startsWith('/erp/quotes')} />
                     <NavItem to="/erp/orders" icon={<FileText size={20} />} label="Orders" isOpen={sidebarOpen} active={location.pathname.startsWith('/erp/orders')} />
                     <NavItem to="/erp/purchasing" icon={<ShoppingBag size={20} />} label="Purchasing" isOpen={sidebarOpen} active={location.pathname === '/erp/purchasing' || (location.pathname.startsWith('/erp/purchasing') && !location.pathname.includes('/vendors'))} />
                     <NavItem to="/erp/purchasing/vendors" icon={<Store size={20} />} label="Vendors" isOpen={sidebarOpen} active={location.pathname.startsWith('/erp/purchasing/vendors')} />
@@ -135,11 +135,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                 {/* Page Content with Transition */}
                 <div className="p-6 md:p-8 max-w-[1600px] w-full">
-                    <AnimatePresence mode="wait">
-                        <PageTransition key={location.pathname}>
-                            {children}
-                        </PageTransition>
-                    </AnimatePresence>
+                    <PageTransition key={location.pathname}>
+                        {children}
+                    </PageTransition>
                 </div>
             </motion.main>
             <Omnibar />
