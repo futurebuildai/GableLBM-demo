@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, Download, ArrowLeft, ShoppingCart, Send, Check, X, Sparkles, Eye, Map, Package, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { FileText, Download, ArrowLeft, ShoppingCart, Send, Check, X, Sparkles, Eye, Map, Package, AlertTriangle, ShieldAlert, Truck, TrendingUp } from 'lucide-react';
 import { QuoteService } from '../../services/QuoteService';
 import type { Quote, QuoteState, ParseMapItem } from '../../types/quote';
 import { useToast } from '../../components/ui/ToastContext';
@@ -159,15 +159,82 @@ export default function QuoteDetail() {
 
 // --- Details Tab ---
 function DetailsTab({ quote }: { quote: Quote }) {
+    const lines = quote.lines || [];
+    const totalRevenue = lines.reduce((s, l) => s + l.line_total, 0);
+    const totalCost = lines.reduce((s, l) => s + l.unit_cost * l.quantity, 0);
+    const projectedMargin = totalRevenue - totalCost;
+    const marginPct = totalRevenue > 0 ? (projectedMargin / totalRevenue) * 100 : 0;
+    const hasCostData = lines.some(l => l.unit_cost > 0);
+
     return (
         <div className="space-y-6">
+            {/* Projected Margin Card */}
+            {hasCostData && (
+                <div className="bg-slate-steel border border-white/10 rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <TrendingUp className="w-5 h-5 text-gable-green" />
+                        <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Projected Margin</h3>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <div>
+                            <div className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Revenue</div>
+                            <div className="text-xl font-mono font-bold text-white">${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Est. Cost</div>
+                            <div className="text-xl font-mono font-bold text-zinc-300">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Projected Margin</div>
+                            <div className={`text-xl font-mono font-bold ${projectedMargin >= 0 ? 'text-gable-green' : 'text-red-400'}`}>
+                                ${projectedMargin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Margin %</div>
+                            <div className={`text-xl font-mono font-bold ${marginPct >= 20 ? 'text-gable-green' : marginPct >= 10 ? 'text-amber-400' : 'text-red-400'}`}>
+                                {marginPct.toFixed(1)}%
+                            </div>
+                            {/* Margin bar */}
+                            <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all ${marginPct >= 20 ? 'bg-gable-green' : marginPct >= 10 ? 'bg-amber-400' : 'bg-red-400'}`}
+                                    style={{ width: `${Math.min(Math.max(marginPct, 0), 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <SummaryCard label="Total Amount" value={`$${quote.total_amount.toFixed(2)}`} accent="text-gable-green" />
-                <SummaryCard label="Lines" value={String(quote.lines?.length || 0)} />
+                <SummaryCard label="Lines" value={String(lines.length)} />
+                <SummaryCard label="Fulfillment" value={quote.delivery_type === 'DELIVERY' ? 'Delivery' : 'Pickup'} accent={quote.delivery_type === 'DELIVERY' ? 'text-blue-400' : undefined} />
                 <SummaryCard label="Source" value={quote.source === 'ai' ? 'AI Parsed' : 'Manual'} />
-                <SummaryCard label="State" value={quote.state} />
             </div>
+
+            {/* Delivery Info */}
+            {quote.delivery_type === 'DELIVERY' && (
+                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 flex items-center gap-4">
+                    <Truck className="w-5 h-5 text-blue-400 shrink-0" />
+                    <div className="flex-1 flex items-center gap-6 text-sm">
+                        {quote.vehicle_name && (
+                            <div>
+                                <span className="text-zinc-500 mr-2">Truck:</span>
+                                <span className="text-white font-medium">{quote.vehicle_name}</span>
+                            </div>
+                        )}
+                        {quote.freight_amount > 0 && (
+                            <div>
+                                <span className="text-zinc-500 mr-2">Freight:</span>
+                                <span className="text-blue-400 font-mono font-medium">${quote.freight_amount.toFixed(2)}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Timeline */}
             <div className="bg-slate-steel border border-white/10 rounded-lg p-6">
@@ -189,26 +256,65 @@ function DetailsTab({ quote }: { quote: Quote }) {
                             <th className="p-4 font-medium text-muted-foreground">Description</th>
                             <th className="p-4 font-medium text-muted-foreground text-right">Qty</th>
                             <th className="p-4 font-medium text-muted-foreground text-right">Unit Price</th>
+                            {hasCostData && <th className="p-4 font-medium text-muted-foreground text-right">Unit Cost</th>}
                             <th className="p-4 font-medium text-muted-foreground text-right">Total</th>
+                            {hasCostData && <th className="p-4 font-medium text-muted-foreground text-right">Margin</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                        {(quote.lines || []).map(line => (
-                            <tr key={line.id} className="hover:bg-white/5 transition-colors">
-                                <td className="p-4 font-mono text-white">{line.sku}</td>
-                                <td className="p-4 text-zinc-300">{line.description}</td>
-                                <td className="p-4 text-right font-mono text-zinc-300">
-                                    {line.quantity} <span className="text-zinc-600 text-xs">{line.uom}</span>
-                                </td>
-                                <td className="p-4 text-right font-mono text-zinc-300">${line.unit_price.toFixed(2)}</td>
-                                <td className="p-4 text-right font-mono text-gable-green font-medium">${line.line_total.toFixed(2)}</td>
-                            </tr>
-                        ))}
+                        {lines.map(line => {
+                            const lineCost = line.unit_cost * line.quantity;
+                            const lineMargin = line.line_total - lineCost;
+                            const lineMarginPct = line.line_total > 0 ? (lineMargin / line.line_total) * 100 : 0;
+                            return (
+                                <tr key={line.id} className="hover:bg-white/5 transition-colors">
+                                    <td className="p-4 font-mono text-white">{line.sku}</td>
+                                    <td className="p-4 text-zinc-300">{line.description}</td>
+                                    <td className="p-4 text-right font-mono text-zinc-300">
+                                        {line.quantity} <span className="text-zinc-600 text-xs">{line.uom}</span>
+                                    </td>
+                                    <td className="p-4 text-right font-mono text-zinc-300">${line.unit_price.toFixed(2)}</td>
+                                    {hasCostData && (
+                                        <td className="p-4 text-right font-mono text-zinc-500">
+                                            {line.unit_cost > 0 ? `$${line.unit_cost.toFixed(2)}` : '—'}
+                                        </td>
+                                    )}
+                                    <td className="p-4 text-right font-mono text-gable-green font-medium">${line.line_total.toFixed(2)}</td>
+                                    {hasCostData && (
+                                        <td className="p-4 text-right font-mono">
+                                            {line.unit_cost > 0 ? (
+                                                <span className={lineMarginPct >= 20 ? 'text-gable-green' : lineMarginPct >= 10 ? 'text-amber-400' : 'text-red-400'}>
+                                                    {lineMarginPct.toFixed(1)}%
+                                                </span>
+                                            ) : (
+                                                <span className="text-zinc-600">—</span>
+                                            )}
+                                        </td>
+                                    )}
+                                </tr>
+                            );
+                        })}
                     </tbody>
-                    {(quote.lines?.length || 0) > 0 && (
+                    {lines.length > 0 && (
                         <tfoot className="bg-white/5 border-t border-white/10">
-                            <tr>
-                                <td colSpan={4} className="p-4 text-right font-medium text-zinc-400 uppercase tracking-wider text-xs">Total</td>
+                            {quote.freight_amount > 0 && (
+                                <>
+                                    <tr>
+                                        <td colSpan={hasCostData ? 6 : 4} className="p-4 text-right font-medium text-zinc-400 uppercase tracking-wider text-xs">Lines Subtotal</td>
+                                        <td className="p-4 text-right font-mono text-lg text-zinc-300">
+                                            ${totalRevenue.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    <tr className="border-t border-white/5">
+                                        <td colSpan={hasCostData ? 6 : 4} className="px-4 py-2 text-right text-zinc-400 text-xs flex items-center justify-end gap-1.5">
+                                            <Truck className="w-3 h-3 text-blue-400" /> Freight
+                                        </td>
+                                        <td className="px-4 py-2 text-right font-mono text-sm text-blue-400">${quote.freight_amount.toFixed(2)}</td>
+                                    </tr>
+                                </>
+                            )}
+                            <tr className={quote.freight_amount > 0 ? 'border-t border-white/5' : ''}>
+                                <td colSpan={hasCostData ? 6 : 4} className="p-4 text-right font-medium text-zinc-400 uppercase tracking-wider text-xs">Total</td>
                                 <td className="p-4 text-right font-mono text-xl font-bold text-gable-green">${quote.total_amount.toFixed(2)}</td>
                             </tr>
                         </tfoot>

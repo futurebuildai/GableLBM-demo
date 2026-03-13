@@ -11,6 +11,7 @@ export interface QuoteLine {
     quantity: number;
     uom: UOM;
     unit_price: number;
+    unit_cost: number;
     line_total: number;
     created_at: string;
 }
@@ -30,6 +31,12 @@ export interface Quote {
     sent_at?: string;
     accepted_at?: string;
     rejected_at?: string;
+
+    // Delivery
+    delivery_type: 'PICKUP' | 'DELIVERY';
+    freight_amount: number;
+    vehicle_id?: string;
+    vehicle_name?: string;
 
     // Analytics
     margin_total?: number;
@@ -100,6 +107,9 @@ export interface CreateQuoteRequest {
     customer_id: string;
     job_id?: string;
     source?: 'manual' | 'ai';
+    delivery_type?: 'PICKUP' | 'DELIVERY';
+    freight_amount?: number;
+    vehicle_id?: string;
     original_file?: string; // base64 encoded
     original_filename?: string;
     original_content_type?: string;

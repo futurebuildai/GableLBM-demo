@@ -14,6 +14,7 @@ type Repository interface {
 	CreateQuote(ctx context.Context, q *Quote) error
 	GetQuote(ctx context.Context, id uuid.UUID) (*Quote, error)
 	UpdateQuote(ctx context.Context, q *Quote) error
+	UpdateQuoteWithLines(ctx context.Context, q *Quote) error
 	ListQuotes(ctx context.Context) ([]Quote, error)
 	ListQuotesByCustomer(ctx context.Context, customerID uuid.UUID) ([]Quote, error)
 	GetQuoteAnalytics(ctx context.Context) (*QuoteAnalytics, error)
@@ -50,17 +51,22 @@ func (r *PostgresRepository) CreateQuote(ctx context.Context, q *Quote) error {
 	if q.Source == "" {
 		q.Source = "manual"
 	}
+	if q.DeliveryType == "" {
+		q.DeliveryType = "PICKUP"
+	}
 
 	// Insert Header
 	queryHeader := `
 		INSERT INTO quotes (
 			id, customer_id, job_id, state, total_amount, expires_at, created_at, updated_at,
-			margin_total, source, original_file, original_filename, original_content_type, parse_map
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			margin_total, source, original_file, original_filename, original_content_type, parse_map,
+			delivery_type, freight_amount, vehicle_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 	`
 	_, err = tx.Exec(ctx, queryHeader,
 		q.ID, q.CustomerID, q.JobID, q.State, q.TotalAmount, q.ExpiresAt, q.CreatedAt, q.UpdatedAt,
 		q.MarginTotal, q.Source, q.OriginalFile, q.OriginalFilename, q.OriginalContentType, q.ParseMap,
+		q.DeliveryType, q.FreightAmount, q.VehicleID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert quote header: %w", err)
@@ -106,15 +112,18 @@ func (r *PostgresRepository) GetQuote(ctx context.Context, id uuid.UUID) (*Quote
 	queryHeader := `
 		SELECT q.id, q.customer_id, COALESCE(c.name, ''), q.job_id, q.state, q.total_amount, q.expires_at, q.created_at, q.updated_at,
 			q.sent_at, q.accepted_at, q.rejected_at, COALESCE(q.margin_total, 0), COALESCE(q.source, 'manual'),
-			COALESCE(q.original_filename, ''), COALESCE(q.original_content_type, ''), q.parse_map
+			COALESCE(q.original_filename, ''), COALESCE(q.original_content_type, ''), q.parse_map,
+			COALESCE(q.delivery_type, 'PICKUP'), COALESCE(q.freight_amount, 0), q.vehicle_id, COALESCE(v.name, '')
 		FROM quotes q
 		LEFT JOIN customers c ON c.id = q.customer_id
+		LEFT JOIN vehicles v ON v.id = q.vehicle_id
 		WHERE q.id = $1
 	`
 	err := r.db.Pool.QueryRow(ctx, queryHeader, id).Scan(
 		&q.ID, &q.CustomerID, &q.CustomerName, &q.JobID, &q.State, &q.TotalAmount, &q.ExpiresAt, &q.CreatedAt, &q.UpdatedAt,
 		&q.SentAt, &q.AcceptedAt, &q.RejectedAt, &q.MarginTotal, &q.Source,
 		&q.OriginalFilename, &q.OriginalContentType, &q.ParseMap,
+		&q.DeliveryType, &q.FreightAmount, &q.VehicleID, &q.VehicleName,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -123,12 +132,14 @@ func (r *PostgresRepository) GetQuote(ctx context.Context, id uuid.UUID) (*Quote
 		return nil, fmt.Errorf("failed to get quote header: %w", err)
 	}
 
-	// Get Lines
+	// Get Lines (join products for average_unit_cost)
 	queryLines := `
-		SELECT id, quote_id, product_id, sku, description, quantity, uom, unit_price, line_total, created_at
-		FROM quote_lines
-		WHERE quote_id = $1
-		ORDER BY created_at ASC
+		SELECT ql.id, ql.quote_id, ql.product_id, ql.sku, ql.description, ql.quantity, ql.uom,
+		       ql.unit_price, COALESCE(p.average_unit_cost, 0), ql.line_total, ql.created_at
+		FROM quote_lines ql
+		LEFT JOIN products p ON p.id = ql.product_id
+		WHERE ql.quote_id = $1
+		ORDER BY ql.created_at ASC
 	`
 	rows, err := r.db.Pool.Query(ctx, queryLines, id)
 	if err != nil {
@@ -140,7 +151,7 @@ func (r *PostgresRepository) GetQuote(ctx context.Context, id uuid.UUID) (*Quote
 		var l QuoteLine
 		if err := rows.Scan(
 			&l.ID, &l.QuoteID, &l.ProductID, &l.SKU, &l.Description,
-			&l.Quantity, &l.UOM, &l.UnitPrice, &l.LineTotal, &l.CreatedAt,
+			&l.Quantity, &l.UOM, &l.UnitPrice, &l.UnitCost, &l.LineTotal, &l.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan quote line: %w", err)
 		}
@@ -151,11 +162,6 @@ func (r *PostgresRepository) GetQuote(ctx context.Context, id uuid.UUID) (*Quote
 }
 
 func (r *PostgresRepository) UpdateQuote(ctx context.Context, q *Quote) error {
-	// Full update for now - easier to just delete lines and re-insert or use upsert?
-	// For simplicity in MVP: Update header, and if lines changed we might need smarter logic.
-	// But "Quick Quote" is often created and finalized.
-	// Let's assume UpdateQuote updates the header totals and state.
-
 	q.UpdatedAt = time.Now()
 
 	query := `
@@ -171,17 +177,75 @@ func (r *PostgresRepository) UpdateQuote(ctx context.Context, q *Quote) error {
 	if err != nil {
 		return fmt.Errorf("failed to update quote: %w", err)
 	}
-
-	// TODO: Handle lines update if needed
 	return nil
+}
+
+// UpdateQuoteWithLines replaces the quote header and all lines in a single transaction.
+func (r *PostgresRepository) UpdateQuoteWithLines(ctx context.Context, q *Quote) error {
+	q.UpdatedAt = time.Now()
+
+	tx, err := r.db.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Update header
+	headerQuery := `
+		UPDATE quotes
+		SET customer_id = $2, job_id = $3, state = $4, total_amount = $5, expires_at = $6, updated_at = $7,
+			delivery_type = $8, freight_amount = $9, vehicle_id = $10
+		WHERE id = $1
+	`
+	_, err = tx.Exec(ctx, headerQuery,
+		q.ID, q.CustomerID, q.JobID, q.State, q.TotalAmount, q.ExpiresAt, q.UpdatedAt,
+		q.DeliveryType, q.FreightAmount, q.VehicleID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update quote header: %w", err)
+	}
+
+	// Delete old lines
+	_, err = tx.Exec(ctx, "DELETE FROM quote_lines WHERE quote_id = $1", q.ID)
+	if err != nil {
+		return fmt.Errorf("failed to delete old lines: %w", err)
+	}
+
+	// Insert new lines
+	lineQuery := `
+		INSERT INTO quote_lines (id, quote_id, product_id, sku, description, quantity, uom, unit_price, line_total, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`
+	now := time.Now()
+	for i := range q.Lines {
+		line := &q.Lines[i]
+		if line.ID == uuid.Nil {
+			line.ID = uuid.New()
+		}
+		line.QuoteID = q.ID
+		if line.CreatedAt.IsZero() {
+			line.CreatedAt = now
+		}
+		_, err = tx.Exec(ctx, lineQuery,
+			line.ID, line.QuoteID, line.ProductID, line.SKU, line.Description,
+			line.Quantity, line.UOM, line.UnitPrice, line.LineTotal, line.CreatedAt,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to insert quote line: %w", err)
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *PostgresRepository) ListQuotes(ctx context.Context) ([]Quote, error) {
 	query := `
 		SELECT q.id, q.customer_id, COALESCE(c.name, ''), q.job_id, q.state, q.total_amount, q.expires_at, q.created_at, q.updated_at,
-			q.sent_at, q.accepted_at, q.rejected_at, COALESCE(q.margin_total, 0), COALESCE(q.source, 'manual')
+			q.sent_at, q.accepted_at, q.rejected_at, COALESCE(q.margin_total, 0), COALESCE(q.source, 'manual'),
+			COALESCE(q.delivery_type, 'PICKUP'), COALESCE(q.freight_amount, 0), q.vehicle_id, COALESCE(v.name, '')
 		FROM quotes q
 		LEFT JOIN customers c ON c.id = q.customer_id
+		LEFT JOIN vehicles v ON v.id = q.vehicle_id
 		ORDER BY q.created_at DESC
 	`
 	rows, err := r.db.Pool.Query(ctx, query)
@@ -196,6 +260,7 @@ func (r *PostgresRepository) ListQuotes(ctx context.Context) ([]Quote, error) {
 		if err := rows.Scan(
 			&q.ID, &q.CustomerID, &q.CustomerName, &q.JobID, &q.State, &q.TotalAmount, &q.ExpiresAt, &q.CreatedAt, &q.UpdatedAt,
 			&q.SentAt, &q.AcceptedAt, &q.RejectedAt, &q.MarginTotal, &q.Source,
+			&q.DeliveryType, &q.FreightAmount, &q.VehicleID, &q.VehicleName,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan quote: %w", err)
 		}
