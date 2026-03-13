@@ -15,6 +15,12 @@ export interface CreateKeyResponse {
     key: APIKey;
 }
 
+export interface AISettings {
+    configured: boolean;
+    source: 'admin' | 'env' | 'none';
+    key_hint?: string;
+}
+
 export const techAdminService = {
     async listKeys(): Promise<APIKey[]> {
         const response = await fetch(`${API_URL}/api/admin/keys`);
@@ -46,5 +52,32 @@ export const techAdminService = {
         if (!response.ok) {
             throw new Error('Failed to revoke API key');
         }
-    }
+    },
+
+    // --- AI Settings ---
+
+    async getAISettings(): Promise<AISettings> {
+        const response = await fetch(`${API_URL}/api/admin/settings/ai`);
+        if (!response.ok) throw new Error('Failed to fetch AI settings');
+        return response.json();
+    },
+
+    async saveAIKey(apiKey: string): Promise<void> {
+        const response = await fetch(`${API_URL}/api/admin/settings/ai`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: apiKey }),
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'Failed to save API key');
+        }
+    },
+
+    async deleteAIKey(): Promise<void> {
+        const response = await fetch(`${API_URL}/api/admin/settings/ai`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete API key');
+    },
 };

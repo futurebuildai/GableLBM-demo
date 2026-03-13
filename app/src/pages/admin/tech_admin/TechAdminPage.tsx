@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Key, Globe, Activity, Plus, Trash2, Copy, Check, Eye } from 'lucide-react';
+import { Key, Globe, Activity, Plus, Trash2, Copy, Check, Eye, Sparkles, Shield, AlertCircle } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
-import { techAdminService, type APIKey } from '../../../services/TechAdminService';
+import { techAdminService, type APIKey, type AISettings } from '../../../services/TechAdminService';
 import { cn } from '../../../lib/utils';
 
 // --- Subcomponents (In-file for speed, can break out later) ---
@@ -221,13 +221,201 @@ const Integrations = () => {
     );
 };
 
+// --- AI Settings Component ---
+
+const AISettingsPanel = () => {
+    const [settings, setSettings] = useState<AISettings | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [newKey, setNewKey] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [showInput, setShowInput] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadSettings();
+    }, []);
+
+    const loadSettings = async () => {
+        try {
+            const data = await techAdminService.getAISettings();
+            setSettings(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!newKey.trim()) return;
+        setSaving(true);
+        setError(null);
+        setSuccess(null);
+        try {
+            await techAdminService.saveAIKey(newKey.trim());
+            setNewKey('');
+            setShowInput(false);
+            setSuccess('API key saved. All AI features are now active.');
+            await loadSettings();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to save');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('Remove the admin-configured API key? If an environment variable is set, it will be used as fallback.')) return;
+        try {
+            await techAdminService.deleteAIKey();
+            setSuccess('Admin API key removed.');
+            await loadSettings();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to delete');
+        }
+    };
+
+    if (loading) return <div className="text-slate-400 p-8">Loading AI settings...</div>;
+
+    const features = [
+        { name: 'Material List Parsing', description: 'Upload photos/PDFs/spreadsheets of material lists and auto-build quotes' },
+        { name: 'PIM Content Generation', description: 'AI-generated product descriptions and marketing copy' },
+        { name: 'Blueprint Verification', description: 'Cross-check configurator selections against blueprint specs' },
+    ];
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-violet-400" />
+                    AI Settings
+                </h2>
+                <p className="text-slate-400 text-sm mt-1">Configure your Anthropic API key to power all AI features across the ERP.</p>
+            </div>
+
+            {/* Status Card */}
+            <div className={cn(
+                "border rounded-lg p-6",
+                settings?.configured
+                    ? "bg-emerald-500/5 border-emerald-500/20"
+                    : "bg-amber-500/5 border-amber-500/20"
+            )}>
+                <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                        <div className={cn(
+                            "w-10 h-10 rounded-lg flex items-center justify-center",
+                            settings?.configured ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
+                        )}>
+                            {settings?.configured ? <Check size={20} /> : <AlertCircle size={20} />}
+                        </div>
+                        <div>
+                            <h3 className="text-white font-medium">
+                                {settings?.configured ? 'AI Features Active' : 'AI Features Inactive'}
+                            </h3>
+                            {settings?.configured ? (
+                                <div className="text-sm text-slate-400 mt-1 space-y-1">
+                                    <p>
+                                        Key: <code className="text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded text-xs">{settings.key_hint}</code>
+                                    </p>
+                                    <p>
+                                        Source: <span className={cn(
+                                            "text-xs font-medium px-2 py-0.5 rounded",
+                                            settings.source === 'admin' ? "bg-violet-500/15 text-violet-400" : "bg-zinc-500/15 text-zinc-400"
+                                        )}>
+                                            {settings.source === 'admin' ? 'Admin configured' : 'Environment variable'}
+                                        </span>
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-400 mt-1">
+                                    Enter your Anthropic API key to enable AI-powered features.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        {settings?.source === 'admin' && (
+                            <Button variant="outline" onClick={handleDelete} className="text-red-400 border-red-500/30 hover:bg-red-500/10">
+                                <Trash2 size={14} className="mr-2" /> Remove
+                            </Button>
+                        )}
+                        <Button onClick={() => setShowInput(true)} disabled={showInput}>
+                            {settings?.configured ? 'Update Key' : 'Add Key'}
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Key Input */}
+                <AnimatePresence>
+                    {showInput && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="mt-6 pt-6 border-t border-white/5 overflow-hidden"
+                        >
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
+                                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                                    <input
+                                        type="password"
+                                        value={newKey}
+                                        onChange={(e) => setNewKey(e.target.value)}
+                                        className="w-full bg-deep-space border border-white/10 rounded px-10 py-2.5 text-white font-mono text-sm placeholder-slate-500 focus:outline-none focus:border-gable-green transition-colors"
+                                        placeholder="sk-ant-api03-..."
+                                        autoFocus
+                                    />
+                                </div>
+                                <Button variant="outline" onClick={() => { setShowInput(false); setNewKey(''); }}>Cancel</Button>
+                                <Button onClick={handleSave} disabled={!newKey.trim() || saving} isLoading={saving}>
+                                    Save Key
+                                </Button>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                                <Shield size={12} /> Your key is stored securely in the database and never exposed in API responses.
+                            </p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* Feedback Messages */}
+            {error && <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400">{error}</div>}
+            {success && <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-sm text-emerald-400">{success}</div>}
+
+            {/* Features Powered */}
+            <div>
+                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">Features Powered by Claude</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {features.map((f) => (
+                        <div key={f.name} className={cn(
+                            "border rounded-lg p-4 transition-colors",
+                            settings?.configured
+                                ? "bg-slate-steel border-white/5"
+                                : "bg-slate-steel/50 border-white/5 opacity-60"
+                        )}>
+                            <div className="flex items-center gap-2 mb-2">
+                                <Sparkles className={cn("w-4 h-4", settings?.configured ? "text-violet-400" : "text-slate-600")} />
+                                <span className="text-white text-sm font-medium">{f.name}</span>
+                            </div>
+                            <p className="text-xs text-slate-500">{f.description}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- Main Page Component ---
 
 export const TechAdminPage = () => {
-    const [activeTab, setActiveTab] = useState<'keys' | 'integrations' | 'health'>('keys');
+    const [activeTab, setActiveTab] = useState<'keys' | 'ai' | 'integrations' | 'health'>('keys');
 
     const tabs = [
         { id: 'keys', label: 'API Keys', icon: Key },
+        { id: 'ai', label: 'AI Settings', icon: Sparkles },
         { id: 'integrations', label: 'Integrations', icon: Globe },
         { id: 'health', label: 'System Health', icon: Activity },
     ];
@@ -245,7 +433,7 @@ export const TechAdminPage = () => {
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id as 'keys' | 'integrations' | 'health')}
+                        onClick={() => setActiveTab(tab.id as typeof activeTab)}
                         className={cn(
                             "flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors relative",
                             activeTab === tab.id ? "text-gable-green" : "text-slate-400 hover:text-white"
@@ -266,6 +454,7 @@ export const TechAdminPage = () => {
             {/* Content Area */}
             <div className="max-w-5xl">
                 {activeTab === 'keys' && <APIKeyManager />}
+                {activeTab === 'ai' && <AISettingsPanel />}
                 {activeTab === 'integrations' && <Integrations />}
                 {activeTab === 'health' && (
                     <div className="bg-slate-steel border border-white/5 rounded-lg p-12 text-center">

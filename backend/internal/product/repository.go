@@ -55,12 +55,16 @@ func (r *PostgresRepository) CreateProduct(ctx context.Context, p *Product) erro
 // GetProduct retrieves a product by its ID
 func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Product, error) {
 	query := `
-		SELECT id, sku, description, uom_primary, base_price, vendor, upc,
-		       COALESCE(weight_lbs, 0), COALESCE(reorder_point, 0), COALESCE(reorder_qty, 0),
-		       created_at, updated_at,
-		       COALESCE(average_unit_cost, 0), COALESCE(target_margin, 0), COALESCE(commission_rate, 0)
-		FROM products
-		WHERE id = $1`
+		SELECT p.id, p.sku, p.description, p.uom_primary, p.base_price, p.vendor, p.upc,
+		       COALESCE(p.weight_lbs, 0), COALESCE(p.reorder_point, 0), COALESCE(p.reorder_qty, 0),
+		       p.created_at, p.updated_at,
+		       COALESCE(SUM(i.quantity), 0) as total_quantity,
+		       COALESCE(SUM(i.allocated), 0) as total_allocated,
+		       COALESCE(p.average_unit_cost, 0), COALESCE(p.target_margin, 0), COALESCE(p.commission_rate, 0)
+		FROM products p
+		LEFT JOIN inventory i ON p.id = i.product_id
+		WHERE p.id = $1
+		GROUP BY p.id`
 
 	var p Product
 	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
@@ -76,6 +80,8 @@ func (r *PostgresRepository) GetProduct(ctx context.Context, id uuid.UUID) (*Pro
 		&p.ReorderQty,
 		&p.CreatedAt,
 		&p.UpdatedAt,
+		&p.TotalQuantity,
+		&p.TotalAllocated,
 		&p.AverageUnitCost,
 		&p.TargetMargin,
 		&p.CommissionRate,
