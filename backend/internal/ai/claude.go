@@ -19,19 +19,44 @@ const (
 )
 
 // Client wraps the Anthropic Messages API.
+// It supports both a static key and a dynamic KeyStore.
 type Client struct {
-	apiKey     string
+	staticKey  string
+	keyStore   *KeyStore
 	httpClient *http.Client
 }
 
-// NewClient creates a new Claude API client.
+// NewClient creates a new Claude API client with a static key.
 func NewClient(apiKey string) *Client {
 	return &Client{
-		apiKey: apiKey,
+		staticKey: apiKey,
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 		},
 	}
+}
+
+// NewClientWithKeyStore creates a Claude client that reads the key dynamically.
+func NewClientWithKeyStore(ks *KeyStore) *Client {
+	return &Client{
+		keyStore: ks,
+		httpClient: &http.Client{
+			Timeout: 60 * time.Second,
+		},
+	}
+}
+
+// getKey resolves the API key, preferring keystore over static.
+func (c *Client) getKey(ctx context.Context) string {
+	if c.keyStore != nil {
+		return c.keyStore.Get(ctx)
+	}
+	return c.staticKey
+}
+
+// IsConfigured returns true if a key is available.
+func (c *Client) IsConfigured(ctx context.Context) bool {
+	return c.getKey(ctx) != ""
 }
 
 // --- Request / Response types ---
@@ -103,6 +128,11 @@ Example output:
 // ExtractMaterialList sends a file to Claude for material list extraction.
 // Supports images (jpeg, png, gif, webp), PDFs, and pre-processed text from spreadsheets.
 func (c *Client) ExtractMaterialList(ctx context.Context, fileBytes []byte, contentType string) (string, error) {
+	apiKey := c.getKey(ctx)
+	if apiKey == "" {
+		return "", fmt.Errorf("no Anthropic API key configured")
+	}
+
 	var content []contentPart
 
 	switch {
@@ -173,7 +203,7 @@ func (c *Client) ExtractMaterialList(ctx context.Context, fileBytes []byte, cont
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("x-api-key", c.apiKey)
+	httpReq.Header.Set("x-api-key", apiKey)
 	httpReq.Header.Set("anthropic-version", apiVersion)
 
 	resp, err := c.httpClient.Do(httpReq)

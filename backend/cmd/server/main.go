@@ -105,13 +105,15 @@ func main() {
 	productHandler := product.NewHandler(productSvc)
 	productHandler.RegisterRoutes(mux)
 
-	// AI Client (Claude)
-	var claudeClient *ai.Client
+	// AI Key Store — centralized key management (DB-first, env fallback)
+	// Admin users can set the Anthropic key via Tech Admin > AI Settings,
+	// which powers all AI features (material list parsing, PIM, etc.)
+	aiKeyStore := ai.NewKeyStore(db.Pool, "anthropic_api_key", cfg.AnthropicAPIKey)
+	claudeClient := ai.NewClientWithKeyStore(aiKeyStore)
 	if cfg.AnthropicAPIKey != "" {
-		claudeClient = ai.NewClient(cfg.AnthropicAPIKey)
-		logger.Info("Claude AI client initialized for material list parsing")
+		logger.Info("Claude AI initialized (env key present, admin can override via settings)")
 	} else {
-		logger.Warn("ANTHROPIC_API_KEY not set — using rule-based material list parsing fallback")
+		logger.Info("Claude AI initialized (no env key — admin can configure via Tech Admin > AI Settings)")
 	}
 
 	// AI Parsing Module (Material List Intake)
@@ -123,12 +125,8 @@ func main() {
 	pimRepo := pim.NewRepository(db)
 	pimSvc := pim.NewService(pimRepo, productSvc)
 
-	if cfg.AnthropicAPIKey != "" {
-		pimSvc.WithTextAI(pim.NewTextAIClient(cfg.AnthropicAPIKey, cfg.AnthropicModel))
-		logger.Info("PIM text AI (Anthropic) initialized", "model", cfg.AnthropicModel)
-	} else {
-		logger.Warn("ANTHROPIC_API_KEY not set — PIM AI content generation disabled")
-	}
+	// PIM uses its own client but reads from the same key store
+	pimSvc.WithTextAI(pim.NewTextAIClient(aiKeyStore.Get(context.Background()), cfg.AnthropicModel))
 	if cfg.StabilityAPIKey != "" {
 		pimSvc.WithImageAI(pim.NewImageAIClient(cfg.StabilityAPIKey))
 		logger.Info("PIM image AI (Stability) initialized")
@@ -374,6 +372,7 @@ func main() {
 	techAdminRepo := techadmin.NewRepository(db.Pool)
 	techAdminSvc := techadmin.NewService(techAdminRepo)
 	techAdminHandler := techadmin.NewHandler(techAdminSvc)
+	techAdminHandler.WithAIKeyStore(aiKeyStore)
 	techAdminHandler.RegisterRoutes(mux)
 
 	// Portal Module (Sovereign Dealer Portal)

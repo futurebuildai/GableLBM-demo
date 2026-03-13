@@ -25,9 +25,9 @@ func NewService(productRepo product.Repository, claudeClient *ai.Client) *Servic
 }
 
 // ExtractItemsWithAI uses Claude to extract text from a file, then parses structured items.
-// Falls back to rule-based extraction if Claude client is not configured.
+// Falls back to rule-based extraction if Claude client is not configured or key is missing.
 func (s *Service) ExtractItemsWithAI(ctx context.Context, fileBytes []byte, contentType string) ([]extractedLine, error) {
-	if s.claudeClient == nil {
+	if s.claudeClient == nil || !s.claudeClient.IsConfigured(ctx) {
 		slog.Warn("Claude client not configured, using rule-based fallback")
 		return s.ExtractItems(generateFallbackMaterialList()), nil
 	}
