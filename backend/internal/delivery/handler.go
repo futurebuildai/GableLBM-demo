@@ -20,8 +20,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Fleet
 	mux.HandleFunc("GET /api/v1/delivery/vehicles", h.HandleListVehicles)
 	mux.HandleFunc("POST /api/v1/delivery/vehicles", h.HandleCreateVehicle)
+	mux.HandleFunc("GET /api/v1/delivery/vehicles/{id}", h.HandleGetVehicle)
+	mux.HandleFunc("PUT /api/v1/delivery/vehicles/{id}", h.HandleUpdateVehicle)
+	mux.HandleFunc("DELETE /api/v1/delivery/vehicles/{id}", h.HandleDeleteVehicle)
 	mux.HandleFunc("GET /api/v1/delivery/drivers", h.HandleListDrivers)
 	mux.HandleFunc("POST /api/v1/delivery/drivers", h.HandleCreateDriver)
+	mux.HandleFunc("GET /api/v1/delivery/drivers/{id}", h.HandleGetDriver)
+	mux.HandleFunc("PUT /api/v1/delivery/drivers/{id}", h.HandleUpdateDriver)
+	mux.HandleFunc("DELETE /api/v1/delivery/drivers/{id}", h.HandleDeleteDriver)
 
 	// Routes
 	mux.HandleFunc("GET /api/v1/delivery/routes", h.HandleListRoutes)
@@ -29,6 +35,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/delivery/routes/{id}/dispatch", h.HandleDispatchRoute)
 	mux.HandleFunc("POST /api/v1/delivery/routes/{id}/reorder", h.HandleReorderStops)
 	mux.HandleFunc("POST /api/v1/delivery/routes/{id}/optimize", h.HandleOptimizeRoute)
+	mux.HandleFunc("POST /api/v1/delivery/routes/{id}/complete", h.HandleCompleteRoute)
 
 	// Deliveries
 	mux.HandleFunc("GET /api/v1/delivery/routes/{id}/deliveries", h.HandleListDeliveries)
@@ -282,6 +289,123 @@ func (h *Handler) HandleOptimizeRoute(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+func (h *Handler) HandleGetVehicle(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+	v, err := h.service.GetVehicle(r.Context(), id)
+	if err != nil {
+		slog.Error("GetVehicle failed", "error", err)
+		http.Error(w, "Vehicle not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(v)
+}
+
+func (h *Handler) HandleUpdateVehicle(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+	var req UpdateVehicleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	v, err := h.service.UpdateVehicle(r.Context(), id, req)
+	if err != nil {
+		slog.Error("UpdateVehicle failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(v)
+}
+
+func (h *Handler) HandleDeleteVehicle(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+	if err := h.service.DeleteVehicle(r.Context(), id); err != nil {
+		slog.Error("DeleteVehicle failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) HandleGetDriver(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+	d, err := h.service.GetDriver(r.Context(), id)
+	if err != nil {
+		slog.Error("GetDriver failed", "error", err)
+		http.Error(w, "Driver not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(d)
+}
+
+func (h *Handler) HandleUpdateDriver(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+	var req UpdateDriverRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	d, err := h.service.UpdateDriver(r.Context(), id, req)
+	if err != nil {
+		slog.Error("UpdateDriver failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(d)
+}
+
+func (h *Handler) HandleDeleteDriver(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+	if err := h.service.DeleteDriver(r.Context(), id); err != nil {
+		slog.Error("DeleteDriver failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) HandleCompleteRoute(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+	if err := h.service.CompleteRoute(r.Context(), id); err != nil {
+		slog.Error("CompleteRoute failed", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "completed"})
 }
 
 func (h *Handler) HandleAdjustQuantity(w http.ResponseWriter, r *http.Request) {

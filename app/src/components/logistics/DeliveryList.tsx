@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import type { Delivery } from '../../types/delivery';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import type { Delivery, RouteStatus } from '../../types/delivery';
 import { deliveryService } from '../../services/deliveryService';
-import { MapPin, Box, FileText, ArrowRight, ArrowUp, ArrowDown, RotateCcw, Play } from 'lucide-react';
+import { MapPin, Box, FileText, ArrowRight, ArrowUp, ArrowDown, RotateCcw, Play, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { AssignOrderModal } from './AssignOrderModal';
 import { useToast } from '../ui/ToastContext';
@@ -9,15 +9,17 @@ import { useToast } from '../ui/ToastContext';
 interface DeliveryListProps {
     routeId: string | null;
     vehicleId?: string;
+    routeStatus?: RouteStatus;
     onDeliveriesChange?: (deliveries: Delivery[]) => void;
 }
 
-export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId, onDeliveriesChange }) => {
+export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId, routeStatus, onDeliveriesChange }) => {
     const { showToast } = useToast();
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [loading, setLoading] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [reordering, setReordering] = useState(false);
+    const [completing, setCompleting] = useState(false);
 
     const loadDeliveries = useCallback(async (id: string) => {
         setLoading(true);
@@ -87,6 +89,24 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId, 
         }
     };
 
+    const completeRoute = async () => {
+        if (!routeId) return;
+        setCompleting(true);
+        try {
+            await deliveryService.completeRoute(routeId);
+            showToast('Route marked as completed', 'success');
+        } catch {
+            showToast('Failed to complete route — ensure all deliveries have a terminal status', 'error');
+        } finally {
+            setCompleting(false);
+        }
+    };
+
+    const allTerminal = useMemo(() => {
+        if (deliveries.length === 0) return false;
+        return deliveries.every(d => d.status === 'DELIVERED' || d.status === 'FAILED' || d.status === 'PARTIAL');
+    }, [deliveries]);
+
     if (!routeId) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4 p-12">
@@ -123,10 +143,28 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId, 
                             <RotateCcw className="w-3.5 h-3.5" />
                         </button>
                     )}
-                    {deliveries.length > 0 && (
-                        <Button size="sm" className="h-7 px-2 text-xs" onClick={dispatchRoute}>
-                            <Play className="w-3 h-3 mr-1" /> Dispatch
-                        </Button>
+                    {deliveries.length > 0 && routeStatus !== 'COMPLETED' && routeStatus !== 'CANCELLED' && (
+                        <>
+                            {routeStatus === 'IN_TRANSIT' && allTerminal ? (
+                                <Button size="sm" className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-500" onClick={completeRoute} disabled={completing}>
+                                    <CheckCircle2 className="w-3 h-3 mr-1" /> {completing ? 'Completing...' : 'Complete Route'}
+                                </Button>
+                            ) : (
+                                <Button size="sm" className="h-7 px-2 text-xs" onClick={dispatchRoute}>
+                                    <Play className="w-3 h-3 mr-1" /> Dispatch
+                                </Button>
+                            )}
+                        </>
+                    )}
+                    {routeStatus && (
+                        <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border ${
+                            routeStatus === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            routeStatus === 'IN_TRANSIT' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                            routeStatus === 'CANCELLED' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                            'bg-white/5 text-zinc-400 border-white/10'
+                        }`}>
+                            {routeStatus.replace(/_/g, ' ')}
+                        </span>
                     )}
                     <span className="text-xs text-zinc-400 font-mono ml-1">
                         {deliveries.length} DROPS
@@ -186,6 +224,12 @@ export const DeliveryList: React.FC<DeliveryListProps> = ({ routeId, vehicleId, 
                                     <Box className="w-3 h-3" />
                                     Order #{delivery.order_number}
                                 </span>
+                                {delivery.estimated_arrival && (
+                                    <span className="flex items-center gap-1.5 text-sky-400">
+                                        <Clock className="w-3 h-3" />
+                                        ETA {new Date(delivery.estimated_arrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                )}
                             </div>
 
                             {delivery.delivery_instructions && (

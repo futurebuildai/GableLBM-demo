@@ -1,6 +1,8 @@
 import type {
     Vehicle, Driver, Route, Delivery, CapacityWarning,
-    CreateVehicleRequest, CreateDriverRequest, CreateRouteRequest,
+    CreateVehicleRequest, UpdateVehicleRequest,
+    CreateDriverRequest, UpdateDriverRequest,
+    CreateRouteRequest,
     AssignOrderRequest, UpdateDeliveryStatusRequest
 } from '../types/delivery';
 
@@ -24,6 +26,27 @@ export const deliveryService = {
         return res.json();
     },
 
+    getVehicle: async (id: string): Promise<Vehicle> => {
+        const res = await fetch(`${API_BASE}/api/v1/delivery/vehicles/${id}`);
+        if (!res.ok) throw new Error('Failed to fetch vehicle');
+        return res.json();
+    },
+
+    updateVehicle: async (id: string, req: UpdateVehicleRequest): Promise<Vehicle> => {
+        const res = await fetch(`${API_BASE}/api/v1/delivery/vehicles/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req),
+        });
+        if (!res.ok) throw new Error('Failed to update vehicle');
+        return res.json();
+    },
+
+    deleteVehicle: async (id: string): Promise<void> => {
+        const res = await fetch(`${API_BASE}/api/v1/delivery/vehicles/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete vehicle');
+    },
+
     listDrivers: async (): Promise<Driver[]> => {
         const res = await fetch(`${API_BASE}/api/v1/delivery/drivers`);
         if (!res.ok) throw new Error('Failed to fetch drivers');
@@ -38,6 +61,27 @@ export const deliveryService = {
         });
         if (!res.ok) throw new Error('Failed to create driver');
         return res.json();
+    },
+
+    getDriver: async (id: string): Promise<Driver> => {
+        const res = await fetch(`${API_BASE}/api/v1/delivery/drivers/${id}`);
+        if (!res.ok) throw new Error('Failed to fetch driver');
+        return res.json();
+    },
+
+    updateDriver: async (id: string, req: UpdateDriverRequest): Promise<Driver> => {
+        const res = await fetch(`${API_BASE}/api/v1/delivery/drivers/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req),
+        });
+        if (!res.ok) throw new Error('Failed to update driver');
+        return res.json();
+    },
+
+    deleteDriver: async (id: string): Promise<void> => {
+        const res = await fetch(`${API_BASE}/api/v1/delivery/drivers/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete driver');
     },
 
     // Routes
@@ -75,6 +119,13 @@ export const deliveryService = {
             method: 'POST'
         });
         if (!res.ok) throw new Error('Failed to dispatch route');
+    },
+
+    completeRoute: async (id: string): Promise<void> => {
+        const res = await fetch(`${API_BASE}/api/v1/delivery/routes/${id}/complete`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error('Failed to complete route');
     },
 
     // Deliveries

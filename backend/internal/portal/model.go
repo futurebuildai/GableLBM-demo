@@ -98,16 +98,25 @@ type PortalInvoiceDTO struct {
 	Lines        []PortalLineDTO `json:"lines"`
 }
 
-// PortalDeliveryDTO is a customer-facing delivery with POD info.
+// PortalDeliveryDTO is a customer-facing delivery with POD info and tracking.
 type PortalDeliveryDTO struct {
-	ID           uuid.UUID  `json:"id"`
-	OrderID      uuid.UUID  `json:"order_id"`
-	Status       string     `json:"status"`
-	PODProofURL  *string    `json:"pod_proof_url"`
-	PODSignedBy  *string    `json:"pod_signed_by"`
-	PODTimestamp *time.Time `json:"pod_timestamp"`
-	CreatedAt    time.Time  `json:"created_at"`
-	OrderNumber  *string    `json:"order_number"`
+	ID                   uuid.UUID  `json:"id"`
+	OrderID              uuid.UUID  `json:"order_id"`
+	Status               string     `json:"status"`
+	PODProofURL          *string    `json:"pod_proof_url"`
+	PODSignedBy          *string    `json:"pod_signed_by"`
+	PODTimestamp         *time.Time `json:"pod_timestamp"`
+	CreatedAt            time.Time  `json:"created_at"`
+	OrderNumber          *string    `json:"order_number"`
+	DriverName           *string    `json:"driver_name"`
+	DriverPhone          *string    `json:"driver_phone"`
+	VehicleName          *string    `json:"vehicle_name"`
+	ScheduledDate        *time.Time `json:"scheduled_date"`
+	EstimatedArrival     *time.Time `json:"estimated_arrival"`
+	DeliveryAddress      *string    `json:"delivery_address"`
+	StopSequence         *int       `json:"stop_sequence"`
+	TotalStops           *int       `json:"total_stops"`
+	DeliveryInstructions *string    `json:"delivery_instructions"`
 }
 
 // ReorderRequest tells which historical order to duplicate.

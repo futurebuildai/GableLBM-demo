@@ -61,6 +61,7 @@ import { ProjectList } from "./pages/projects/ProjectList";
 import { ProjectDashboard } from "./pages/projects/ProjectDashboard";
 import POSTerminal from "./pages/pos/POSTerminal";
 import { ProductDetail } from "./pages/inventory/ProductDetail";
+import { FleetManagement } from "./pages/logistics/FleetManagement";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -94,6 +95,7 @@ function App() {
             <Route path="reports/saved" element={<SavedReports />} />
             <Route path="reports/builder" element={<ReportBuilder />} />
             <Route path="dispatch" element={<DispatchBoard />} />
+            <Route path="fleet" element={<FleetManagement />} />
             <Route path="millwork/configure" element={<DoorConfigurator />} />
             <Route path="millwork/configurator" element={<ProductConfigurator />} />
             <Route path="millwork/blueprint" element={<BlueprintVerifier />} />

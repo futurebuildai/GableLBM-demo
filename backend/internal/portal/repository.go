@@ -268,13 +268,23 @@ func (r *Repository) GetInvoiceByIDAndCustomer(ctx context.Context, invoiceID, c
 	return &inv, nil
 }
 
-// ListDeliveriesByCustomer fetches deliveries with POD info for a customer.
+// ListDeliveriesByCustomer fetches deliveries with POD info, driver, and vehicle for a customer.
 func (r *Repository) ListDeliveriesByCustomer(ctx context.Context, customerID uuid.UUID) ([]PortalDeliveryDTO, error) {
 	query := `
 		SELECT d.id, d.order_id, d.status, d.pod_proof_url, d.pod_signed_by, d.pod_timestamp,
-		       d.created_at, o.id::text
+		       d.created_at, o.id::text,
+		       dr.name, dr.phone_number,
+		       v.name,
+		       rt.scheduled_date, d.estimated_arrival,
+		       c.address,
+		       d.stop_sequence, d.delivery_instructions,
+		       (SELECT COUNT(*) FROM deliveries WHERE route_id = d.route_id)
 		FROM deliveries d
 		JOIN orders o ON d.order_id = o.id
+		JOIN customers c ON o.customer_id = c.id
+		LEFT JOIN delivery_routes rt ON d.route_id = rt.id
+		LEFT JOIN drivers dr ON rt.driver_id = dr.id
+		LEFT JOIN vehicles v ON rt.vehicle_id = v.id
 		WHERE o.customer_id = $1
 		ORDER BY d.created_at DESC
 		LIMIT 50
@@ -291,6 +301,12 @@ func (r *Repository) ListDeliveriesByCustomer(ctx context.Context, customerID uu
 		if err := rows.Scan(
 			&d.ID, &d.OrderID, &d.Status, &d.PODProofURL, &d.PODSignedBy,
 			&d.PODTimestamp, &d.CreatedAt, &d.OrderNumber,
+			&d.DriverName, &d.DriverPhone,
+			&d.VehicleName,
+			&d.ScheduledDate, &d.EstimatedArrival,
+			&d.DeliveryAddress,
+			&d.StopSequence, &d.DeliveryInstructions,
+			&d.TotalStops,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan delivery: %w", err)
 		}
@@ -307,15 +323,31 @@ func (r *Repository) ListDeliveriesByCustomer(ctx context.Context, customerID uu
 func (r *Repository) GetDeliveryByIDAndCustomer(ctx context.Context, deliveryID, customerID uuid.UUID) (*PortalDeliveryDTO, error) {
 	query := `
 		SELECT d.id, d.order_id, d.status, d.pod_proof_url, d.pod_signed_by, d.pod_timestamp,
-		       d.created_at, o.id::text
+		       d.created_at, o.id::text,
+		       dr.name, dr.phone_number,
+		       v.name,
+		       rt.scheduled_date, d.estimated_arrival,
+		       c.address,
+		       d.stop_sequence, d.delivery_instructions,
+		       (SELECT COUNT(*) FROM deliveries WHERE route_id = d.route_id)
 		FROM deliveries d
 		JOIN orders o ON d.order_id = o.id
+		JOIN customers c ON o.customer_id = c.id
+		LEFT JOIN delivery_routes rt ON d.route_id = rt.id
+		LEFT JOIN drivers dr ON rt.driver_id = dr.id
+		LEFT JOIN vehicles v ON rt.vehicle_id = v.id
 		WHERE d.id = $1 AND o.customer_id = $2
 	`
 	var d PortalDeliveryDTO
 	err := r.db.Pool.QueryRow(ctx, query, deliveryID, customerID).Scan(
 		&d.ID, &d.OrderID, &d.Status, &d.PODProofURL, &d.PODSignedBy,
 		&d.PODTimestamp, &d.CreatedAt, &d.OrderNumber,
+		&d.DriverName, &d.DriverPhone,
+		&d.VehicleName,
+		&d.ScheduledDate, &d.EstimatedArrival,
+		&d.DeliveryAddress,
+		&d.StopSequence, &d.DeliveryInstructions,
+		&d.TotalStops,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {

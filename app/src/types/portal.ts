@@ -95,6 +95,15 @@ export interface PortalDelivery {
     pod_timestamp: string | null;
     created_at: string;
     order_number: string | null;
+    driver_name: string | null;
+    driver_phone: string | null;
+    vehicle_name: string | null;
+    scheduled_date: string | null;
+    estimated_arrival: string | null;
+    delivery_address: string | null;
+    stop_sequence: number | null;
+    total_stops: number | null;
+    delivery_instructions: string | null;
 }
 
 export interface ReorderResponse {

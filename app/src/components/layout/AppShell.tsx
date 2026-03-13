@@ -70,6 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <NavItem to="/erp/invoices" icon={<FileText size={20} />} label="Invoices" isOpen={sidebarOpen} active={location.pathname.startsWith('/erp/invoices')} />
                     <NavItem to="/erp/millwork/configurator" icon={<Hammer size={20} />} label="Millwork" isOpen={sidebarOpen} active={location.pathname.startsWith('/erp/millwork')} />
                     <NavItem to="/erp/dispatch" icon={<Truck size={20} />} label="Logistics" isOpen={sidebarOpen} active={location.pathname.startsWith('/erp/dispatch')} />
+                    <NavItem to="/erp/fleet" icon={<Settings size={20} />} label="Fleet" isOpen={sidebarOpen} active={location.pathname.startsWith('/erp/fleet')} />
                     <NavItem to="/erp/reports/daily-till" icon={<LayoutDashboard size={20} />} label="Daily Till" isOpen={sidebarOpen} active={location.pathname.startsWith('/erp/reports')} />
 
                     <div className="mb-2 mt-4 px-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">

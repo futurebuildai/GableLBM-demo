@@ -9,6 +9,14 @@ export interface Vehicle {
     vehicle_type: VehicleType;
     license_plate: string;
     capacity_weight_lbs?: number;
+    vin?: string;
+    year?: number;
+    make?: string;
+    model?: string;
+    insurance_expiry?: string;
+    next_service_date?: string;
+    odometer_miles?: number;
+    notes?: string;
     created_at: string;
     updated_at: string;
 }
@@ -19,6 +27,10 @@ export interface Driver {
     license_number?: string;
     status: DriverStatus;
     phone_number?: string;
+    cdl_class?: string;
+    cdl_expiry?: string;
+    hire_date?: string;
+    email?: string;
     created_at: string;
     updated_at: string;
 }
@@ -74,12 +86,50 @@ export interface CreateVehicleRequest {
     vehicle_type: VehicleType;
     license_plate: string;
     capacity_weight_lbs?: number;
+    vin?: string;
+    year?: number;
+    make?: string;
+    model?: string;
+    insurance_expiry?: string;
+    next_service_date?: string;
+    odometer_miles?: number;
+    notes?: string;
+}
+
+export interface UpdateVehicleRequest {
+    name: string;
+    vehicle_type: VehicleType;
+    license_plate: string;
+    capacity_weight_lbs?: number;
+    vin?: string;
+    year?: number;
+    make?: string;
+    model?: string;
+    insurance_expiry?: string;
+    next_service_date?: string;
+    odometer_miles?: number;
+    notes?: string;
 }
 
 export interface CreateDriverRequest {
     name: string;
     license_number?: string;
     phone_number?: string;
+    cdl_class?: string;
+    cdl_expiry?: string;
+    hire_date?: string;
+    email?: string;
+}
+
+export interface UpdateDriverRequest {
+    name: string;
+    license_number?: string;
+    phone_number?: string;
+    status: DriverStatus;
+    cdl_class?: string;
+    cdl_expiry?: string;
+    hire_date?: string;
+    email?: string;
 }
 
 export interface CreateRouteRequest {

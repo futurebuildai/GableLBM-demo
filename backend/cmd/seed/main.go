@@ -453,21 +453,26 @@ func main() {
 	// 9. VEHICLES & DRIVERS
 	// =========================================================================
 	type vehicle struct {
-		Name, VType, Plate string
-		Cap                int
+		Name, VType, Plate, VIN string
+		Cap, Year, Odometer     int
+		Make, Model             string
+		InsExpiry, NextService  string
 	}
 	vehs := []vehicle{
-		{"Truck 1 - Flatbed", "Flatbed", "OR-FLT-101", 24000},
-		{"Truck 2 - Flatbed", "Flatbed", "OR-FLT-102", 24000},
-		{"Truck 3 - Box", "Box Truck", "OR-BOX-201", 16000},
-		{"Truck 4 - Boom", "Boom Truck", "OR-BOM-301", 18000},
-		{"Truck 5 - Pickup", "Pickup", "OR-PKP-401", 3000},
+		{"Truck 1 - Flatbed", "FLATBED", "OR-FLT-101", "1HTMMAAL8CH123456", 24000, 2022, 45230, "International", "CV515", "2026-06-15", "2026-04-01"},
+		{"Truck 2 - Flatbed", "FLATBED", "OR-FLT-102", "1HTMMAAL0CH234567", 24000, 2021, 62100, "International", "CV515", "2026-08-20", "2026-03-15"},
+		{"Truck 3 - Box", "BOX_TRUCK", "OR-BOX-201", "3ALACWFC4HDGH5678", 16000, 2023, 28400, "Freightliner", "M2 106", "2026-07-01", "2026-05-10"},
+		{"Truck 4 - Boom", "CRANE", "OR-BOM-301", "1M2AX04C0CM345678", 18000, 2020, 71800, "Mack", "Granite", "2026-09-30", "2026-02-28"},
+		{"Truck 5 - Pickup", "PICKUP", "OR-PKP-401", "1FTFW1E55MFA56789", 3000, 2023, 15200, "Ford", "F-150", "2026-05-15", "2026-06-20"},
 	}
 	vehicleIDs := make([]uuid.UUID, 0)
 	for _, v := range vehs {
 		var id string
-		db.QueryRow(`INSERT INTO vehicles (name, vehicle_type, license_plate, capacity_weight_lbs)
-			VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING id`, v.Name, v.VType, v.Plate, v.Cap).Scan(&id)
+		db.QueryRow(`INSERT INTO vehicles (name, vehicle_type, license_plate, capacity_weight_lbs,
+				vin, year, make, model, insurance_expiry, next_service_date, odometer_miles)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::date,$10::date,$11) ON CONFLICT DO NOTHING RETURNING id`,
+			v.Name, v.VType, v.Plate, v.Cap,
+			v.VIN, v.Year, v.Make, v.Model, v.InsExpiry, v.NextService, v.Odometer).Scan(&id)
 		if id == "" {
 			db.QueryRow("SELECT id FROM vehicles WHERE license_plate=$1", v.Plate).Scan(&id)
 		}
@@ -477,19 +482,20 @@ func main() {
 	}
 
 	type driver struct {
-		Name, License, Phone string
+		Name, License, Phone, Email, CDLClass, CDLExpiry, HireDate string
 	}
 	drvs := []driver{
-		{"Mike Johnson", "OR-CDL-88421", "503-555-4001"},
-		{"Carlos Rivera", "OR-CDL-77332", "503-555-4002"},
-		{"Dave Thompson", "OR-CDL-66243", "503-555-4003"},
-		{"Jake Wilson", "OR-CDL-55154", "503-555-4004"},
+		{"Mike Johnson", "OR-CDL-88421", "503-555-4001", "mike.j@gable.com", "A", "2026-11-15", "2019-03-01"},
+		{"Carlos Rivera", "OR-CDL-77332", "503-555-4002", "carlos.r@gable.com", "B", "2027-02-28", "2020-06-15"},
+		{"Dave Thompson", "OR-CDL-66243", "503-555-4003", "dave.t@gable.com", "A", "2026-08-30", "2018-01-10"},
+		{"Jake Wilson", "OR-CDL-55154", "503-555-4004", "jake.w@gable.com", "B", "2027-05-15", "2021-09-20"},
 	}
 	driverIDs := make([]uuid.UUID, 0)
 	for _, d := range drvs {
 		var id string
-		db.QueryRow(`INSERT INTO drivers (name, license_number, phone_number, status)
-			VALUES ($1,$2,$3,'ACTIVE') ON CONFLICT DO NOTHING RETURNING id`, d.Name, d.License, d.Phone).Scan(&id)
+		db.QueryRow(`INSERT INTO drivers (name, license_number, phone_number, status, cdl_class, cdl_expiry, hire_date, email)
+			VALUES ($1,$2,$3,'ACTIVE',$4,$5::date,$6::date,$7) ON CONFLICT DO NOTHING RETURNING id`,
+			d.Name, d.License, d.Phone, d.CDLClass, d.CDLExpiry, d.HireDate, d.Email).Scan(&id)
 		if id == "" {
 			db.QueryRow("SELECT id FROM drivers WHERE license_number=$1", d.License).Scan(&id)
 		}

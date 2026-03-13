@@ -22,7 +22,7 @@ const StatusBadge: React.FC<{ status: RouteStatus }> = ({ status }) => {
 };
 
 interface RouteListProps {
-    onSelectRoute: (routeId: string, vehicleId?: string) => void;
+    onSelectRoute: (routeId: string, vehicleId?: string, routeStatus?: RouteStatus) => void;
     selectedRouteId: string | null;
 }
 
@@ -63,7 +63,7 @@ export const RouteList: React.FC<RouteListProps> = ({ onSelectRoute, selectedRou
                     return (
                         <div
                             key={route.id}
-                            onClick={() => onSelectRoute(route.id, route.vehicle_id)}
+                            onClick={() => onSelectRoute(route.id, route.vehicle_id, route.status)}
                             className={`p-4 rounded-lg border transition-all duration-200 cursor-pointer group relative overflow-hidden ${isSelected
                                     ? 'bg-gable-green/10 border-gable-green/50 shadow-[0_0_15px_rgba(0,255,163,0.1)]'
                                     : 'bg-[#161821] border-white/5 hover:border-white/20 hover:bg-white/5'

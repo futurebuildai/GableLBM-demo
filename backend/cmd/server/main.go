@@ -330,7 +330,8 @@ func main() {
 	}
 
 	// Delivery Notification Orchestrator
-	_ = notification.NewDeliveryNotifier(smsSvc, emailSvc, logger)
+	deliveryNotifier := notification.NewDeliveryNotifier(smsSvc, emailSvc, logger)
+	deliverySvc.WithNotifier(&deliveryNotifierAdapter{notifier: deliveryNotifier})
 
 	// Millwork Module
 	millworkRepo := millwork.NewRepository(db)
@@ -476,6 +477,24 @@ func main() {
 	}
 
 	logger.Info("Server exiting")
+}
+
+// deliveryNotifierAdapter bridges delivery.DeliveryNotifierInterface and notification.DeliveryNotifier.
+type deliveryNotifierAdapter struct {
+	notifier *notification.DeliveryNotifier
+}
+
+func (a *deliveryNotifierAdapter) Notify(ctx context.Context, event delivery.DeliveryEvent) {
+	a.notifier.Notify(ctx, notification.DeliveryEvent{
+		EventType:     notification.DeliveryEventType(event.EventType),
+		DeliveryID:    event.DeliveryID,
+		OrderNumber:   event.OrderNumber,
+		CustomerName:  event.CustomerName,
+		CustomerPhone: event.CustomerPhone,
+		CustomerEmail: event.CustomerEmail,
+		ETA:           event.ETA,
+		ReceiptURL:    event.ReceiptURL,
+	})
 }
 
 // RequestLogger logs incoming requests

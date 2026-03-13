@@ -12,7 +12,25 @@ import (
 type Service struct {
 	repo       Repository
 	mapsClient *MapsClient // nil if Google Maps not configured
+	notifier   DeliveryNotifierInterface
 	logger     *slog.Logger
+}
+
+// DeliveryNotifierInterface allows injecting the notification system.
+type DeliveryNotifierInterface interface {
+	Notify(ctx context.Context, event DeliveryEvent)
+}
+
+// DeliveryEvent mirrors notification.DeliveryEvent to avoid import cycle.
+type DeliveryEvent struct {
+	EventType     string
+	DeliveryID    string
+	OrderNumber   string
+	CustomerName  string
+	CustomerPhone string
+	CustomerEmail string
+	ETA           string
+	ReceiptURL    string
 }
 
 func NewService(repo Repository) *Service {
@@ -25,6 +43,11 @@ func (s *Service) WithMaps(mc *MapsClient, logger *slog.Logger) {
 	s.logger = logger
 }
 
+// WithNotifier sets the delivery notification service.
+func (s *Service) WithNotifier(n DeliveryNotifierInterface) {
+	s.notifier = n
+}
+
 // Fleet Management
 
 func (s *Service) CreateVehicle(ctx context.Context, req CreateVehicleRequest) (*Vehicle, error) {
@@ -33,6 +56,22 @@ func (s *Service) CreateVehicle(ctx context.Context, req CreateVehicleRequest) (
 		VehicleType:       req.VehicleType,
 		LicensePlate:      req.LicensePlate,
 		CapacityWeightLbs: req.CapacityWeightLbs,
+		VIN:               req.VIN,
+		Year:              req.Year,
+		Make:              req.Make,
+		Model:             req.Model,
+		OdometerMiles:     req.OdometerMiles,
+		Notes:             req.Notes,
+	}
+	if req.InsuranceExpiry != nil {
+		if t, err := time.Parse("2006-01-02", *req.InsuranceExpiry); err == nil {
+			v.InsuranceExpiry = &t
+		}
+	}
+	if req.NextServiceDate != nil {
+		if t, err := time.Parse("2006-01-02", *req.NextServiceDate); err == nil {
+			v.NextServiceDate = &t
+		}
 	}
 	if err := s.repo.CreateVehicle(ctx, v); err != nil {
 		return nil, err
@@ -40,8 +79,51 @@ func (s *Service) CreateVehicle(ctx context.Context, req CreateVehicleRequest) (
 	return v, nil
 }
 
+func (s *Service) GetVehicle(ctx context.Context, id uuid.UUID) (*Vehicle, error) {
+	return s.repo.GetVehicle(ctx, id)
+}
+
 func (s *Service) ListVehicles(ctx context.Context) ([]Vehicle, error) {
 	return s.repo.ListVehicles(ctx)
+}
+
+func (s *Service) UpdateVehicle(ctx context.Context, id uuid.UUID, req UpdateVehicleRequest) (*Vehicle, error) {
+	v, err := s.repo.GetVehicle(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	v.Name = req.Name
+	v.VehicleType = req.VehicleType
+	v.LicensePlate = req.LicensePlate
+	v.CapacityWeightLbs = req.CapacityWeightLbs
+	v.VIN = req.VIN
+	v.Year = req.Year
+	v.Make = req.Make
+	v.Model = req.Model
+	v.OdometerMiles = req.OdometerMiles
+	v.Notes = req.Notes
+	if req.InsuranceExpiry != nil {
+		if t, err := time.Parse("2006-01-02", *req.InsuranceExpiry); err == nil {
+			v.InsuranceExpiry = &t
+		}
+	} else {
+		v.InsuranceExpiry = nil
+	}
+	if req.NextServiceDate != nil {
+		if t, err := time.Parse("2006-01-02", *req.NextServiceDate); err == nil {
+			v.NextServiceDate = &t
+		}
+	} else {
+		v.NextServiceDate = nil
+	}
+	if err := s.repo.UpdateVehicle(ctx, id, v); err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+func (s *Service) DeleteVehicle(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteVehicle(ctx, id)
 }
 
 func (s *Service) CreateDriver(ctx context.Context, req CreateDriverRequest) (*Driver, error) {
@@ -50,6 +132,18 @@ func (s *Service) CreateDriver(ctx context.Context, req CreateDriverRequest) (*D
 		LicenseNumber: req.LicenseNumber,
 		PhoneNumber:   req.PhoneNumber,
 		Status:        DriverStatusActive,
+		CDLClass:      req.CDLClass,
+		Email:         req.Email,
+	}
+	if req.CDLExpiry != nil {
+		if t, err := time.Parse("2006-01-02", *req.CDLExpiry); err == nil {
+			d.CDLExpiry = &t
+		}
+	}
+	if req.HireDate != nil {
+		if t, err := time.Parse("2006-01-02", *req.HireDate); err == nil {
+			d.HireDate = &t
+		}
 	}
 	if err := s.repo.CreateDriver(ctx, d); err != nil {
 		return nil, err
@@ -57,8 +151,64 @@ func (s *Service) CreateDriver(ctx context.Context, req CreateDriverRequest) (*D
 	return d, nil
 }
 
+func (s *Service) GetDriver(ctx context.Context, id uuid.UUID) (*Driver, error) {
+	return s.repo.GetDriver(ctx, id)
+}
+
 func (s *Service) ListDrivers(ctx context.Context) ([]Driver, error) {
 	return s.repo.ListDrivers(ctx)
+}
+
+func (s *Service) UpdateDriver(ctx context.Context, id uuid.UUID, req UpdateDriverRequest) (*Driver, error) {
+	d, err := s.repo.GetDriver(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	d.Name = req.Name
+	d.LicenseNumber = req.LicenseNumber
+	d.PhoneNumber = req.PhoneNumber
+	d.Status = req.Status
+	d.CDLClass = req.CDLClass
+	d.Email = req.Email
+	if req.CDLExpiry != nil {
+		if t, err := time.Parse("2006-01-02", *req.CDLExpiry); err == nil {
+			d.CDLExpiry = &t
+		}
+	} else {
+		d.CDLExpiry = nil
+	}
+	if req.HireDate != nil {
+		if t, err := time.Parse("2006-01-02", *req.HireDate); err == nil {
+			d.HireDate = &t
+		}
+	} else {
+		d.HireDate = nil
+	}
+	if err := s.repo.UpdateDriver(ctx, id, d); err != nil {
+		return nil, err
+	}
+	return d, nil
+}
+
+func (s *Service) DeleteDriver(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteDriver(ctx, id)
+}
+
+// CompleteRoute marks a route as COMPLETED if all deliveries are in a terminal state.
+func (s *Service) CompleteRoute(ctx context.Context, routeID uuid.UUID) error {
+	deliveries, err := s.repo.ListDeliveriesByRoute(ctx, routeID)
+	if err != nil {
+		return fmt.Errorf("list deliveries: %w", err)
+	}
+	if len(deliveries) == 0 {
+		return fmt.Errorf("route has no deliveries")
+	}
+	for _, d := range deliveries {
+		if d.Status != DeliveryStatusDelivered && d.Status != DeliveryStatusFailed && d.Status != DeliveryStatusPartial {
+			return fmt.Errorf("cannot complete route: delivery %s is still %s", d.ID, d.Status)
+		}
+	}
+	return s.repo.UpdateRouteStatus(ctx, routeID, RouteStatusCompleted)
 }
 
 // Route Management

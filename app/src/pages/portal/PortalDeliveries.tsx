@@ -1,14 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
-import { Truck, Camera, RefreshCw, AlertTriangle, X, User, Clock } from 'lucide-react';
+import { Truck, Camera, RefreshCw, AlertTriangle, X, User, Clock, Phone, MapPin, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { PortalService } from '../../services/PortalService';
 import type { PortalDelivery } from '../../types/portal';
+
+type FilterTab = 'all' | 'active' | 'upcoming' | 'completed';
 
 export const PortalDeliveries = () => {
     const [deliveries, setDeliveries] = useState<PortalDelivery[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [filter, setFilter] = useState<FilterTab>('all');
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     const fetchDeliveries = useCallback(() => {
         setLoading(true);
@@ -19,10 +23,8 @@ export const PortalDeliveries = () => {
             .finally(() => setLoading(false));
     }, []);
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch→setState is standard pattern
     useEffect(() => { fetchDeliveries(); }, [fetchDeliveries]);
 
-    // Close lightbox on Escape key
     useEffect(() => {
         if (!lightboxUrl) return;
         const handleEsc = (e: KeyboardEvent) => {
@@ -31,6 +33,25 @@ export const PortalDeliveries = () => {
         window.addEventListener('keydown', handleEsc);
         return () => window.removeEventListener('keydown', handleEsc);
     }, [lightboxUrl]);
+
+    const { active, upcoming, completed } = useMemo(() => {
+        const active: PortalDelivery[] = [];
+        const upcoming: PortalDelivery[] = [];
+        const completed: PortalDelivery[] = [];
+        for (const d of deliveries) {
+            if (d.status === 'OUT_FOR_DELIVERY') active.push(d);
+            else if (d.status === 'PENDING') upcoming.push(d);
+            else completed.push(d);
+        }
+        return { active, upcoming, completed };
+    }, [deliveries]);
+
+    const filtered = useMemo(() => {
+        if (filter === 'active') return active;
+        if (filter === 'upcoming') return upcoming;
+        if (filter === 'completed') return completed;
+        return deliveries;
+    }, [filter, active, upcoming, completed, deliveries]);
 
     if (loading) {
         return (
@@ -57,11 +78,31 @@ export const PortalDeliveries = () => {
         );
     }
 
+    const tabs: { key: FilterTab; label: string; count: number }[] = [
+        { key: 'all', label: 'All', count: deliveries.length },
+        { key: 'active', label: 'Active', count: active.length },
+        { key: 'upcoming', label: 'Upcoming', count: upcoming.length },
+        { key: 'completed', label: 'Completed', count: completed.length },
+    ];
+
     return (
         <div>
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-white">Deliveries</h1>
-                <p className="text-zinc-400 text-sm mt-1">{deliveries.length} deliver{deliveries.length !== 1 ? 'ies' : 'y'} found</p>
+                <p className="text-zinc-400 text-sm mt-1">Track your orders from warehouse to jobsite</p>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex gap-1 mb-6 bg-white/5 rounded-lg p-1 w-fit">
+                {tabs.map(t => (
+                    <button
+                        key={t.key}
+                        onClick={() => setFilter(t.key)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === t.key ? 'bg-gable-green/20 text-gable-green' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                        {t.label} <span className="ml-1 text-[10px] opacity-70">{t.count}</span>
+                    </button>
+                ))}
             </div>
 
             {deliveries.length === 0 ? (
@@ -71,72 +112,22 @@ export const PortalDeliveries = () => {
                         <p className="text-zinc-400">No deliveries yet.</p>
                     </CardContent>
                 </Card>
+            ) : filtered.length === 0 ? (
+                <Card variant="glass">
+                    <CardContent className="p-8 text-center">
+                        <p className="text-zinc-500 text-sm">No deliveries match this filter.</p>
+                    </CardContent>
+                </Card>
             ) : (
                 <div className="space-y-3">
-                    {deliveries.map(del => (
-                        <Card key={del.id} variant="glass" noPadding>
-                            <div className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors">
-                                <div className="flex items-center gap-4">
-                                    <div
-                                        className="w-10 h-10 rounded-lg flex items-center justify-center"
-                                        style={{ backgroundColor: deliveryStatusColor(del.status).bg }}
-                                    >
-                                        <Truck size={18} style={{ color: deliveryStatusColor(del.status).fg }} />
-                                    </div>
-                                    <div>
-                                        <div className="font-mono text-sm font-medium text-white">
-                                            DEL-{del.id.substring(0, 8).toUpperCase()}
-                                        </div>
-                                        <div className="text-xs text-zinc-500 mt-0.5">
-                                            Order: {del.order_number?.substring(0, 8).toUpperCase() || del.order_id.substring(0, 8).toUpperCase()}
-                                            {' · '}
-                                            {new Date(del.created_at).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-4">
-                                    {/* POD Info */}
-                                    <div className="flex items-center gap-3">
-                                        {del.pod_signed_by && (
-                                            <div className="flex items-center gap-1 text-xs text-zinc-400">
-                                                <User size={12} />
-                                                <span>{del.pod_signed_by}</span>
-                                            </div>
-                                        )}
-                                        {del.pod_timestamp && (
-                                            <div className="flex items-center gap-1 text-xs text-zinc-500">
-                                                <Clock size={12} />
-                                                <span>{new Date(del.pod_timestamp).toLocaleString()}</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <DeliveryStatusBadge status={del.status} />
-
-                                    {/* POD Photo */}
-                                    {del.pod_proof_url ? (
-                                        <button
-                                            onClick={() => setLightboxUrl(del.pod_proof_url)}
-                                            className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 hover:border-gable-green/50 transition-colors relative group"
-                                        >
-                                            <img
-                                                src={del.pod_proof_url}
-                                                alt="Proof of Delivery"
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Camera size={14} className="text-white" />
-                                            </div>
-                                        </button>
-                                    ) : (
-                                        <div className="w-12 h-12 rounded-lg border border-white/5 flex items-center justify-center bg-white/5">
-                                            <Camera size={14} className="text-zinc-600" />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </Card>
+                    {filtered.map(del => (
+                        <DeliveryCard
+                            key={del.id}
+                            delivery={del}
+                            expanded={expandedId === del.id}
+                            onToggle={() => setExpandedId(expandedId === del.id ? null : del.id)}
+                            onLightbox={setLightboxUrl}
+                        />
                     ))}
                 </div>
             )}
@@ -166,6 +157,199 @@ export const PortalDeliveries = () => {
         </div>
     );
 };
+
+function etaLabel(eta: string | null): string | null {
+    if (!eta) return null;
+    const arrival = new Date(eta);
+    const now = new Date();
+    const diffMs = arrival.getTime() - now.getTime();
+    if (diffMs <= 0) return 'Arriving now';
+    const diffMin = Math.round(diffMs / 60000);
+    if (diffMin < 120) return `Arriving in ${diffMin} min`;
+    return `ETA ${arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+const STATUS_STEPS = ['PENDING', 'OUT_FOR_DELIVERY', 'DELIVERED'] as const;
+
+function StatusTimeline({ status }: { status: string }) {
+    const currentIdx = STATUS_STEPS.indexOf(status as typeof STATUS_STEPS[number]);
+    const isFailed = status === 'FAILED' || status === 'PARTIAL';
+
+    return (
+        <div className="flex items-center gap-1 w-full max-w-xs">
+            {STATUS_STEPS.map((step, i) => {
+                const isActive = i <= currentIdx;
+                const isCurrent = i === currentIdx;
+                return (
+                    <div key={step} className="flex items-center flex-1">
+                        <div className={`w-3 h-3 rounded-full border-2 shrink-0 transition-colors ${
+                            isFailed && isCurrent ? 'border-red-400 bg-red-400/30' :
+                            isActive ? 'border-gable-green bg-gable-green/30' :
+                            'border-zinc-600 bg-transparent'
+                        }`} />
+                        {i < STATUS_STEPS.length - 1 && (
+                            <div className={`flex-1 h-0.5 mx-1 transition-colors ${
+                                i < currentIdx ? 'bg-gable-green/50' : 'bg-zinc-700'
+                            }`} />
+                        )}
+                    </div>
+                );
+            })}
+            <span className="text-[9px] text-zinc-500 uppercase ml-2 whitespace-nowrap">
+                {STATUS_STEPS[Math.max(0, currentIdx)] ?? status}
+            </span>
+        </div>
+    );
+}
+
+function DeliveryCard({ delivery: del, expanded, onToggle, onLightbox }: {
+    delivery: PortalDelivery;
+    expanded: boolean;
+    onToggle: () => void;
+    onLightbox: (url: string) => void;
+}) {
+    const isActive = del.status === 'OUT_FOR_DELIVERY';
+    const isCompleted = del.status === 'DELIVERED' || del.status === 'FAILED' || del.status === 'PARTIAL';
+    const eta = etaLabel(del.estimated_arrival);
+
+    return (
+        <Card variant="glass" noPadding>
+            {/* Header row */}
+            <button onClick={onToggle} className="w-full text-left p-4 hover:bg-white/5 transition-colors">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: deliveryStatusColor(del.status).bg }}
+                        >
+                            <Truck size={18} style={{ color: deliveryStatusColor(del.status).fg }} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm font-medium text-white">
+                                    DEL-{del.id.substring(0, 8).toUpperCase()}
+                                </span>
+                                <DeliveryStatusBadge status={del.status} />
+                            </div>
+                            <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-2">
+                                <span className="flex items-center gap-1">
+                                    <FileText size={10} />
+                                    Order {del.order_number?.substring(0, 8).toUpperCase() || del.order_id.substring(0, 8).toUpperCase()}
+                                </span>
+                                {del.scheduled_date && (
+                                    <span className="flex items-center gap-1">
+                                        <Clock size={10} />
+                                        {new Date(del.scheduled_date).toLocaleDateString()}
+                                    </span>
+                                )}
+                                {!del.scheduled_date && (
+                                    <span>{new Date(del.created_at).toLocaleDateString()}</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {/* ETA for active deliveries */}
+                        {isActive && eta && (
+                            <span className="text-xs font-semibold text-sky-400 bg-sky-500/10 px-2 py-1 rounded border border-sky-500/20">
+                                {eta}
+                            </span>
+                        )}
+                        {/* Stop progress */}
+                        {del.stop_sequence != null && del.total_stops != null && (
+                            <span className="text-[10px] text-zinc-500 font-mono">
+                                Stop {del.stop_sequence} of {del.total_stops}
+                            </span>
+                        )}
+                        {expanded ? <ChevronUp size={16} className="text-zinc-500" /> : <ChevronDown size={16} className="text-zinc-500" />}
+                    </div>
+                </div>
+
+                {/* Status timeline for active deliveries */}
+                {isActive && (
+                    <div className="mt-3 pl-14">
+                        <StatusTimeline status={del.status} />
+                    </div>
+                )}
+            </button>
+
+            {/* Expanded details */}
+            {expanded && (
+                <div className="border-t border-white/5 p-4 pl-[4.5rem] space-y-3">
+                    {/* Driver & vehicle info */}
+                    {(del.driver_name || del.vehicle_name) && (
+                        <div className="flex flex-wrap gap-4 text-sm">
+                            {del.driver_name && (
+                                <div className="flex items-center gap-2 text-zinc-300">
+                                    <User size={14} className="text-zinc-500" />
+                                    <span>{del.driver_name}</span>
+                                    {del.driver_phone && (
+                                        <a href={`tel:${del.driver_phone}`} className="flex items-center gap-1 text-sky-400 hover:text-sky-300">
+                                            <Phone size={12} />
+                                            <span className="text-xs">{del.driver_phone}</span>
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+                            {del.vehicle_name && (
+                                <div className="flex items-center gap-2 text-zinc-400">
+                                    <Truck size={14} className="text-zinc-500" />
+                                    <span>{del.vehicle_name}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Address */}
+                    {del.delivery_address && (
+                        <div className="flex items-start gap-2 text-sm text-zinc-400">
+                            <MapPin size={14} className="text-zinc-500 mt-0.5 shrink-0" />
+                            <span>{del.delivery_address}</span>
+                        </div>
+                    )}
+
+                    {/* Delivery instructions */}
+                    {del.delivery_instructions && (
+                        <div className="text-sm bg-amber-500/5 text-amber-500/90 p-3 rounded-lg border border-amber-500/10 flex gap-2">
+                            <span className="font-bold text-[10px] px-1.5 py-0.5 bg-amber-500/20 rounded h-fit shrink-0">NOTE</span>
+                            <span className="italic">{del.delivery_instructions}</span>
+                        </div>
+                    )}
+
+                    {/* POD info for completed deliveries */}
+                    {isCompleted && (del.pod_signed_by || del.pod_proof_url) && (
+                        <div className="flex items-center gap-4 pt-2 border-t border-white/5">
+                            {del.pod_signed_by && (
+                                <div className="flex items-center gap-1 text-xs text-zinc-400">
+                                    <User size={12} />
+                                    <span>Signed by {del.pod_signed_by}</span>
+                                </div>
+                            )}
+                            {del.pod_timestamp && (
+                                <div className="flex items-center gap-1 text-xs text-zinc-500">
+                                    <Clock size={12} />
+                                    <span>{new Date(del.pod_timestamp).toLocaleString()}</span>
+                                </div>
+                            )}
+                            {del.pod_proof_url && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onLightbox(del.pod_proof_url!); }}
+                                    className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 hover:border-gable-green/50 transition-colors relative group"
+                                >
+                                    <img src={del.pod_proof_url} alt="POD" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Camera size={12} className="text-white" />
+                                    </div>
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </Card>
+    );
+}
 
 const deliveryStatusColor = (status: string): { fg: string; bg: string } => {
     const map: Record<string, { fg: string; bg: string }> = {

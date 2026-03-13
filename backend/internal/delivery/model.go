@@ -54,6 +54,14 @@ type Vehicle struct {
 	VehicleType       VehicleType `json:"vehicle_type" db:"vehicle_type"`
 	LicensePlate      string      `json:"license_plate" db:"license_plate"`
 	CapacityWeightLbs *int        `json:"capacity_weight_lbs" db:"capacity_weight_lbs"`
+	VIN               *string     `json:"vin" db:"vin"`
+	Year              *int        `json:"year" db:"year"`
+	Make              *string     `json:"make" db:"make"`
+	Model             *string     `json:"model" db:"model"`
+	InsuranceExpiry   *time.Time  `json:"insurance_expiry" db:"insurance_expiry"`
+	NextServiceDate   *time.Time  `json:"next_service_date" db:"next_service_date"`
+	OdometerMiles     *int        `json:"odometer_miles" db:"odometer_miles"`
+	Notes             *string     `json:"notes" db:"notes"`
 	CreatedAt         time.Time   `json:"created_at" db:"created_at"`
 	UpdatedAt         time.Time   `json:"updated_at" db:"updated_at"`
 }
@@ -64,6 +72,10 @@ type Driver struct {
 	LicenseNumber *string      `json:"license_number" db:"license_number"`
 	Status        DriverStatus `json:"status" db:"status"`
 	PhoneNumber   *string      `json:"phone_number" db:"phone_number"`
+	CDLClass      *string      `json:"cdl_class" db:"cdl_class"`
+	CDLExpiry     *time.Time   `json:"cdl_expiry" db:"cdl_expiry"`
+	HireDate      *time.Time   `json:"hire_date" db:"hire_date"`
+	Email         *string      `json:"email" db:"email"`
 	CreatedAt     time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at" db:"updated_at"`
 }
@@ -107,6 +119,10 @@ type Delivery struct {
 	// ETA (from route optimization)
 	EstimatedArrival *time.Time `json:"estimated_arrival,omitempty" db:"estimated_arrival"`
 
+	// Time-window scheduling
+	ScheduledStart *time.Time `json:"scheduled_start,omitempty" db:"scheduled_start"`
+	ScheduledEnd   *time.Time `json:"scheduled_end,omitempty" db:"scheduled_end"`
+
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 
@@ -123,12 +139,50 @@ type CreateVehicleRequest struct {
 	VehicleType       VehicleType `json:"vehicle_type"`
 	LicensePlate      string      `json:"license_plate"`
 	CapacityWeightLbs *int        `json:"capacity_weight_lbs"`
+	VIN               *string     `json:"vin"`
+	Year              *int        `json:"year"`
+	Make              *string     `json:"make"`
+	Model             *string     `json:"model"`
+	InsuranceExpiry   *string     `json:"insurance_expiry"`
+	NextServiceDate   *string     `json:"next_service_date"`
+	OdometerMiles     *int        `json:"odometer_miles"`
+	Notes             *string     `json:"notes"`
+}
+
+type UpdateVehicleRequest struct {
+	Name              string      `json:"name"`
+	VehicleType       VehicleType `json:"vehicle_type"`
+	LicensePlate      string      `json:"license_plate"`
+	CapacityWeightLbs *int        `json:"capacity_weight_lbs"`
+	VIN               *string     `json:"vin"`
+	Year              *int        `json:"year"`
+	Make              *string     `json:"make"`
+	Model             *string     `json:"model"`
+	InsuranceExpiry   *string     `json:"insurance_expiry"`
+	NextServiceDate   *string     `json:"next_service_date"`
+	OdometerMiles     *int        `json:"odometer_miles"`
+	Notes             *string     `json:"notes"`
 }
 
 type CreateDriverRequest struct {
 	Name          string  `json:"name"`
 	LicenseNumber *string `json:"license_number"`
 	PhoneNumber   *string `json:"phone_number"`
+	CDLClass      *string `json:"cdl_class"`
+	CDLExpiry     *string `json:"cdl_expiry"`
+	HireDate      *string `json:"hire_date"`
+	Email         *string `json:"email"`
+}
+
+type UpdateDriverRequest struct {
+	Name          string       `json:"name"`
+	LicenseNumber *string      `json:"license_number"`
+	PhoneNumber   *string      `json:"phone_number"`
+	Status        DriverStatus `json:"status"`
+	CDLClass      *string      `json:"cdl_class"`
+	CDLExpiry     *string      `json:"cdl_expiry"`
+	HireDate      *string      `json:"hire_date"`
+	Email         *string      `json:"email"`
 }
 
 type CreateRouteRequest struct {
@@ -162,8 +216,13 @@ type Repository interface {
 	CreateVehicle(ctx context.Context, vehicle *Vehicle) error
 	GetVehicle(ctx context.Context, id uuid.UUID) (*Vehicle, error)
 	ListVehicles(ctx context.Context) ([]Vehicle, error)
+	UpdateVehicle(ctx context.Context, id uuid.UUID, vehicle *Vehicle) error
+	DeleteVehicle(ctx context.Context, id uuid.UUID) error
 	CreateDriver(ctx context.Context, driver *Driver) error
+	GetDriver(ctx context.Context, id uuid.UUID) (*Driver, error)
 	ListDrivers(ctx context.Context) ([]Driver, error)
+	UpdateDriver(ctx context.Context, id uuid.UUID, driver *Driver) error
+	DeleteDriver(ctx context.Context, id uuid.UUID) error
 
 	// Routes
 	CreateRoute(ctx context.Context, route *Route) error

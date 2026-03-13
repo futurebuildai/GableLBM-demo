@@ -5,17 +5,18 @@ import { RouteMap } from '../components/logistics/RouteMap';
 import { PageTransition } from '../components/ui/PageTransition';
 import { Truck, Calendar } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/Card';
-import type { Delivery } from '../types/delivery';
+import type { Delivery, RouteStatus } from '../types/delivery';
 
 export const DispatchBoard: React.FC = () => {
     const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
     const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined);
+    const [selectedRouteStatus, setSelectedRouteStatus] = useState<RouteStatus | undefined>(undefined);
     const [currentDeliveries, setCurrentDeliveries] = useState<Delivery[]>([]);
 
-    const handleSelectRoute = (routeId: string, vehicleId?: string) => {
+    const handleSelectRoute = (routeId: string, vehicleId?: string, routeStatus?: RouteStatus) => {
         setSelectedRouteId(routeId);
         setSelectedVehicleId(vehicleId);
-        // Reset deliveries when route changes (optional, but cleaner)
+        setSelectedRouteStatus(routeStatus);
         if (routeId !== selectedRouteId) {
             setCurrentDeliveries([]);
         }
@@ -55,6 +56,7 @@ export const DispatchBoard: React.FC = () => {
                                 <DeliveryList
                                     routeId={selectedRouteId}
                                     vehicleId={selectedVehicleId}
+                                    routeStatus={selectedRouteStatus}
                                     onDeliveriesChange={setCurrentDeliveries}
                                 />
                             </CardContent>

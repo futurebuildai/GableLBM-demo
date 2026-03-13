@@ -23,22 +23,31 @@ func NewRepository(db *database.DB) *PostgresRepository {
 
 func (r *PostgresRepository) CreateVehicle(ctx context.Context, v *Vehicle) error {
 	query := `
-		INSERT INTO vehicles (name, vehicle_type, license_plate, capacity_weight_lbs)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO vehicles (name, vehicle_type, license_plate, capacity_weight_lbs,
+		                      vin, year, make, model, insurance_expiry, next_service_date, odometer_miles, notes)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, created_at, updated_at
 	`
 	return r.db.GetExecutor(ctx).QueryRow(ctx, query,
 		v.Name, v.VehicleType, v.LicensePlate, v.CapacityWeightLbs,
+		v.VIN, v.Year, v.Make, v.Model, v.InsuranceExpiry, v.NextServiceDate, v.OdometerMiles, v.Notes,
 	).Scan(&v.ID, &v.CreatedAt, &v.UpdatedAt)
 }
 
+var vehicleCols = `id, name, vehicle_type, license_plate, capacity_weight_lbs,
+	vin, year, make, model, insurance_expiry, next_service_date, odometer_miles, notes,
+	created_at, updated_at`
+
+func scanVehicle(row interface{ Scan(dest ...any) error }, v *Vehicle) error {
+	return row.Scan(
+		&v.ID, &v.Name, &v.VehicleType, &v.LicensePlate, &v.CapacityWeightLbs,
+		&v.VIN, &v.Year, &v.Make, &v.Model, &v.InsuranceExpiry, &v.NextServiceDate, &v.OdometerMiles, &v.Notes,
+		&v.CreatedAt, &v.UpdatedAt,
+	)
+}
+
 func (r *PostgresRepository) ListVehicles(ctx context.Context) ([]Vehicle, error) {
-	query := `
-		SELECT id, name, vehicle_type, license_plate, capacity_weight_lbs, created_at, updated_at
-		FROM vehicles
-		WHERE deleted_at IS NULL
-		ORDER BY name ASC
-	`
+	query := `SELECT ` + vehicleCols + ` FROM vehicles WHERE deleted_at IS NULL ORDER BY name ASC`
 	rows, err := r.db.GetExecutor(ctx).Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -48,9 +57,7 @@ func (r *PostgresRepository) ListVehicles(ctx context.Context) ([]Vehicle, error
 	var vehicles []Vehicle
 	for rows.Next() {
 		var v Vehicle
-		if err := rows.Scan(
-			&v.ID, &v.Name, &v.VehicleType, &v.LicensePlate, &v.CapacityWeightLbs, &v.CreatedAt, &v.UpdatedAt,
-		); err != nil {
+		if err := scanVehicle(rows, &v); err != nil {
 			return nil, err
 		}
 		vehicles = append(vehicles, v)
@@ -59,15 +66,9 @@ func (r *PostgresRepository) ListVehicles(ctx context.Context) ([]Vehicle, error
 }
 
 func (r *PostgresRepository) GetVehicle(ctx context.Context, id uuid.UUID) (*Vehicle, error) {
-	query := `
-		SELECT id, name, vehicle_type, license_plate, capacity_weight_lbs, created_at, updated_at
-		FROM vehicles
-		WHERE id = $1 AND deleted_at IS NULL
-	`
+	query := `SELECT ` + vehicleCols + ` FROM vehicles WHERE id = $1 AND deleted_at IS NULL`
 	var v Vehicle
-	err := r.db.GetExecutor(ctx).QueryRow(ctx, query, id).Scan(
-		&v.ID, &v.Name, &v.VehicleType, &v.LicensePlate, &v.CapacityWeightLbs, &v.CreatedAt, &v.UpdatedAt,
-	)
+	err := scanVehicle(r.db.GetExecutor(ctx).QueryRow(ctx, query, id), &v)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("vehicle not found")
@@ -77,24 +78,79 @@ func (r *PostgresRepository) GetVehicle(ctx context.Context, id uuid.UUID) (*Veh
 	return &v, nil
 }
 
+func (r *PostgresRepository) UpdateVehicle(ctx context.Context, id uuid.UUID, v *Vehicle) error {
+	query := `
+		UPDATE vehicles SET
+			name = $1, vehicle_type = $2, license_plate = $3, capacity_weight_lbs = $4,
+			vin = $5, year = $6, make = $7, model = $8,
+			insurance_expiry = $9, next_service_date = $10, odometer_miles = $11, notes = $12,
+			updated_at = NOW()
+		WHERE id = $13 AND deleted_at IS NULL
+		RETURNING updated_at
+	`
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, query,
+		v.Name, v.VehicleType, v.LicensePlate, v.CapacityWeightLbs,
+		v.VIN, v.Year, v.Make, v.Model, v.InsuranceExpiry, v.NextServiceDate, v.OdometerMiles, v.Notes,
+		id,
+	).Scan(&v.UpdatedAt)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return fmt.Errorf("vehicle not found")
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *PostgresRepository) DeleteVehicle(ctx context.Context, id uuid.UUID) error {
+	query := `UPDATE vehicles SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
+	tag, err := r.db.GetExecutor(ctx).Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("vehicle not found")
+	}
+	return nil
+}
+
 func (r *PostgresRepository) CreateDriver(ctx context.Context, d *Driver) error {
 	query := `
-		INSERT INTO drivers (name, license_number, phone_number, status)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO drivers (name, license_number, phone_number, status, cdl_class, cdl_expiry, hire_date, email)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, created_at, updated_at
 	`
 	return r.db.GetExecutor(ctx).QueryRow(ctx, query,
 		d.Name, d.LicenseNumber, d.PhoneNumber, d.Status,
+		d.CDLClass, d.CDLExpiry, d.HireDate, d.Email,
 	).Scan(&d.ID, &d.CreatedAt, &d.UpdatedAt)
 }
 
+var driverCols = `id, name, license_number, phone_number, status, cdl_class, cdl_expiry, hire_date, email, created_at, updated_at`
+
+func scanDriver(row interface{ Scan(dest ...any) error }, d *Driver) error {
+	return row.Scan(
+		&d.ID, &d.Name, &d.LicenseNumber, &d.PhoneNumber, &d.Status,
+		&d.CDLClass, &d.CDLExpiry, &d.HireDate, &d.Email,
+		&d.CreatedAt, &d.UpdatedAt,
+	)
+}
+
+func (r *PostgresRepository) GetDriver(ctx context.Context, id uuid.UUID) (*Driver, error) {
+	query := `SELECT ` + driverCols + ` FROM drivers WHERE id = $1 AND deleted_at IS NULL`
+	var d Driver
+	err := scanDriver(r.db.GetExecutor(ctx).QueryRow(ctx, query, id), &d)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("driver not found")
+		}
+		return nil, err
+	}
+	return &d, nil
+}
+
 func (r *PostgresRepository) ListDrivers(ctx context.Context) ([]Driver, error) {
-	query := `
-		SELECT id, name, license_number, phone_number, status, created_at, updated_at
-		FROM drivers
-		WHERE deleted_at IS NULL
-		ORDER BY name ASC
-	`
+	query := `SELECT ` + driverCols + ` FROM drivers WHERE deleted_at IS NULL ORDER BY name ASC`
 	rows, err := r.db.GetExecutor(ctx).Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -104,14 +160,47 @@ func (r *PostgresRepository) ListDrivers(ctx context.Context) ([]Driver, error) 
 	var drivers []Driver
 	for rows.Next() {
 		var d Driver
-		if err := rows.Scan(
-			&d.ID, &d.Name, &d.LicenseNumber, &d.PhoneNumber, &d.Status, &d.CreatedAt, &d.UpdatedAt,
-		); err != nil {
+		if err := scanDriver(rows, &d); err != nil {
 			return nil, err
 		}
 		drivers = append(drivers, d)
 	}
 	return drivers, nil
+}
+
+func (r *PostgresRepository) UpdateDriver(ctx context.Context, id uuid.UUID, d *Driver) error {
+	query := `
+		UPDATE drivers SET
+			name = $1, license_number = $2, phone_number = $3, status = $4,
+			cdl_class = $5, cdl_expiry = $6, hire_date = $7, email = $8,
+			updated_at = NOW()
+		WHERE id = $9 AND deleted_at IS NULL
+		RETURNING updated_at
+	`
+	err := r.db.GetExecutor(ctx).QueryRow(ctx, query,
+		d.Name, d.LicenseNumber, d.PhoneNumber, d.Status,
+		d.CDLClass, d.CDLExpiry, d.HireDate, d.Email,
+		id,
+	).Scan(&d.UpdatedAt)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return fmt.Errorf("driver not found")
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *PostgresRepository) DeleteDriver(ctx context.Context, id uuid.UUID) error {
+	query := `UPDATE drivers SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
+	tag, err := r.db.GetExecutor(ctx).Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("driver not found")
+	}
+	return nil
 }
 
 // Routes
