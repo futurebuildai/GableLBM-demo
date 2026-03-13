@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { PageTransition } from '../../components/ui/PageTransition';
-import { Truck, Users, Plus, Pencil, Trash2, AlertTriangle, RefreshCw, X } from 'lucide-react';
+import { Truck, Users, Plus, Pencil, Trash2, AlertTriangle, RefreshCw, X, Camera, Upload } from 'lucide-react';
 import { deliveryService } from '../../services/deliveryService';
 import type { Vehicle, Driver, CreateVehicleRequest, UpdateVehicleRequest, CreateDriverRequest, UpdateDriverRequest, VehicleType, DriverStatus } from '../../types/delivery';
 
@@ -132,6 +132,7 @@ function VehiclesTab({ vehicles, onEdit, onAdd, onRefresh }: { vehicles: Vehicle
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="text-left text-zinc-500 text-xs uppercase tracking-wider border-b border-white/5">
+                                <th className="px-4 py-3 w-12"></th>
                                 <th className="px-4 py-3">Name</th>
                                 <th className="px-4 py-3">Type</th>
                                 <th className="px-4 py-3">Plate</th>
@@ -150,6 +151,13 @@ function VehiclesTab({ vehicles, onEdit, onAdd, onRefresh }: { vehicles: Vehicle
                                 const svcWarn = isDateWarning(v.next_service_date);
                                 return (
                                     <tr key={v.id} className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => onEdit(v)}>
+                                        <td className="px-4 py-3">
+                                            {v.photo_url ? (
+                                                <img src={v.photo_url} alt={v.name} className="w-9 h-9 rounded-lg object-cover border border-white/10" />
+                                            ) : (
+                                                <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center"><Truck size={14} className="text-zinc-600" /></div>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-white font-medium">{v.name}</td>
                                         <td className="px-4 py-3"><span className="px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">{v.vehicle_type.replace(/_/g, ' ')}</span></td>
                                         <td className="px-4 py-3 font-mono text-zinc-300">{v.license_plate}</td>
@@ -170,7 +178,7 @@ function VehiclesTab({ vehicles, onEdit, onAdd, onRefresh }: { vehicles: Vehicle
                                 );
                             })}
                             {vehicles.length === 0 && (
-                                <tr><td colSpan={10} className="px-4 py-12 text-center text-zinc-500">No vehicles configured. Add your first vehicle to get started.</td></tr>
+                                <tr><td colSpan={11} className="px-4 py-12 text-center text-zinc-500">No vehicles configured. Add your first vehicle to get started.</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -201,6 +209,7 @@ function DriversTab({ drivers, onEdit, onAdd, onRefresh }: { drivers: Driver[]; 
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="text-left text-zinc-500 text-xs uppercase tracking-wider border-b border-white/5">
+                                <th className="px-4 py-3 w-12"></th>
                                 <th className="px-4 py-3">Name</th>
                                 <th className="px-4 py-3">Phone</th>
                                 <th className="px-4 py-3">Email</th>
@@ -217,6 +226,13 @@ function DriversTab({ drivers, onEdit, onAdd, onRefresh }: { drivers: Driver[]; 
                                 const cdlWarn = isDateWarning(d.cdl_expiry, 60);
                                 return (
                                     <tr key={d.id} className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => onEdit(d)}>
+                                        <td className="px-4 py-3">
+                                            {d.photo_url ? (
+                                                <img src={d.photo_url} alt={d.name} className="w-9 h-9 rounded-full object-cover border border-white/10" />
+                                            ) : (
+                                                <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center"><Users size={14} className="text-zinc-600" /></div>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-white font-medium">{d.name}</td>
                                         <td className="px-4 py-3 font-mono text-zinc-300">{d.phone_number || '—'}</td>
                                         <td className="px-4 py-3 text-zinc-300">{d.email || '—'}</td>
@@ -237,7 +253,7 @@ function DriversTab({ drivers, onEdit, onAdd, onRefresh }: { drivers: Driver[]; 
                                 );
                             })}
                             {drivers.length === 0 && (
-                                <tr><td colSpan={9} className="px-4 py-12 text-center text-zinc-500">No drivers configured. Add your first driver to get started.</td></tr>
+                                <tr><td colSpan={10} className="px-4 py-12 text-center text-zinc-500">No drivers configured. Add your first driver to get started.</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -267,6 +283,8 @@ function VehicleModal({ vehicle, onClose, onSaved }: { vehicle?: Vehicle; onClos
     });
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [photoUrl, setPhotoUrl] = useState<string | undefined>(vehicle?.photo_url);
+    const [uploading, setUploading] = useState(false);
 
     const handleSave = async () => {
         setSaving(true);
@@ -291,6 +309,16 @@ function VehicleModal({ vehicle, onClose, onSaved }: { vehicle?: Vehicle; onClos
         } catch { /* handled by parent */ } finally { setDeleting(false); }
     };
 
+    const handlePhoto = async (file: File) => {
+        if (!vehicle) return;
+        setUploading(true);
+        try {
+            const url = await deliveryService.uploadVehiclePhoto(vehicle.id, file);
+            setPhotoUrl(url);
+            onSaved();
+        } catch { /* ignore */ } finally { setUploading(false); }
+    };
+
     return (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
             <div className="bg-slate-steel border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -299,6 +327,16 @@ function VehicleModal({ vehicle, onClose, onSaved }: { vehicle?: Vehicle; onClos
                     <button onClick={onClose} className="p-1 rounded hover:bg-white/10 text-zinc-400"><X size={18} /></button>
                 </div>
                 <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                    {/* Photo */}
+                    {isEdit && (
+                        <PhotoUploader
+                            currentUrl={photoUrl}
+                            uploading={uploading}
+                            onSelect={handlePhoto}
+                            shape="rounded-lg"
+                            placeholder={<Truck size={24} className="text-zinc-600" />}
+                        />
+                    )}
                     <div className="grid grid-cols-2 gap-4">
                         <Field label="Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} required />
                         <div>
@@ -364,6 +402,8 @@ function DriverModal({ driver, onClose, onSaved }: { driver?: Driver; onClose: (
     });
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [photoUrl, setPhotoUrl] = useState<string | undefined>(driver?.photo_url);
+    const [uploading, setUploading] = useState(false);
 
     const handleSave = async () => {
         setSaving(true);
@@ -388,6 +428,16 @@ function DriverModal({ driver, onClose, onSaved }: { driver?: Driver; onClose: (
         } catch { /* handled by parent */ } finally { setDeleting(false); }
     };
 
+    const handlePhoto = async (file: File) => {
+        if (!driver) return;
+        setUploading(true);
+        try {
+            const url = await deliveryService.uploadDriverPhoto(driver.id, file);
+            setPhotoUrl(url);
+            onSaved();
+        } catch { /* ignore */ } finally { setUploading(false); }
+    };
+
     return (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
             <div className="bg-slate-steel border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -396,6 +446,16 @@ function DriverModal({ driver, onClose, onSaved }: { driver?: Driver; onClose: (
                     <button onClick={onClose} className="p-1 rounded hover:bg-white/10 text-zinc-400"><X size={18} /></button>
                 </div>
                 <div className="p-5 space-y-4">
+                    {/* Photo */}
+                    {isEdit && (
+                        <PhotoUploader
+                            currentUrl={photoUrl}
+                            uploading={uploading}
+                            onSelect={handlePhoto}
+                            shape="rounded-full"
+                            placeholder={<Users size={24} className="text-zinc-600" />}
+                        />
+                    )}
                     <div className="grid grid-cols-2 gap-4">
                         <Field label="Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} required />
                         <Field label="Email" value={form.email || ''} onChange={v => setForm(f => ({ ...f, email: v || undefined }))} />
@@ -437,6 +497,39 @@ function DriverModal({ driver, onClose, onSaved }: { driver?: Driver; onClose: (
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+/* ─── Photo Uploader ──────────────────────────────────────────── */
+
+function PhotoUploader({ currentUrl, uploading, onSelect, shape, placeholder }: {
+    currentUrl?: string;
+    uploading: boolean;
+    onSelect: (file: File) => void;
+    shape: string;
+    placeholder: React.ReactNode;
+}) {
+    return (
+        <div className="flex items-center gap-4">
+            <div className={`w-16 h-16 ${shape} overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center shrink-0`}>
+                {currentUrl ? (
+                    <img src={currentUrl} alt="Photo" className="w-full h-full object-cover" />
+                ) : placeholder}
+            </div>
+            <label className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-zinc-300 hover:bg-white/10 transition-colors cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                <Upload size={14} />
+                {uploading ? 'Uploading...' : currentUrl ? 'Change Photo' : 'Upload Photo'}
+                <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) onSelect(file);
+                    }}
+                />
+            </label>
         </div>
     );
 }

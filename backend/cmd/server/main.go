@@ -47,6 +47,7 @@ import (
 	"github.com/gablelbm/gable/internal/purchase_order"
 	"github.com/gablelbm/gable/internal/quote"
 	"github.com/gablelbm/gable/internal/reporting"
+	"github.com/gablelbm/gable/internal/salesteam"
 	"github.com/gablelbm/gable/internal/tax"
 	"github.com/gablelbm/gable/internal/techadmin"
 	"github.com/gablelbm/gable/internal/vendor"
@@ -150,6 +151,11 @@ func main() {
 	customerSvc := customer.NewService(customerRepo)
 	customerHandler := customer.NewHandler(customerSvc)
 	customerHandler.RegisterRoutes(mux)
+
+	// Sales Team Module
+	salesTeamRepo := salesteam.NewRepository(db)
+	salesTeamHandler := salesteam.NewHandler(salesTeamRepo)
+	salesTeamHandler.RegisterRoutes(mux)
 
 	// CRM Module
 	crmRepo := crm.NewRepository(db)
@@ -422,6 +428,9 @@ func main() {
 	// Integration API (FB-Brain cross-system endpoints)
 	integrationHandler := integrations.NewHandler(db, pricingSvc, quote.NewService(quoteRepo), orderSvc, customerSvc, productSvc)
 	integrationHandler.RegisterRoutes(mux)
+
+	// Static file serving for uploaded photos
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
 
 	// Health Check (Public?)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

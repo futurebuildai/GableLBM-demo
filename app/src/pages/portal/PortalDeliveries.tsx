@@ -282,7 +282,11 @@ function DeliveryCard({ delivery: del, expanded, onToggle, onLightbox }: {
                         <div className="flex flex-wrap gap-4 text-sm">
                             {del.driver_name && (
                                 <div className="flex items-center gap-2 text-zinc-300">
-                                    <User size={14} className="text-zinc-500" />
+                                    {del.driver_photo_url ? (
+                                        <img src={del.driver_photo_url} alt={del.driver_name} className="w-7 h-7 rounded-full object-cover border border-white/10" />
+                                    ) : (
+                                        <User size={14} className="text-zinc-500" />
+                                    )}
                                     <span>{del.driver_name}</span>
                                     {del.driver_phone && (
                                         <a href={`tel:${del.driver_phone}`} className="flex items-center gap-1 text-sky-400 hover:text-sky-300">
@@ -294,7 +298,11 @@ function DeliveryCard({ delivery: del, expanded, onToggle, onLightbox }: {
                             )}
                             {del.vehicle_name && (
                                 <div className="flex items-center gap-2 text-zinc-400">
-                                    <Truck size={14} className="text-zinc-500" />
+                                    {del.vehicle_photo_url ? (
+                                        <img src={del.vehicle_photo_url} alt={del.vehicle_name} className="w-7 h-7 rounded-lg object-cover border border-white/10" />
+                                    ) : (
+                                        <Truck size={14} className="text-zinc-500" />
+                                    )}
                                     <span>{del.vehicle_name}</span>
                                 </div>
                             )}

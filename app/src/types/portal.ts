@@ -97,7 +97,9 @@ export interface PortalDelivery {
     order_number: string | null;
     driver_name: string | null;
     driver_phone: string | null;
+    driver_photo_url: string | null;
     vehicle_name: string | null;
+    vehicle_photo_url: string | null;
     scheduled_date: string | null;
     estimated_arrival: string | null;
     delivery_address: string | null;

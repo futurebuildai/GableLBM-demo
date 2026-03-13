@@ -22,7 +22,9 @@ export default defineConfig({
       '/parsing': 'http://127.0.0.1:9091',
       '/price_levels': 'http://127.0.0.1:9091',
       '/pricing': 'http://127.0.0.1:9091',
-      '/purchase-orders': 'http://127.0.0.1:9091'
+      '/purchase-orders': 'http://127.0.0.1:9091',
+      '/sales-team': 'http://127.0.0.1:9091',
+      '/uploads': 'http://127.0.0.1:9091'
     }
   }
 })

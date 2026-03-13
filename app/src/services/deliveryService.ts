@@ -151,6 +151,30 @@ export const deliveryService = {
         return res.json();
     },
 
+    uploadVehiclePhoto: async (id: string, file: File): Promise<string> => {
+        const form = new FormData();
+        form.append('photo', file);
+        const res = await fetch(`${API_BASE}/api/v1/delivery/vehicles/${id}/photo`, {
+            method: 'POST',
+            body: form,
+        });
+        if (!res.ok) throw new Error('Failed to upload vehicle photo');
+        const data = await res.json();
+        return data.photo_url;
+    },
+
+    uploadDriverPhoto: async (id: string, file: File): Promise<string> => {
+        const form = new FormData();
+        form.append('photo', file);
+        const res = await fetch(`${API_BASE}/api/v1/delivery/drivers/${id}/photo`, {
+            method: 'POST',
+            body: form,
+        });
+        if (!res.ok) throw new Error('Failed to upload driver photo');
+        const data = await res.json();
+        return data.photo_url;
+    },
+
     updateStatus: async (id: string, req: UpdateDeliveryStatusRequest): Promise<void> => {
         const res = await fetch(`${API_BASE}/api/v1/delivery/deliveries/${id}/status`, {
             method: 'PUT',

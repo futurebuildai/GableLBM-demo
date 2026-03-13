@@ -110,7 +110,9 @@ type PortalDeliveryDTO struct {
 	OrderNumber          *string    `json:"order_number"`
 	DriverName           *string    `json:"driver_name"`
 	DriverPhone          *string    `json:"driver_phone"`
+	DriverPhotoURL       *string    `json:"driver_photo_url"`
 	VehicleName          *string    `json:"vehicle_name"`
+	VehiclePhotoURL      *string    `json:"vehicle_photo_url"`
 	ScheduledDate        *time.Time `json:"scheduled_date"`
 	EstimatedArrival     *time.Time `json:"estimated_arrival"`
 	DeliveryAddress      *string    `json:"delivery_address"`

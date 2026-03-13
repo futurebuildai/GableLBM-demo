@@ -62,6 +62,7 @@ type Vehicle struct {
 	NextServiceDate   *time.Time  `json:"next_service_date" db:"next_service_date"`
 	OdometerMiles     *int        `json:"odometer_miles" db:"odometer_miles"`
 	Notes             *string     `json:"notes" db:"notes"`
+	PhotoURL          *string     `json:"photo_url" db:"photo_url"`
 	CreatedAt         time.Time   `json:"created_at" db:"created_at"`
 	UpdatedAt         time.Time   `json:"updated_at" db:"updated_at"`
 }
@@ -76,6 +77,7 @@ type Driver struct {
 	CDLExpiry     *time.Time   `json:"cdl_expiry" db:"cdl_expiry"`
 	HireDate      *time.Time   `json:"hire_date" db:"hire_date"`
 	Email         *string      `json:"email" db:"email"`
+	PhotoURL      *string      `json:"photo_url" db:"photo_url"`
 	CreatedAt     time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at" db:"updated_at"`
 }
@@ -236,6 +238,10 @@ type Repository interface {
 	ListDeliveriesByRoute(ctx context.Context, routeID uuid.UUID) ([]Delivery, error)
 	UpdateDeliveryStatus(ctx context.Context, id uuid.UUID, status DeliveryStatus, pod *PODUpdate) error
 	ReorderRouteDeliveries(ctx context.Context, routeID uuid.UUID, deliveryIDs []uuid.UUID) error
+
+	// Photos
+	SetVehiclePhoto(ctx context.Context, id uuid.UUID, url string) error
+	SetDriverPhoto(ctx context.Context, id uuid.UUID, url string) error
 
 	// Capacity
 	GetRouteLoadWeight(ctx context.Context, routeID uuid.UUID) (float64, error)

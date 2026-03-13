@@ -2,8 +2,13 @@ package delivery
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -28,6 +33,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/delivery/drivers/{id}", h.HandleGetDriver)
 	mux.HandleFunc("PUT /api/v1/delivery/drivers/{id}", h.HandleUpdateDriver)
 	mux.HandleFunc("DELETE /api/v1/delivery/drivers/{id}", h.HandleDeleteDriver)
+	mux.HandleFunc("POST /api/v1/delivery/vehicles/{id}/photo", h.HandleUploadVehiclePhoto)
+	mux.HandleFunc("POST /api/v1/delivery/drivers/{id}/photo", h.HandleUploadDriverPhoto)
 
 	// Routes
 	mux.HandleFunc("GET /api/v1/delivery/routes", h.HandleListRoutes)
@@ -406,6 +413,89 @@ func (h *Handler) HandleCompleteRoute(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "completed"})
+}
+
+const maxUploadSize = 10 << 20 // 10 MB
+
+func saveUpload(r *http.Request, subdir string) (string, error) {
+	r.Body = http.MaxBytesReader(nil, r.Body, maxUploadSize)
+	file, header, err := r.FormFile("photo")
+	if err != nil {
+		return "", fmt.Errorf("read form file: %w", err)
+	}
+	defer file.Close()
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+		return "", fmt.Errorf("unsupported file type: %s", ext)
+	}
+
+	dir := filepath.Join("uploads", subdir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("create dir: %w", err)
+	}
+
+	filename := uuid.New().String() + ext
+	path := filepath.Join(dir, filename)
+	out, err := os.Create(path)
+	if err != nil {
+		return "", fmt.Errorf("create file: %w", err)
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, file); err != nil {
+		return "", fmt.Errorf("copy file: %w", err)
+	}
+
+	return "/uploads/" + subdir + "/" + filename, nil
+}
+
+func (h *Handler) HandleUploadVehiclePhoto(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+
+	url, err := saveUpload(r, "vehicles")
+	if err != nil {
+		slog.Error("UploadVehiclePhoto failed", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.SetVehiclePhoto(r.Context(), id, url); err != nil {
+		slog.Error("SetVehiclePhoto failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"photo_url": url})
+}
+
+func (h *Handler) HandleUploadDriverPhoto(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	}
+
+	url, err := saveUpload(r, "drivers")
+	if err != nil {
+		slog.Error("UploadDriverPhoto failed", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.SetDriverPhoto(r.Context(), id, url); err != nil {
+		slog.Error("SetDriverPhoto failed", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"photo_url": url})
 }
 
 func (h *Handler) HandleAdjustQuantity(w http.ResponseWriter, r *http.Request) {

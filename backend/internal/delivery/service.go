@@ -194,6 +194,14 @@ func (s *Service) DeleteDriver(ctx context.Context, id uuid.UUID) error {
 	return s.repo.DeleteDriver(ctx, id)
 }
 
+func (s *Service) SetVehiclePhoto(ctx context.Context, id uuid.UUID, url string) error {
+	return s.repo.SetVehiclePhoto(ctx, id, url)
+}
+
+func (s *Service) SetDriverPhoto(ctx context.Context, id uuid.UUID, url string) error {
+	return s.repo.SetDriverPhoto(ctx, id, url)
+}
+
 // CompleteRoute marks a route as COMPLETED if all deliveries are in a terminal state.
 func (s *Service) CompleteRoute(ctx context.Context, routeID uuid.UUID) error {
 	deliveries, err := s.repo.ListDeliveriesByRoute(ctx, routeID)

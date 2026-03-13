@@ -17,6 +17,7 @@ export interface Vehicle {
     next_service_date?: string;
     odometer_miles?: number;
     notes?: string;
+    photo_url?: string;
     created_at: string;
     updated_at: string;
 }
@@ -31,6 +32,7 @@ export interface Driver {
     cdl_expiry?: string;
     hire_date?: string;
     email?: string;
+    photo_url?: string;
     created_at: string;
     updated_at: string;
 }
