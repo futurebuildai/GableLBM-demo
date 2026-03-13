@@ -217,6 +217,7 @@ func main() {
 	ediSvc := edi.NewService("./edi_out", logger) // Stub output dir
 
 	poSvc := purchase_order.NewService(poRepo, ediSvc, inventorySvc, productSvc, vendorSvc)
+	poSvc.WithAIClient(claudeClient)
 	poRecSvc := purchase_order.NewRecommendationService(poRepo, inventorySvc, productSvc, vendorSvc)
 	poHandler := purchase_order.NewHandler(poSvc, poRecSvc)
 	poHandler.RegisterRoutes(mux)

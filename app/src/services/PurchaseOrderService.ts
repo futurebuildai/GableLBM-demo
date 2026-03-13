@@ -1,4 +1,4 @@
-import type { PurchaseOrder, CreatePORequest, ReceivePORequest, RecommendationSummary } from '../types/purchaseOrder';
+import type { PurchaseOrder, CreatePORequest, ReceivePORequest, RecommendationSummary, FreightCharge, FreightUploadResponse } from '../types/purchaseOrder';
 import type { ReorderAlert } from '../types/product';
 
 const API_URL = '';
@@ -65,6 +65,36 @@ export const PurchaseOrderService = {
     async getRecommendations(): Promise<RecommendationSummary> {
         const response = await fetch(`${API_URL}/purchase-orders/recommendations`);
         if (!response.ok) throw new Error('Failed to fetch purchasing recommendations');
+        return response.json();
+    },
+
+    async uploadFreightInvoice(poId: string, file: File): Promise<FreightUploadResponse> {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch(`${API_URL}/purchase-orders/${poId}/freight`, {
+            method: 'POST',
+            body: formData,
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to upload freight invoice');
+        }
+        return response.json();
+    },
+
+    async applyFreight(poId: string, freightId: string): Promise<void> {
+        const response = await fetch(`${API_URL}/purchase-orders/${poId}/freight/${freightId}/apply`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to apply freight charge');
+        }
+    },
+
+    async getFreightCharges(poId: string): Promise<FreightCharge[]> {
+        const response = await fetch(`${API_URL}/purchase-orders/${poId}/freight`);
+        if (!response.ok) throw new Error('Failed to fetch freight charges');
         return response.json();
     },
 };

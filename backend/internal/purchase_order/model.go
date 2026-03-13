@@ -7,15 +7,16 @@ import (
 )
 
 type PurchaseOrder struct {
-	ID         uuid.UUID           `json:"id"`
-	VendorID   *uuid.UUID          `json:"vendor_id,omitempty"`
-	VendorName string              `json:"vendor_name,omitempty"`
-	Status     string              `json:"status"`
-	CreatedAt  time.Time           `json:"created_at"`
-	UpdatedAt  time.Time           `json:"updated_at"`
-	Lines      []PurchaseOrderLine `json:"lines,omitempty"`
-	LineCount  int                 `json:"line_count,omitempty"`
-	TotalCost  float64             `json:"total_cost,omitempty"`
+	ID             uuid.UUID           `json:"id"`
+	VendorID       *uuid.UUID          `json:"vendor_id,omitempty"`
+	VendorName     string              `json:"vendor_name,omitempty"`
+	Status         string              `json:"status"`
+	CreatedAt      time.Time           `json:"created_at"`
+	UpdatedAt      time.Time           `json:"updated_at"`
+	Lines          []PurchaseOrderLine `json:"lines,omitempty"`
+	LineCount      int                 `json:"line_count,omitempty"`
+	TotalCost      float64             `json:"total_cost,omitempty"`
+	FreightCharges []FreightCharge     `json:"freight_charges,omitempty"`
 }
 
 type PurchaseOrderLine struct {

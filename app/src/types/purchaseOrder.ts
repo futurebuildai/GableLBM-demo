@@ -45,6 +45,36 @@ export interface ReceiveLine {
     location_id: string;
 }
 
+export interface FreightCharge {
+    id: string;
+    po_id: string;
+    file_path?: string;
+    original_filename?: string;
+    carrier_name?: string;
+    invoice_number?: string;
+    total_amount_cents: number;
+    allocation_method: string;
+    status: string;
+    created_at: string;
+    allocations?: FreightAllocation[];
+}
+
+export interface FreightAllocation {
+    id: string;
+    freight_charge_id: string;
+    po_line_id: string;
+    product_id?: string;
+    allocated_cents: number;
+    per_unit_cents: number;
+    description?: string;
+    created_at: string;
+}
+
+export interface FreightUploadResponse {
+    freight_charge: FreightCharge;
+    allocations: FreightAllocation[];
+}
+
 export type UrgencyLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface PurchaseRecommendation {

@@ -101,6 +101,141 @@ type apiError struct {
 	} `json:"error"`
 }
 
+// FreightInvoiceResult holds the extracted freight invoice data.
+type FreightInvoiceResult struct {
+	TotalAmount   float64 `json:"total_amount"`
+	CarrierName   string  `json:"carrier_name"`
+	InvoiceNumber string  `json:"invoice_number"`
+}
+
+const freightSystemPrompt = `You are a freight invoice extraction assistant for a lumber and building materials dealer.
+
+Your job is to extract the total freight/shipping charge, carrier name, and invoice number from an uploaded freight invoice — this may be a scan, photo, PDF, or digital document.
+
+Return ONLY valid JSON in this exact format:
+{"total_amount": 245.50, "carrier_name": "ABC Freight", "invoice_number": "FR-12345"}
+
+Rules:
+- total_amount must be a number in dollars (not cents). This is the total freight charge on the invoice.
+- carrier_name is the trucking company or freight carrier name
+- invoice_number is the carrier's invoice or reference number
+- If you cannot determine a field, use an empty string for text fields or 0 for total_amount
+- Output ONLY the JSON object, nothing else — no markdown, no explanation`
+
+// ExtractFreightInvoice sends a freight invoice file to Claude for data extraction.
+// Returns the extracted total amount, carrier name, and invoice number.
+func (c *Client) ExtractFreightInvoice(ctx context.Context, fileBytes []byte, contentType string) (*FreightInvoiceResult, string, error) {
+	apiKey := c.getKey(ctx)
+	if apiKey == "" {
+		return nil, "", fmt.Errorf("no Anthropic API key configured — please enter the freight total manually")
+	}
+
+	var content []contentPart
+
+	switch {
+	case strings.HasPrefix(contentType, "image/"):
+		content = []contentPart{
+			{
+				Type: "image",
+				Source: &mediaSource{
+					Type:      "base64",
+					MediaType: contentType,
+					Data:      base64.StdEncoding.EncodeToString(fileBytes),
+				},
+			},
+			{
+				Type: "text",
+				Text: "Extract the freight charge details from this invoice image. Return JSON with total_amount, carrier_name, and invoice_number.",
+			},
+		}
+	case contentType == "application/pdf":
+		content = []contentPart{
+			{
+				Type: "document",
+				Source: &mediaSource{
+					Type:      "base64",
+					MediaType: "application/pdf",
+					Data:      base64.StdEncoding.EncodeToString(fileBytes),
+				},
+			},
+			{
+				Type: "text",
+				Text: "Extract the freight charge details from this invoice PDF. Return JSON with total_amount, carrier_name, and invoice_number.",
+			},
+		}
+	default:
+		return nil, "", fmt.Errorf("unsupported content type for freight invoice: %s", contentType)
+	}
+
+	req := messageRequest{
+		Model:     anthropicModel,
+		MaxTokens: 1024,
+		System:    freightSystemPrompt,
+		Messages: []messageContent{
+			{
+				Role:    "user",
+				Content: content,
+			},
+		},
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", anthropicAPIURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-api-key", apiKey)
+	httpReq.Header.Set("anthropic-version", apiVersion)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, "", fmt.Errorf("AI request failed — please enter the freight total manually: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var apiErr apiError
+		if json.Unmarshal(respBody, &apiErr) == nil {
+			return nil, "", fmt.Errorf("Claude API error (%d): %s", resp.StatusCode, apiErr.Error.Message)
+		}
+		return nil, "", fmt.Errorf("Claude API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var msgResp messageResponse
+	if err := json.Unmarshal(respBody, &msgResp); err != nil {
+		return nil, "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	// Extract text from response
+	var rawText strings.Builder
+	for _, block := range msgResp.Content {
+		if block.Type == "text" {
+			rawText.WriteString(block.Text)
+		}
+	}
+
+	raw := rawText.String()
+
+	// Parse the JSON response
+	var result FreightInvoiceResult
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		return nil, raw, fmt.Errorf("failed to parse AI response as JSON: %w", err)
+	}
+
+	return &result, raw, nil
+}
+
 // systemPrompt instructs Claude how to extract material lists.
 const systemPrompt = `You are a material list extraction assistant for a lumber and building materials dealer.
 

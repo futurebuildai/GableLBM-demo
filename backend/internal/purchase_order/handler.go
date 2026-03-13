@@ -2,6 +2,8 @@ package purchase_order
 
 import (
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -24,6 +26,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /purchase-orders/{id}/submit", h.HandleSubmitPO)
 	mux.HandleFunc("POST /purchase-orders/{id}/receive", h.HandleReceivePO)
 	mux.HandleFunc("POST /purchase-orders/reorder-check", h.HandleCreateReorders)
+	mux.HandleFunc("POST /purchase-orders/{id}/freight", h.HandleUploadFreight)
+	mux.HandleFunc("POST /purchase-orders/{id}/freight/{freightId}/apply", h.HandleApplyFreight)
+	mux.HandleFunc("GET /purchase-orders/{id}/freight", h.HandleListFreight)
 }
 
 func (h *Handler) HandleListPOs(w http.ResponseWriter, r *http.Request) {
@@ -189,4 +194,97 @@ func (h *Handler) HandleGetRecommendations(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(summary)
+}
+
+// HandleUploadFreight processes a freight invoice upload for a received PO.
+func (h *Handler) HandleUploadFreight(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	poID, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid PO ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "File too large or invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Missing 'file' field in form data", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		http.Error(w, "Failed to read uploaded file", http.StatusInternalServerError)
+		return
+	}
+
+	contentType := http.DetectContentType(fileBytes)
+
+	slog.Info("Freight invoice upload",
+		"po_id", poID,
+		"filename", header.Filename,
+		"size_bytes", header.Size,
+		"content_type", contentType,
+	)
+
+	result, err := h.service.UploadFreightInvoice(r.Context(), poID, fileBytes, contentType, header.Filename)
+	if err != nil {
+		slog.Error("UploadFreightInvoice failed", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// HandleApplyFreight applies a pending freight charge to product costs.
+func (h *Handler) HandleApplyFreight(w http.ResponseWriter, r *http.Request) {
+	poID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid PO ID", http.StatusBadRequest)
+		return
+	}
+
+	freightID, err := uuid.Parse(r.PathValue("freightId"))
+	if err != nil {
+		http.Error(w, "Invalid freight charge ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.ApplyFreightCharge(r.Context(), poID, freightID); err != nil {
+		slog.Error("ApplyFreightCharge failed", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "applied"})
+}
+
+// HandleListFreight returns all freight charges for a PO.
+func (h *Handler) HandleListFreight(w http.ResponseWriter, r *http.Request) {
+	poID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid PO ID", http.StatusBadRequest)
+		return
+	}
+
+	charges, err := h.service.GetFreightCharges(r.Context(), poID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if charges == nil {
+		charges = []FreightCharge{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(charges)
 }

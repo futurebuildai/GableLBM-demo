@@ -3,8 +3,14 @@ package purchase_order
 import (
 	"context"
 	"fmt"
+	"math"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/gablelbm/gable/internal/ai"
 	"github.com/gablelbm/gable/internal/domain"
 	"github.com/gablelbm/gable/internal/edi"
 	"github.com/gablelbm/gable/internal/inventory"
@@ -19,10 +25,16 @@ type Service struct {
 	inventorySvc *inventory.Service
 	productSvc   *product.Service
 	vendorSvc    *vendor.Service
+	aiClient     *ai.Client
 }
 
 func NewService(repo *Repository, ediSvc *edi.Service, inventorySvc *inventory.Service, productSvc *product.Service, vendorSvc *vendor.Service) *Service {
 	return &Service{repo: repo, edi: ediSvc, inventorySvc: inventorySvc, productSvc: productSvc, vendorSvc: vendorSvc}
+}
+
+// WithAIClient sets the AI client for freight invoice extraction.
+func (s *Service) WithAIClient(c *ai.Client) {
+	s.aiClient = c
 }
 
 // CreateReorders checks for low stock alerts and creates Draft POs automatically
@@ -531,3 +543,218 @@ type ReceiveLineInput struct {
 	QtyReceived float64
 	LocationID  string
 }
+
+// UploadFreightInvoice processes a freight invoice file, extracts data via AI,
+// computes cost-weighted allocation across PO lines, and returns a preview.
+func (s *Service) UploadFreightInvoice(ctx context.Context, poID uuid.UUID, fileBytes []byte, contentType string, filename string) (*FreightUploadResponse, error) {
+	po, err := s.repo.GetPO(ctx, poID)
+	if err != nil {
+		return nil, fmt.Errorf("PO not found: %w", err)
+	}
+
+	if po.Status != StatusReceived && po.Status != StatusPartialReceive {
+		return nil, fmt.Errorf("PO must be in RECEIVED or PARTIAL status to upload freight (current: %s)", po.Status)
+	}
+
+	// Save the file to disk
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == "" {
+		ext = ".bin"
+	}
+	fileID := uuid.New().String()
+	dir := filepath.Join("uploads", "freight")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, fmt.Errorf("failed to create freight upload dir: %w", err)
+	}
+	savedPath := filepath.Join(dir, fileID+ext)
+	if err := os.WriteFile(savedPath, fileBytes, 0o644); err != nil {
+		return nil, fmt.Errorf("failed to save freight file: %w", err)
+	}
+
+	// Detect content type for AI if needed
+	aiContentType := contentType
+	if aiContentType == "" || aiContentType == "application/octet-stream" {
+		aiContentType = http.DetectContentType(fileBytes)
+	}
+
+	// Extract freight data via AI
+	var carrierName, invoiceNumber string
+	var totalAmountCents int64
+	var aiRaw string
+
+	if s.aiClient != nil && s.aiClient.IsConfigured(ctx) {
+		result, raw, aiErr := s.aiClient.ExtractFreightInvoice(ctx, fileBytes, aiContentType)
+		aiRaw = raw
+		if aiErr != nil {
+			return nil, fmt.Errorf("AI extraction failed: %w", aiErr)
+		}
+		if result != nil {
+			carrierName = result.CarrierName
+			invoiceNumber = result.InvoiceNumber
+			totalAmountCents = int64(math.Round(result.TotalAmount * 100))
+		}
+	} else {
+		return nil, fmt.Errorf("AI service not configured — please enter the freight total manually")
+	}
+
+	if totalAmountCents <= 0 {
+		return nil, fmt.Errorf("could not extract a valid freight amount from the invoice")
+	}
+
+	// Compute cost-weighted allocation across PO lines
+	var totalReceivedCost float64
+	for _, line := range po.Lines {
+		totalReceivedCost += line.Cost * line.QtyReceived
+	}
+
+	if totalReceivedCost <= 0 {
+		return nil, fmt.Errorf("no received line costs to allocate freight against")
+	}
+
+	freightChargeID := uuid.New()
+	fc := &FreightCharge{
+		ID:               freightChargeID,
+		POID:             poID,
+		FilePath:         savedPath,
+		OriginalFilename: filename,
+		CarrierName:      carrierName,
+		InvoiceNumber:    invoiceNumber,
+		TotalAmountCents: totalAmountCents,
+		AllocationMethod: "cost_weighted",
+		Status:           FreightStatusPending,
+		AIRawResponse:    aiRaw,
+	}
+
+	if err := s.repo.SaveFreightCharge(ctx, fc); err != nil {
+		return nil, fmt.Errorf("failed to save freight charge: %w", err)
+	}
+
+	var allocations []FreightAllocation
+	var allocatedTotal int64
+
+	for i, line := range po.Lines {
+		if line.QtyReceived <= 0 {
+			continue
+		}
+
+		lineCost := line.Cost * line.QtyReceived
+		lineShare := lineCost / totalReceivedCost
+		allocCents := int64(math.Round(float64(totalAmountCents) * lineShare))
+
+		// Ensure rounding doesn't lose cents — adjust last allocation
+		if i == len(po.Lines)-1 && allocatedTotal+allocCents != totalAmountCents {
+			allocCents = totalAmountCents - allocatedTotal
+		}
+
+		perUnitCents := int64(0)
+		if line.QtyReceived > 0 {
+			perUnitCents = int64(math.Round(float64(allocCents) / line.QtyReceived))
+		}
+
+		a := FreightAllocation{
+			ID:              uuid.New(),
+			FreightChargeID: freightChargeID,
+			POLineID:        line.ID,
+			ProductID:       line.ProductID,
+			AllocatedCents:  allocCents,
+			PerUnitCents:    perUnitCents,
+			Description:     line.Description,
+		}
+		allocations = append(allocations, a)
+		allocatedTotal += allocCents
+	}
+
+	if err := s.repo.SaveFreightAllocations(ctx, allocations); err != nil {
+		return nil, fmt.Errorf("failed to save freight allocations: %w", err)
+	}
+
+	fc.Allocations = allocations
+	return &FreightUploadResponse{
+		FreightCharge: *fc,
+		Allocations:   allocations,
+	}, nil
+}
+
+// ApplyFreightCharge applies a pending freight charge to product average costs.
+func (s *Service) ApplyFreightCharge(ctx context.Context, poID uuid.UUID, freightChargeID uuid.UUID) error {
+	fc, err := s.repo.GetFreightCharge(ctx, freightChargeID)
+	if err != nil {
+		return fmt.Errorf("freight charge not found: %w", err)
+	}
+
+	if fc.POID != poID {
+		return fmt.Errorf("freight charge does not belong to this PO")
+	}
+
+	if fc.Status != FreightStatusPending {
+		return fmt.Errorf("freight charge already applied")
+	}
+
+	allocations, err := s.repo.GetFreightAllocations(ctx, freightChargeID)
+	if err != nil {
+		return fmt.Errorf("failed to load allocations: %w", err)
+	}
+
+	// Load PO to get received quantities per line
+	po, err := s.repo.GetPO(ctx, poID)
+	if err != nil {
+		return fmt.Errorf("PO not found: %w", err)
+	}
+
+	lineMap := make(map[uuid.UUID]*PurchaseOrderLine)
+	for i := range po.Lines {
+		lineMap[po.Lines[i].ID] = &po.Lines[i]
+	}
+
+	if s.productSvc != nil {
+		for _, alloc := range allocations {
+			if alloc.ProductID == nil {
+				continue
+			}
+
+			poLine, ok := lineMap[alloc.POLineID]
+			if !ok || poLine.QtyReceived <= 0 {
+				continue
+			}
+
+			prod, err := s.productSvc.GetProduct(ctx, *alloc.ProductID)
+			if err != nil || prod == nil {
+				continue
+			}
+
+			freightPerUnit := float64(alloc.PerUnitCents) / 100.0
+			currentAvg := prod.AverageUnitCost
+			totalQty := prod.TotalQuantity
+			qtyReceived := poLine.QtyReceived
+
+			if totalQty <= 0 {
+				continue
+			}
+
+			// Add the freight cost into the weighted average
+			newAvg := currentAvg + (qtyReceived*freightPerUnit)/totalQty
+			_ = s.productSvc.UpdateAverageCost(ctx, *alloc.ProductID, newAvg)
+		}
+	}
+
+	return s.repo.UpdateFreightStatus(ctx, freightChargeID, FreightStatusApplied)
+}
+
+// GetFreightCharges returns all freight charges for a PO with their allocations.
+func (s *Service) GetFreightCharges(ctx context.Context, poID uuid.UUID) ([]FreightCharge, error) {
+	charges, err := s.repo.GetFreightCharges(ctx, poID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range charges {
+		allocs, err := s.repo.GetFreightAllocations(ctx, charges[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		charges[i].Allocations = allocs
+	}
+
+	return charges, nil
+}
+
