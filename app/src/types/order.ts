@@ -11,6 +11,16 @@ export interface Order {
     created_at: string;
     updated_at: string;
 
+    // Salesperson
+    salesperson_id?: string;
+    salesperson_name?: string;
+
+    // Margin & Commission
+    total_cost: number;
+    total_margin: number;
+    margin_percent: number;
+    total_commission: number;
+
     // Relations
     lines?: OrderLine[];
 }
@@ -23,6 +33,8 @@ export interface OrderLine {
     product_name?: string;
     quantity: number;
     price_each: number;
+    unit_cost: number;
+    commission_rate: number;
 }
 
 export interface CreateOrderRequest {

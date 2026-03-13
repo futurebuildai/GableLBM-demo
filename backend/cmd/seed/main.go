@@ -324,6 +324,66 @@ func main() {
 	fmt.Printf("Seed: %d Customer Contracts\n", len(contracts))
 
 	// =========================================================================
+	// 6b. SALES TEAM & CUSTOMER ASSIGNMENT
+	// =========================================================================
+	type salesRep struct {
+		ID    string
+		Name  string
+		Email string
+		Phone string
+		Role  string
+	}
+	salesReps := []salesRep{
+		{"a1b2c3d4-0001-4000-8000-000000000001", "Sarah Mitchell", "sarah.m@gable.com", "503-555-5001", "Sales Manager"},
+		{"a1b2c3d4-0002-4000-8000-000000000002", "Jake Rodriguez", "jake.r@gable.com", "503-555-5002", "Sales Rep"},
+		{"a1b2c3d4-0003-4000-8000-000000000003", "Emily Chen", "emily.c@gable.com", "503-555-5003", "Account Executive"},
+		{"a1b2c3d4-0004-4000-8000-000000000004", "Marcus Williams", "marcus.w@gable.com", "503-555-5004", "Sales Rep"},
+		{"a1b2c3d4-0005-4000-8000-000000000005", "Tyler Brooks", "tyler.b@gable.com", "503-555-5005", "Sales Rep"},
+		{"a1b2c3d4-0006-4000-8000-000000000006", "Rachel Dunn", "rachel.d@gable.com", "503-555-5006", "Account Executive"},
+	}
+	for _, sr := range salesReps {
+		db.Exec(`INSERT INTO sales_team (id, name, email, phone, role)
+			VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`, sr.ID, sr.Name, sr.Email, sr.Phone, sr.Role)
+	}
+	fmt.Printf("Seed: %d Sales Team Members\n", len(salesReps))
+
+	// Intentional salesperson-to-customer assignments:
+	//   Sarah Mitchell (Sales Manager) - top-tier accounts
+	//   Emily Chen (Account Executive) - mid-tier commercial
+	//   Rachel Dunn (Account Executive) - mid-tier commercial
+	//   Jake Rodriguez (Sales Rep) - general contractor accounts
+	//   Marcus Williams (Sales Rep) - specialty trades
+	//   Tyler Brooks (Sales Rep) - smaller / residential accounts
+	custSalesperson := make(map[uuid.UUID]string)
+	spAssignments := map[string]string{
+		"Summit Contracting":   "a1b2c3d4-0001-4000-8000-000000000001", // Sarah Mitchell - top account
+		"Elite Homes":          "a1b2c3d4-0001-4000-8000-000000000001", // Sarah Mitchell - top account
+		"Acme Construction":    "a1b2c3d4-0003-4000-8000-000000000003", // Emily Chen
+		"Structure Masters":    "a1b2c3d4-0003-4000-8000-000000000003", // Emily Chen
+		"Modern Renovations":   "a1b2c3d4-0006-4000-8000-000000000006", // Rachel Dunn
+		"Cornerstone Concrete": "a1b2c3d4-0006-4000-8000-000000000006", // Rachel Dunn
+		"Bob's Builders":       "a1b2c3d4-0002-4000-8000-000000000002", // Jake Rodriguez
+		"Acme Builders":        "a1b2c3d4-0002-4000-8000-000000000002", // Jake Rodriguez
+		"Valley Roofing":       "a1b2c3d4-0004-4000-8000-000000000004", // Marcus Williams
+		"Prestige Decks":       "a1b2c3d4-0004-4000-8000-000000000004", // Marcus Williams
+		"Classic Carpentry":    "a1b2c3d4-0004-4000-8000-000000000004", // Marcus Williams
+		"Green Earth Landscapes": "a1b2c3d4-0005-4000-8000-000000000005", // Tyler Brooks
+		"DIY Homeowner":          "a1b2c3d4-0005-4000-8000-000000000005", // Tyler Brooks
+	}
+	for custName, custID := range customerIDs {
+		if spID, ok := spAssignments[custName]; ok {
+			db.Exec(`UPDATE customers SET salesperson_id = $1 WHERE id = $2`, spID, custID)
+			custSalesperson[custID] = spID
+		} else {
+			// Fallback: assign to Tyler Brooks for any unmatched customers
+			spID := salesReps[4].ID
+			db.Exec(`UPDATE customers SET salesperson_id = $1 WHERE id = $2`, spID, custID)
+			custSalesperson[custID] = spID
+		}
+	}
+	fmt.Println("Seed: Assigned salespeople to customers")
+
+	// =========================================================================
 	// 7. ORDERS, INVOICES, PAYMENTS (Fixed: 'ISSUED' → 'UNPAID')
 	// =========================================================================
 	totalOrders := 0
@@ -345,8 +405,9 @@ func main() {
 			}
 			orderDate := recentDate(180)
 			orderID := uuid.New()
-			_, err := db.Exec(`INSERT INTO orders (id, customer_id, total_amount, status, created_at)
-				VALUES ($1,$2,0,$3,$4)`, orderID, custID, status, orderDate)
+			spID := custSalesperson[custID]
+			_, err := db.Exec(`INSERT INTO orders (id, customer_id, total_amount, status, salesperson_id, created_at)
+				VALUES ($1,$2,0,$3,$4,$5)`, orderID, custID, status, spID, orderDate)
 			if err != nil {
 				continue
 			}

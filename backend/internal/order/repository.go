@@ -42,11 +42,11 @@ func (r *PostgresRepository) CreateOrder(ctx context.Context, o *Order) error {
 
 	// Insert Order
 	queryOrder := `
-		INSERT INTO orders (id, customer_id, quote_id, status, total_amount, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO orders (id, customer_id, quote_id, status, total_amount, salesperson_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 	_, err = tx.Exec(ctx, queryOrder,
-		o.ID, o.CustomerID, o.QuoteID, o.Status, o.TotalAmount, o.CreatedAt, o.UpdatedAt,
+		o.ID, o.CustomerID, o.QuoteID, o.Status, o.TotalAmount, o.SalespersonID, o.CreatedAt, o.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert order: %w", err)
@@ -80,14 +80,17 @@ func (r *PostgresRepository) CreateOrder(ctx context.Context, o *Order) error {
 
 func (r *PostgresRepository) GetOrder(ctx context.Context, id uuid.UUID) (*Order, error) {
 	queryOrder := `
-		SELECT o.id, o.customer_id, COALESCE(c.name, ''), o.quote_id, o.status, o.total_amount, o.created_at, o.updated_at
+		SELECT o.id, o.customer_id, COALESCE(c.name, ''), o.quote_id, o.status, o.total_amount, o.created_at, o.updated_at,
+			o.salesperson_id, COALESCE(st.name, '')
 		FROM orders o
 		LEFT JOIN customers c ON c.id = o.customer_id
+		LEFT JOIN sales_team st ON o.salesperson_id = st.id
 		WHERE o.id = $1
 	`
 	var o Order
 	err := r.db.Pool.QueryRow(ctx, queryOrder, id).Scan(
 		&o.ID, &o.CustomerID, &o.CustomerName, &o.QuoteID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt,
+		&o.SalespersonID, &o.SalespersonName,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -96,9 +99,11 @@ func (r *PostgresRepository) GetOrder(ctx context.Context, id uuid.UUID) (*Order
 		return nil, fmt.Errorf("failed to get order: %w", err)
 	}
 
-	// Get Lines with product names
+	// Get Lines with product names + cost data for margin/commission
 	queryLines := `
-		SELECT ol.id, ol.order_id, ol.product_id, COALESCE(p.sku, ''), COALESCE(p.description, ''), ol.quantity, ol.price_each
+		SELECT ol.id, ol.order_id, ol.product_id, COALESCE(p.sku, ''), COALESCE(p.description, ''),
+			ol.quantity, ol.price_each,
+			COALESCE(p.average_unit_cost, 0), COALESCE(p.commission_rate, 0)
 		FROM order_lines ol
 		LEFT JOIN products p ON p.id = ol.product_id
 		WHERE ol.order_id = $1
@@ -109,22 +114,37 @@ func (r *PostgresRepository) GetOrder(ctx context.Context, id uuid.UUID) (*Order
 	}
 	defer rows.Close()
 
+	var totalCost, totalCommission float64
 	for rows.Next() {
 		var l OrderLine
-		if err := rows.Scan(&l.ID, &l.OrderID, &l.ProductID, &l.ProductSKU, &l.ProductName, &l.Quantity, &l.PriceEach); err != nil {
+		if err := rows.Scan(&l.ID, &l.OrderID, &l.ProductID, &l.ProductSKU, &l.ProductName,
+			&l.Quantity, &l.PriceEach, &l.UnitCost, &l.CommissionRate); err != nil {
 			return nil, fmt.Errorf("failed to scan order line: %w", err)
 		}
+		lineCost := l.Quantity * l.UnitCost
+		lineRevenue := l.Quantity * l.PriceEach
+		totalCost += lineCost
+		totalCommission += lineRevenue * (l.CommissionRate / 100.0)
 		o.Lines = append(o.Lines, l)
 	}
+
+	o.TotalCost = totalCost
+	o.TotalMargin = o.TotalAmount - totalCost
+	if o.TotalAmount > 0 {
+		o.MarginPercent = (o.TotalMargin / o.TotalAmount) * 100.0
+	}
+	o.TotalCommission = totalCommission
 
 	return &o, nil
 }
 
 func (r *PostgresRepository) ListOrders(ctx context.Context) ([]Order, error) {
 	query := `
-		SELECT o.id, o.customer_id, COALESCE(c.name, ''), o.quote_id, o.status, o.total_amount, o.created_at, o.updated_at
+		SELECT o.id, o.customer_id, COALESCE(c.name, ''), o.quote_id, o.status, o.total_amount, o.created_at, o.updated_at,
+			o.salesperson_id, COALESCE(st.name, '')
 		FROM orders o
 		LEFT JOIN customers c ON c.id = o.customer_id
+		LEFT JOIN sales_team st ON o.salesperson_id = st.id
 		ORDER BY o.created_at DESC
 	`
 	rows, err := r.db.Pool.Query(ctx, query)
@@ -138,6 +158,7 @@ func (r *PostgresRepository) ListOrders(ctx context.Context) ([]Order, error) {
 		var o Order
 		if err := rows.Scan(
 			&o.ID, &o.CustomerID, &o.CustomerName, &o.QuoteID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt,
+			&o.SalespersonID, &o.SalespersonName,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
 		}

@@ -36,6 +36,9 @@ type Customer struct {
 	PriceLevelID *uuid.UUID  `json:"price_level_id,omitempty"`
 	PriceLevel   *PriceLevel `json:"price_level,omitempty"` // Joined
 
+	SalespersonID   *uuid.UUID `json:"salesperson_id,omitempty"`
+	SalespersonName string     `json:"salesperson_name,omitempty"`
+
 	CreditLimit float64 `json:"credit_limit"`
 	BalanceDue  float64 `json:"balance_due"`
 	IsActive    bool    `json:"is_active"`

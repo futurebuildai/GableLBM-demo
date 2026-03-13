@@ -45,6 +45,12 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*Ord
 		Status:     StatusDraft,
 	}
 
+	// Auto-populate salesperson from the customer's assigned rep
+	cust, err := s.customerSvc.GetCustomer(ctx, req.CustomerID)
+	if err == nil && cust.SalespersonID != nil {
+		o.SalespersonID = cust.SalespersonID
+	}
+
 	var total float64
 	for _, l := range req.Lines {
 		if l.Quantity <= 0 {

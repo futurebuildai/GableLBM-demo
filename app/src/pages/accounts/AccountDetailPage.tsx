@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { CustomerService } from '../../services/CustomerService';
 import { AccountService } from '../../services/AccountService';
+import { SalesTeamService } from '../../services/SalesTeamService';
 import type { Customer } from '../../types/customer';
+import type { SalesPerson } from '../../types/salesteam';
 import type { AccountSummary, CustomerTransaction } from '../../types/account';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button'; // Assuming Button component exists
-import { ArrowLeft, CreditCard, Receipt, FileText, Activity, AlertCircle, Users, MessageSquare } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { ArrowLeft, CreditCard, Receipt, FileText, Activity, AlertCircle, Users, MessageSquare, User, Mail, Phone, ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ContactList } from './ContactList';
 import { ActivityFeed } from './ActivityFeed';
@@ -19,6 +21,10 @@ export function AccountDetailPage() {
     const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'ledger' | 'invoices' | 'payments' | 'contacts' | 'crm'>('ledger');
+    const [salesperson, setSalesperson] = useState<SalesPerson | null>(null);
+    const [salesTeam, setSalesTeam] = useState<SalesPerson[]>([]);
+    const [showSpDropdown, setShowSpDropdown] = useState(false);
+    const [assigningRep, setAssigningRep] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -36,12 +42,48 @@ export function AccountDetailPage() {
             setCustomer(cust);
             setSummary(summ);
             setTransactions(txns);
+            // Load salesperson details if assigned
+            if (cust.salesperson_id) {
+                try {
+                    const sp = await SalesTeamService.getSalesPerson(cust.salesperson_id);
+                    setSalesperson(sp);
+                } catch { /* not critical */ }
+            }
         } catch (error) {
             console.error('Failed to load account data:', error);
-            // Ideally use toast here, but for now just log to avoid build failure on missing Toast import
         } finally {
             setLoading(false);
         }
+    }
+
+    async function handleChangeSalesperson(spId: string | null) {
+        if (!customer) return;
+        setAssigningRep(true);
+        try {
+            const updated = await CustomerService.updateSalesperson(customer.id, spId);
+            setCustomer(updated);
+            if (spId) {
+                const sp = await SalesTeamService.getSalesPerson(spId);
+                setSalesperson(sp);
+            } else {
+                setSalesperson(null);
+            }
+        } catch (error) {
+            console.error('Failed to assign salesperson:', error);
+        } finally {
+            setAssigningRep(false);
+            setShowSpDropdown(false);
+        }
+    }
+
+    async function openSpDropdown() {
+        if (salesTeam.length === 0) {
+            try {
+                const team = await SalesTeamService.listSalesTeam();
+                setSalesTeam(team);
+            } catch { /* ignore */ }
+        }
+        setShowSpDropdown(!showSpDropdown);
     }
 
     if (loading) return <LoadingScreen />;
@@ -71,6 +113,80 @@ export function AccountDetailPage() {
                     <div className="flex gap-2">
                         <Button variant="outline" size="sm">Edit Profile</Button>
                         <Button variant="default" size="sm">New Transaction</Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Salesperson Card */}
+            <div className="p-5 bg-slate-steel border border-white/10 rounded-2xl relative">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                            <User size={20} className="text-blue-400" />
+                        </div>
+                        {salesperson ? (
+                            <div>
+                                <p className="text-white font-medium">{salesperson.name}</p>
+                                <div className="flex items-center gap-3 text-sm text-zinc-400">
+                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400">{salesperson.role}</span>
+                                    <span className="flex items-center gap-1"><Mail size={12} /> {salesperson.email}</span>
+                                    <span className="flex items-center gap-1"><Phone size={12} /> {salesperson.phone}</span>
+                                </div>
+                            </div>
+                        ) : customer.salesperson_name ? (
+                            <div>
+                                <p className="text-white font-medium">{customer.salesperson_name}</p>
+                                <div className="text-xs text-zinc-500">Assigned Rep</div>
+                            </div>
+                        ) : (
+                            <div>
+                                <p className="text-zinc-500 text-sm">No salesperson assigned</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={openSpDropdown}
+                            disabled={assigningRep}
+                        >
+                            {assigningRep ? 'Saving...' : salesperson ? 'Change' : 'Assign Salesperson'}
+                            <ChevronDown size={14} className="ml-1" />
+                        </Button>
+                        {showSpDropdown && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setShowSpDropdown(false)} />
+                                <div className="absolute right-0 top-full mt-2 w-64 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-50">
+                                    {salesTeam.map(sp => (
+                                        <button
+                                            key={sp.id}
+                                            onClick={() => handleChangeSalesperson(sp.id)}
+                                            className={cn(
+                                                "w-full px-4 py-3 text-left text-sm hover:bg-white/5 transition-colors flex items-center justify-between first:rounded-t-lg",
+                                                sp.id === customer?.salesperson_id ? "bg-gable-green/10 text-gable-green" : "text-white"
+                                            )}
+                                        >
+                                            <div>
+                                                <div className="font-medium">{sp.name}</div>
+                                                <div className="text-xs text-zinc-400">{sp.role}</div>
+                                            </div>
+                                            {sp.id === customer?.salesperson_id && (
+                                                <span className="text-xs text-gable-green">Current</span>
+                                            )}
+                                        </button>
+                                    ))}
+                                    {salesperson && (
+                                        <button
+                                            onClick={() => handleChangeSalesperson(null)}
+                                            className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/5 transition-colors border-t border-white/10 rounded-b-lg"
+                                        >
+                                            Unassign Salesperson
+                                        </button>
+                                    )}
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

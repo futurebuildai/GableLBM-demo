@@ -17,6 +17,9 @@ export interface Customer {
     price_level_id?: string;
     price_level?: PriceLevel;
 
+    salesperson_id?: string;
+    salesperson_name?: string;
+
     credit_limit: number;
     balance_due: number;
     is_active: boolean;

@@ -19,6 +19,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /customers", h.HandleListCustomers)
 	mux.HandleFunc("GET /customers/{id}", h.HandleGetCustomer)
 	mux.HandleFunc("POST /customers", h.HandleCreateCustomer)
+	mux.HandleFunc("PATCH /customers/{id}/salesperson", h.HandleUpdateSalesperson)
 	mux.HandleFunc("GET /price_levels", h.HandleListPriceLevels)
 
 	// Contact routes
@@ -84,6 +85,37 @@ func (h *Handler) HandleListPriceLevels(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(levels)
+}
+
+func (h *Handler) HandleUpdateSalesperson(w http.ResponseWriter, r *http.Request) {
+	customerID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid customer ID", http.StatusBadRequest)
+		return
+	}
+
+	var body struct {
+		SalespersonID *uuid.UUID `json:"salesperson_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.UpdateSalesperson(r.Context(), customerID, body.SalespersonID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return updated customer
+	c, err := h.service.GetCustomer(r.Context(), customerID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(c)
 }
 
 // --- Contact Handlers ---

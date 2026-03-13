@@ -42,5 +42,17 @@ export const CustomerService = {
             throw new Error('Failed to fetch price levels');
         }
         return response.json();
+    },
+
+    async updateSalesperson(customerId: string, salespersonId: string | null): Promise<Customer> {
+        const response = await fetch(`${API_URL}/customers/${customerId}/salesperson`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ salesperson_id: salespersonId }),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to update salesperson');
+        }
+        return response.json();
     }
 };

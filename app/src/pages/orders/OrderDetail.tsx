@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Truck, Check, Printer } from 'lucide-react';
+import { Truck, Check, Printer, User, DollarSign, Mail, Phone } from 'lucide-react';
 import { OrderService } from '../../services/OrderService';
+import { SalesTeamService } from '../../services/SalesTeamService';
 import { type Order, getStatusColor } from '../../types/order';
+import type { SalesPerson } from '../../types/salesteam';
 import { useToast } from '../../components/ui/ToastContext';
 
 const API_URL = '';
@@ -11,6 +13,7 @@ export default function OrderDetail() {
     const { id } = useParams();
     const { showToast } = useToast();
     const [order, setOrder] = useState<Order | null>(null);
+    const [salesperson, setSalesperson] = useState<SalesPerson | null>(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
 
@@ -22,6 +25,14 @@ export default function OrderDetail() {
         try {
             const data = await OrderService.getOrder(orderId);
             setOrder(data);
+            if (data.salesperson_id) {
+                try {
+                    const sp = await SalesTeamService.getSalesPerson(data.salesperson_id);
+                    setSalesperson(sp);
+                } catch {
+                    // Salesperson lookup failed, not critical
+                }
+            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -36,7 +47,7 @@ export default function OrderDetail() {
         setProcessing(true);
         try {
             await OrderService.confirmOrder(order.id);
-            await loadOrder(order.id); // Reload to see status change
+            await loadOrder(order.id);
         } catch (error) {
             showToast("Failed to confirm order: " + (error instanceof Error ? error.message : error), 'error');
         } finally {
@@ -62,6 +73,9 @@ export default function OrderDetail() {
     if (loading || !order) {
         return <div className="text-white">Loading order details...</div>;
     }
+
+    const marginColor = order.margin_percent >= 20 ? 'text-emerald-400' :
+        order.margin_percent >= 10 ? 'text-amber-400' : 'text-red-400';
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
@@ -118,22 +132,37 @@ export default function OrderDetail() {
                                     <th className="p-4 text-muted-foreground font-medium text-right">Qty</th>
                                     <th className="p-4 text-muted-foreground font-medium text-right">Price</th>
                                     <th className="p-4 text-muted-foreground font-medium text-right">Total</th>
+                                    <th className="p-4 text-muted-foreground font-medium text-right">Cost</th>
+                                    <th className="p-4 text-muted-foreground font-medium text-right">Margin</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {order.lines?.map((line) => (
-                                    <tr key={line.id}>
-                                        <td className="p-4 text-white">
-                                            <div className="font-mono text-sm">{line.product_sku || line.product_id.slice(0, 8)}</div>
-                                            {line.product_name && <div className="text-xs text-muted-foreground">{line.product_name}</div>}
-                                        </td>
-                                        <td className="p-4 text-white font-mono text-right">{line.quantity}</td>
-                                        <td className="p-4 text-white font-mono text-right">${line.price_each.toFixed(2)}</td>
-                                        <td className="p-4 text-gable-green font-mono text-right font-medium">
-                                            ${(line.quantity * line.price_each).toFixed(2)}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {order.lines?.map((line) => {
+                                    const lineTotal = line.quantity * line.price_each;
+                                    const lineCost = line.quantity * line.unit_cost;
+                                    const lineMargin = lineTotal - lineCost;
+                                    const lineMarginPct = lineTotal > 0 ? (lineMargin / lineTotal) * 100 : 0;
+                                    const lmColor = lineMarginPct >= 20 ? 'text-emerald-400' :
+                                        lineMarginPct >= 10 ? 'text-amber-400' : 'text-red-400';
+                                    return (
+                                        <tr key={line.id}>
+                                            <td className="p-4 text-white">
+                                                <div className="font-mono text-sm">{line.product_sku || line.product_id.slice(0, 8)}</div>
+                                                {line.product_name && <div className="text-xs text-muted-foreground">{line.product_name}</div>}
+                                            </td>
+                                            <td className="p-4 text-white font-mono text-right">{line.quantity}</td>
+                                            <td className="p-4 text-white font-mono text-right">${line.price_each.toFixed(2)}</td>
+                                            <td className="p-4 text-gable-green font-mono text-right font-medium">
+                                                ${lineTotal.toFixed(2)}
+                                            </td>
+                                            <td className="p-4 text-zinc-400 font-mono text-right">${lineCost.toFixed(2)}</td>
+                                            <td className={`p-4 font-mono text-right ${lmColor}`}>
+                                                ${lineMargin.toFixed(2)}
+                                                <span className="text-xs ml-1">({lineMarginPct.toFixed(1)}%)</span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                             <tfoot className="bg-white/5">
                                 <tr>
@@ -141,14 +170,21 @@ export default function OrderDetail() {
                                     <td className="p-4 text-right font-bold text-gable-green font-mono text-lg">
                                         ${order.total_amount.toFixed(2)}
                                     </td>
+                                    <td className="p-4 text-right font-mono text-zinc-400">
+                                        ${order.total_cost.toFixed(2)}
+                                    </td>
+                                    <td className={`p-4 text-right font-mono font-bold ${marginColor}`}>
+                                        ${order.total_margin.toFixed(2)}
+                                    </td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
                 </div>
 
-                {/* Sidebar: Customer Info */}
+                {/* Sidebar */}
                 <div className="space-y-6">
+                    {/* Customer Details */}
                     <div className="bg-slate-steel rounded-lg border border-white/10 p-6">
                         <h3 className="font-semibold text-white mb-4">Customer Details</h3>
                         <div className="space-y-2 text-sm">
@@ -157,7 +193,59 @@ export default function OrderDetail() {
                         </div>
                     </div>
 
-                    {/* Payment Info Placehold */}
+                    {/* Salesperson Card */}
+                    <div className="bg-slate-steel rounded-lg border border-white/10 p-6">
+                        <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                            <User size={16} className="text-blue-400" /> Salesperson
+                        </h3>
+                        {salesperson ? (
+                            <div className="space-y-3 text-sm">
+                                <p className="text-white font-medium text-base">{salesperson.name}</p>
+                                <p className="text-muted-foreground">
+                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400">{salesperson.role}</span>
+                                </p>
+                                <div className="space-y-1.5 pt-1">
+                                    <p className="text-zinc-400 flex items-center gap-2">
+                                        <Mail size={14} /> {salesperson.email}
+                                    </p>
+                                    <p className="text-zinc-400 flex items-center gap-2">
+                                        <Phone size={14} /> {salesperson.phone}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-zinc-500">No salesperson assigned</p>
+                        )}
+                    </div>
+
+                    {/* Margin & Commission Card */}
+                    <div className="bg-slate-steel rounded-lg border border-white/10 p-6">
+                        <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                            <DollarSign size={16} className="text-emerald-400" /> Margin & Commission
+                        </h3>
+                        <div className="space-y-3 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-zinc-400">Revenue</span>
+                                <span className="text-white font-mono font-medium">${order.total_amount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-zinc-400">Cost</span>
+                                <span className="text-white font-mono">${order.total_cost.toFixed(2)}</span>
+                            </div>
+                            <div className="border-t border-white/10 pt-3 flex justify-between">
+                                <span className="text-zinc-400">Margin</span>
+                                <span className={`font-mono font-bold ${marginColor}`}>
+                                    ${order.total_margin.toFixed(2)} ({order.margin_percent.toFixed(1)}%)
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-zinc-400">Commission</span>
+                                <span className="text-white font-mono">${order.total_commission.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Payment Info */}
                     <div className="bg-slate-steel rounded-lg border border-white/10 p-6">
                         <h3 className="font-semibold text-white mb-4">Payment</h3>
                         <div className="p-3 bg-white/5 rounded text-sm text-muted-foreground text-center">

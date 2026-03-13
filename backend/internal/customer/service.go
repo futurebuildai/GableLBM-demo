@@ -34,6 +34,10 @@ func (s *Service) UpdateBalance(ctx context.Context, id uuid.UUID, delta float64
 	return s.repo.UpdateBalance(ctx, id, delta)
 }
 
+func (s *Service) UpdateSalesperson(ctx context.Context, customerID uuid.UUID, salespersonID *uuid.UUID) error {
+	return s.repo.UpdateSalesperson(ctx, customerID, salespersonID)
+}
+
 // Contact management
 
 func (s *Service) CreateContact(ctx context.Context, c *Contact) error {

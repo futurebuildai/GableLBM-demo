@@ -20,6 +20,7 @@ type Repository interface {
 	GetPriceLevel(ctx context.Context, id uuid.UUID) (*PriceLevel, error)
 
 	UpdateBalance(ctx context.Context, id uuid.UUID, delta float64) error
+	UpdateSalesperson(ctx context.Context, customerID uuid.UUID, salespersonID *uuid.UUID) error
 
 	CreateContact(ctx context.Context, c *Contact) error
 	GetContact(ctx context.Context, id uuid.UUID) (*Contact, error)
@@ -69,14 +70,16 @@ func (r *PostgresRepository) CreateCustomer(ctx context.Context, c *Customer) er
 
 func (r *PostgresRepository) GetCustomer(ctx context.Context, id uuid.UUID) (*Customer, error) {
 	query := `
-		SELECT 
-			c.id, c.name, c.account_number, c.email, c.phone, c.address, 
-			c.price_level_id, c.credit_limit, c.balance_due, c.is_active, 
+		SELECT
+			c.id, c.name, c.account_number, c.email, c.phone, c.address,
+			c.price_level_id, c.credit_limit, c.balance_due, c.is_active,
 			c.tier,
 			c.created_at, c.updated_at,
-			pl.id, pl.name, pl.multiplier
+			pl.id, pl.name, pl.multiplier,
+			c.salesperson_id, COALESCE(st.name, '')
 		FROM customers c
 		LEFT JOIN price_levels pl ON c.price_level_id = pl.id
+		LEFT JOIN sales_team st ON c.salesperson_id = st.id
 		WHERE c.id = $1
 	`
 
@@ -92,6 +95,7 @@ func (r *PostgresRepository) GetCustomer(ctx context.Context, id uuid.UUID) (*Cu
 		&c.Tier,
 		&c.CreatedAt, &c.UpdatedAt,
 		&plID, &plName, &plMult,
+		&c.SalespersonID, &c.SalespersonName,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -116,14 +120,16 @@ func (r *PostgresRepository) GetCustomer(ctx context.Context, id uuid.UUID) (*Cu
 
 func (r *PostgresRepository) GetCustomerByEmail(ctx context.Context, email string) (*Customer, error) {
 	query := `
-		SELECT 
-			c.id, c.name, c.account_number, c.email, c.phone, c.address, 
-			c.price_level_id, c.credit_limit, c.balance_due, c.is_active, 
+		SELECT
+			c.id, c.name, c.account_number, c.email, c.phone, c.address,
+			c.price_level_id, c.credit_limit, c.balance_due, c.is_active,
 			c.tier,
 			c.created_at, c.updated_at,
-			pl.id, pl.name, pl.multiplier
+			pl.id, pl.name, pl.multiplier,
+			c.salesperson_id, COALESCE(st.name, '')
 		FROM customers c
 		LEFT JOIN price_levels pl ON c.price_level_id = pl.id
+		LEFT JOIN sales_team st ON c.salesperson_id = st.id
 		WHERE c.email = $1
 	`
 
@@ -139,6 +145,7 @@ func (r *PostgresRepository) GetCustomerByEmail(ctx context.Context, email strin
 		&c.Tier,
 		&c.CreatedAt, &c.UpdatedAt,
 		&plID, &plName, &plMult,
+		&c.SalespersonID, &c.SalespersonName,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -163,14 +170,16 @@ func (r *PostgresRepository) GetCustomerByEmail(ctx context.Context, email strin
 
 func (r *PostgresRepository) ListCustomers(ctx context.Context) ([]Customer, error) {
 	query := `
-		SELECT 
-			c.id, c.name, c.account_number, c.email, c.phone, c.address, 
-			c.price_level_id, c.credit_limit, c.balance_due, c.is_active, 
+		SELECT
+			c.id, c.name, c.account_number, c.email, c.phone, c.address,
+			c.price_level_id, c.credit_limit, c.balance_due, c.is_active,
 			c.tier,
 			c.created_at, c.updated_at,
-			pl.id, pl.name, pl.multiplier
+			pl.id, pl.name, pl.multiplier,
+			c.salesperson_id, COALESCE(st.name, '')
 		FROM customers c
 		LEFT JOIN price_levels pl ON c.price_level_id = pl.id
+		LEFT JOIN sales_team st ON c.salesperson_id = st.id
 		ORDER BY c.name ASC
 	`
 
@@ -194,6 +203,7 @@ func (r *PostgresRepository) ListCustomers(ctx context.Context) ([]Customer, err
 			&c.Tier,
 			&c.CreatedAt, &c.UpdatedAt,
 			&plID, &plName, &plMult,
+			&c.SalespersonID, &c.SalespersonName,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan customer: %w", err)
 		}
@@ -251,6 +261,18 @@ func (r *PostgresRepository) UpdateBalance(ctx context.Context, id uuid.UUID, de
 	tag, err := r.db.Pool.Exec(ctx, query, delta, id)
 	if err != nil {
 		return fmt.Errorf("failed to update balance: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("customer not found")
+	}
+	return nil
+}
+
+func (r *PostgresRepository) UpdateSalesperson(ctx context.Context, customerID uuid.UUID, salespersonID *uuid.UUID) error {
+	query := `UPDATE customers SET salesperson_id = $1, updated_at = NOW() WHERE id = $2`
+	tag, err := r.db.Pool.Exec(ctx, query, salespersonID, customerID)
+	if err != nil {
+		return fmt.Errorf("failed to update salesperson: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf("customer not found")
