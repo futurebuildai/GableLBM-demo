@@ -1,4 +1,4 @@
-import type { Quote, CreateQuoteRequest } from '../types/quote';
+import type { Quote, QuoteState, CreateQuoteRequest, QuoteAnalytics } from '../types/quote';
 
 const API_URL = '';
 
@@ -34,6 +34,31 @@ export const QuoteService = {
             throw new Error('Failed to fetch quotes');
         }
         return response.json();
+    },
+
+    async updateQuoteState(quoteId: string, state: QuoteState): Promise<Quote> {
+        const response = await fetch(`${API_URL}/quotes/${quoteId}/state`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state }),
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'Failed to update quote state');
+        }
+        return response.json();
+    },
+
+    async getAnalytics(): Promise<QuoteAnalytics> {
+        const response = await fetch(`${API_URL}/quotes/analytics`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch quote analytics');
+        }
+        return response.json();
+    },
+
+    getOriginalFileUrl(quoteId: string): string {
+        return `${API_URL}/quotes/${quoteId}/file`;
     },
 
     async convertToOrder(quoteId: string): Promise<{ customer_id: string; quote_id: string; lines: { product_id: string; quantity: number; price_each: number }[] }> {

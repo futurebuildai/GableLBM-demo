@@ -31,6 +31,8 @@ import { TechAdminPage } from "./pages/admin/tech_admin/TechAdminPage";
 import { AccountsPage } from "./pages/accounts/AccountsPage";
 import { AccountDetailPage } from "./pages/accounts/AccountDetailPage";
 import QuoteList from "./pages/quotes/QuoteList";
+import QuoteDetail from "./pages/quotes/QuoteDetail";
+import QuoteAnalytics from "./pages/quotes/QuoteAnalytics";
 import { PurchaseOrderList } from "./pages/purchasing/PurchaseOrderList";
 import { PurchaseOrderDetail } from "./pages/purchasing/PurchaseOrderDetail";
 import { NewPurchaseOrder } from "./pages/purchasing/NewPurchaseOrder";
@@ -58,6 +60,7 @@ import { PortalInvite } from "./pages/portal/PortalInvite";
 import { ProjectList } from "./pages/projects/ProjectList";
 import { ProjectDashboard } from "./pages/projects/ProjectDashboard";
 import POSTerminal from "./pages/pos/POSTerminal";
+import { ProductDetail } from "./pages/inventory/ProductDetail";
 
 import { ToastProvider } from "./components/ui/Toast";
 
@@ -76,8 +79,11 @@ function App() {
           <Route path="/erp" element={<AppShell><Outlet /></AppShell>}>
             <Route index element={<Dashboard />} />
             <Route path="inventory" element={<Inventory />} />
+            <Route path="inventory/:id" element={<ProductDetail />} />
             <Route path="quotes" element={<QuoteList />} />
             <Route path="quotes/new" element={<QuoteBuilder />} />
+            <Route path="quotes/analytics" element={<QuoteAnalytics />} />
+            <Route path="quotes/:id" element={<QuoteDetail />} />
             <Route path="orders" element={<OrderList />} />
             <Route path="orders/:id" element={<OrderDetail />} />
             <Route path="invoices" element={<InvoiceList />} />

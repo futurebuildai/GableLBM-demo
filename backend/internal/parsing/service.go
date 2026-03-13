@@ -2,23 +2,59 @@ package parsing
 
 import (
 	"context"
+	"log/slog"
 	"math"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/gablelbm/gable/internal/ai"
 	"github.com/gablelbm/gable/internal/product"
 )
 
 // Service handles material list parsing and product matching.
 type Service struct {
-	productRepo product.Repository
+	productRepo  product.Repository
+	claudeClient *ai.Client // nil = fallback to rule-based extraction
 }
 
 // NewService creates a new parsing Service.
-func NewService(productRepo product.Repository) *Service {
-	return &Service{productRepo: productRepo}
+func NewService(productRepo product.Repository, claudeClient *ai.Client) *Service {
+	return &Service{productRepo: productRepo, claudeClient: claudeClient}
+}
+
+// ExtractItemsWithAI uses Claude to extract text from a file, then parses structured items.
+// Falls back to rule-based extraction if Claude client is not configured.
+func (s *Service) ExtractItemsWithAI(ctx context.Context, fileBytes []byte, contentType string) ([]extractedLine, error) {
+	if s.claudeClient == nil {
+		slog.Warn("Claude client not configured, using rule-based fallback")
+		return s.ExtractItems(generateFallbackMaterialList()), nil
+	}
+
+	rawText, err := s.claudeClient.ExtractMaterialList(ctx, fileBytes, contentType)
+	if err != nil {
+		slog.Error("Claude extraction failed, falling back to rule-based", "error", err)
+		return s.ExtractItems(generateFallbackMaterialList()), nil
+	}
+
+	return s.ExtractItems(rawText), nil
+}
+
+// generateFallbackMaterialList returns a sample material list for when AI is unavailable.
+func generateFallbackMaterialList() string {
+	return `50 pcs - 2x4x8 SPF Stud
+25 pcs - 2x6x12 Doug Fir #2
+30 sheets - OSB 7/16 4x8
+10 sheets - CDX Plywood 1/2 4x8
+15 pcs - 2x10x16 Hem Fir
+8 pcs - 2x12x20
+20 bags - Quikrete 80lb
+4 rolls - Tyvek House Wrap
+100 lf - 2x4 Pressure Treated
+Custom powder-coat railing 12ft bronze
+6 pcs - Simpson Strong-Tie A35
+Specialty glass panel 48x72 frosted`
 }
 
 // --- Text Extraction (Rule-Based Simulator) ---

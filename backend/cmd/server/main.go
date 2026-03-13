@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gablelbm/gable/internal/ai"
 	"github.com/gablelbm/gable/internal/account"
 	"github.com/gablelbm/gable/internal/ap"
 	"github.com/gablelbm/gable/internal/bankrecon"
@@ -35,6 +36,7 @@ import (
 	"github.com/gablelbm/gable/internal/notification"
 	"github.com/gablelbm/gable/internal/order"
 	"github.com/gablelbm/gable/internal/parsing"
+	"github.com/gablelbm/gable/internal/pim"
 	"github.com/gablelbm/gable/internal/partner"
 	"github.com/gablelbm/gable/internal/payment"
 	"github.com/gablelbm/gable/internal/portal"
@@ -103,10 +105,39 @@ func main() {
 	productHandler := product.NewHandler(productSvc)
 	productHandler.RegisterRoutes(mux)
 
+	// AI Client (Claude)
+	var claudeClient *ai.Client
+	if cfg.AnthropicAPIKey != "" {
+		claudeClient = ai.NewClient(cfg.AnthropicAPIKey)
+		logger.Info("Claude AI client initialized for material list parsing")
+	} else {
+		logger.Warn("ANTHROPIC_API_KEY not set — using rule-based material list parsing fallback")
+	}
+
 	// AI Parsing Module (Material List Intake)
-	parsingSvc := parsing.NewService(productRepo)
+	parsingSvc := parsing.NewService(productRepo, claudeClient)
 	parsingHandler := parsing.NewHandler(parsingSvc)
 	parsingHandler.RegisterRoutes(mux)
+
+	// PIM Module (AI-Powered Product Information Management)
+	pimRepo := pim.NewRepository(db)
+	pimSvc := pim.NewService(pimRepo, productSvc)
+
+	if cfg.AnthropicAPIKey != "" {
+		pimSvc.WithTextAI(pim.NewTextAIClient(cfg.AnthropicAPIKey, cfg.AnthropicModel))
+		logger.Info("PIM text AI (Anthropic) initialized", "model", cfg.AnthropicModel)
+	} else {
+		logger.Warn("ANTHROPIC_API_KEY not set — PIM AI content generation disabled")
+	}
+	if cfg.StabilityAPIKey != "" {
+		pimSvc.WithImageAI(pim.NewImageAIClient(cfg.StabilityAPIKey))
+		logger.Info("PIM image AI (Stability) initialized")
+	} else {
+		logger.Warn("STABILITY_API_KEY not set — PIM AI image generation disabled")
+	}
+
+	pimHandler := pim.NewHandler(pimSvc)
+	pimHandler.RegisterRoutes(mux)
 
 	locationHandler := location.NewHandler(location.NewService(location.NewRepository(db)))
 	locationHandler.RegisterRoutes(mux)

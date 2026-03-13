@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../types/product';
 import { Edit2, ArrowRightLeft, Package } from 'lucide-react';
 
@@ -10,6 +11,8 @@ interface InventoryTableProps {
 }
 
 export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdjustStock, onTransferStock, onEditMargins }) => {
+    const navigate = useNavigate();
+
     return (
         <div className="w-full overflow-hidden">
             <div className="overflow-x-auto">
@@ -45,7 +48,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdju
                                 const isLowStock = available < 100; // Example threshold
 
                                 return (
-                                    <tr key={p.id} className="group hover:bg-white/5 transition-colors">
+                                    <tr key={p.id} className="group hover:bg-white/5 transition-colors cursor-pointer" onClick={() => navigate(`/erp/inventory/${p.id}`)}>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
                                                 <span className="font-mono font-bold text-white group-hover:text-gable-green transition-colors">
@@ -86,21 +89,21 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ products, onAdju
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
-                                                    onClick={() => onAdjustStock(p)}
+                                                    onClick={(e) => { e.stopPropagation(); onAdjustStock(p); }}
                                                     className="p-1.5 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
                                                     title="Adjust Stock"
                                                 >
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => onTransferStock(p)}
+                                                    onClick={(e) => { e.stopPropagation(); onTransferStock(p); }}
                                                     className="p-1.5 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
                                                     title="Transfer Stock"
                                                 >
                                                     <ArrowRightLeft className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => onEditMargins(p)}
+                                                    onClick={(e) => { e.stopPropagation(); onEditMargins(p); }}
                                                     className="p-1.5 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
                                                     title="Edit Margins and Commissions"
                                                 >

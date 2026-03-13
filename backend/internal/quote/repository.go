@@ -16,6 +16,8 @@ type Repository interface {
 	UpdateQuote(ctx context.Context, q *Quote) error
 	ListQuotes(ctx context.Context) ([]Quote, error)
 	ListQuotesByCustomer(ctx context.Context, customerID uuid.UUID) ([]Quote, error)
+	GetQuoteAnalytics(ctx context.Context) (*QuoteAnalytics, error)
+	GetOriginalFile(ctx context.Context, id uuid.UUID) ([]byte, string, string, error)
 }
 
 type PostgresRepository struct {
@@ -44,14 +46,21 @@ func (r *PostgresRepository) CreateQuote(ctx context.Context, q *Quote) error {
 	}
 	defer tx.Rollback(ctx)
 
+	// Set source default
+	if q.Source == "" {
+		q.Source = "manual"
+	}
+
 	// Insert Header
 	queryHeader := `
 		INSERT INTO quotes (
-			id, customer_id, job_id, state, total_amount, expires_at, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			id, customer_id, job_id, state, total_amount, expires_at, created_at, updated_at,
+			margin_total, source, original_file, original_filename, original_content_type, parse_map
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`
 	_, err = tx.Exec(ctx, queryHeader,
 		q.ID, q.CustomerID, q.JobID, q.State, q.TotalAmount, q.ExpiresAt, q.CreatedAt, q.UpdatedAt,
+		q.MarginTotal, q.Source, q.OriginalFile, q.OriginalFilename, q.OriginalContentType, q.ParseMap,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert quote header: %w", err)
@@ -95,12 +104,17 @@ func (r *PostgresRepository) GetQuote(ctx context.Context, id uuid.UUID) (*Quote
 
 	// Get Header
 	queryHeader := `
-		SELECT id, customer_id, job_id, state, total_amount, expires_at, created_at, updated_at
-		FROM quotes
-		WHERE id = $1
+		SELECT q.id, q.customer_id, COALESCE(c.name, ''), q.job_id, q.state, q.total_amount, q.expires_at, q.created_at, q.updated_at,
+			q.sent_at, q.accepted_at, q.rejected_at, COALESCE(q.margin_total, 0), COALESCE(q.source, 'manual'),
+			COALESCE(q.original_filename, ''), COALESCE(q.original_content_type, ''), q.parse_map
+		FROM quotes q
+		LEFT JOIN customers c ON c.id = q.customer_id
+		WHERE q.id = $1
 	`
 	err := r.db.Pool.QueryRow(ctx, queryHeader, id).Scan(
-		&q.ID, &q.CustomerID, &q.JobID, &q.State, &q.TotalAmount, &q.ExpiresAt, &q.CreatedAt, &q.UpdatedAt,
+		&q.ID, &q.CustomerID, &q.CustomerName, &q.JobID, &q.State, &q.TotalAmount, &q.ExpiresAt, &q.CreatedAt, &q.UpdatedAt,
+		&q.SentAt, &q.AcceptedAt, &q.RejectedAt, &q.MarginTotal, &q.Source,
+		&q.OriginalFilename, &q.OriginalContentType, &q.ParseMap,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -145,12 +159,14 @@ func (r *PostgresRepository) UpdateQuote(ctx context.Context, q *Quote) error {
 	q.UpdatedAt = time.Now()
 
 	query := `
-		UPDATE quotes 
-		SET customer_id = $2, job_id = $3, state = $4, total_amount = $5, expires_at = $6, updated_at = $7
+		UPDATE quotes
+		SET customer_id = $2, job_id = $3, state = $4, total_amount = $5, expires_at = $6, updated_at = $7,
+			sent_at = $8, accepted_at = $9, rejected_at = $10
 		WHERE id = $1
 	`
 	_, err := r.db.Pool.Exec(ctx, query,
 		q.ID, q.CustomerID, q.JobID, q.State, q.TotalAmount, q.ExpiresAt, q.UpdatedAt,
+		q.SentAt, q.AcceptedAt, q.RejectedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update quote: %w", err)
@@ -162,7 +178,8 @@ func (r *PostgresRepository) UpdateQuote(ctx context.Context, q *Quote) error {
 
 func (r *PostgresRepository) ListQuotes(ctx context.Context) ([]Quote, error) {
 	query := `
-		SELECT q.id, q.customer_id, COALESCE(c.name, ''), q.job_id, q.state, q.total_amount, q.expires_at, q.created_at, q.updated_at
+		SELECT q.id, q.customer_id, COALESCE(c.name, ''), q.job_id, q.state, q.total_amount, q.expires_at, q.created_at, q.updated_at,
+			q.sent_at, q.accepted_at, q.rejected_at, COALESCE(q.margin_total, 0), COALESCE(q.source, 'manual')
 		FROM quotes q
 		LEFT JOIN customers c ON c.id = q.customer_id
 		ORDER BY q.created_at DESC
@@ -178,6 +195,7 @@ func (r *PostgresRepository) ListQuotes(ctx context.Context) ([]Quote, error) {
 		var q Quote
 		if err := rows.Scan(
 			&q.ID, &q.CustomerID, &q.CustomerName, &q.JobID, &q.State, &q.TotalAmount, &q.ExpiresAt, &q.CreatedAt, &q.UpdatedAt,
+			&q.SentAt, &q.AcceptedAt, &q.RejectedAt, &q.MarginTotal, &q.Source,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan quote: %w", err)
 		}
@@ -210,4 +228,112 @@ func (r *PostgresRepository) ListQuotesByCustomer(ctx context.Context, customerI
 		quotes = append(quotes, q)
 	}
 	return quotes, nil
+}
+
+// GetOriginalFile retrieves the original uploaded file for a quote.
+func (r *PostgresRepository) GetOriginalFile(ctx context.Context, id uuid.UUID) ([]byte, string, string, error) {
+	var data []byte
+	var filename, contentType string
+	query := `SELECT original_file, COALESCE(original_filename, ''), COALESCE(original_content_type, '') FROM quotes WHERE id = $1`
+	err := r.db.Pool.QueryRow(ctx, query, id).Scan(&data, &filename, &contentType)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to get original file: %w", err)
+	}
+	return data, filename, contentType, nil
+}
+
+// GetQuoteAnalytics returns aggregated quote analytics.
+func (r *PostgresRepository) GetQuoteAnalytics(ctx context.Context) (*QuoteAnalytics, error) {
+	a := &QuoteAnalytics{}
+
+	// State counts and totals
+	countQuery := `
+		SELECT
+			COUNT(*) as total,
+			COUNT(*) FILTER (WHERE state = 'DRAFT') as draft,
+			COUNT(*) FILTER (WHERE state = 'SENT') as sent,
+			COUNT(*) FILTER (WHERE state = 'ACCEPTED') as accepted,
+			COUNT(*) FILTER (WHERE state = 'REJECTED') as rejected,
+			COUNT(*) FILTER (WHERE state = 'EXPIRED') as expired,
+			COALESCE(SUM(total_amount), 0) as total_value,
+			COALESCE(SUM(total_amount) FILTER (WHERE state = 'ACCEPTED'), 0) as accepted_value,
+			COALESCE(AVG(COALESCE(margin_total, 0)) FILTER (WHERE state = 'ACCEPTED'), 0) as avg_margin_accepted,
+			COALESCE(AVG(COALESCE(margin_total, 0)) FILTER (WHERE state = 'REJECTED'), 0) as avg_margin_rejected,
+			COUNT(*) FILTER (WHERE COALESCE(source, 'manual') = 'ai') as ai_count,
+			COUNT(*) FILTER (WHERE COALESCE(source, 'manual') = 'ai' AND state = 'ACCEPTED') as ai_accepted,
+			COUNT(*) FILTER (WHERE COALESCE(source, 'manual') != 'ai' AND state = 'ACCEPTED') as manual_accepted,
+			COUNT(*) FILTER (WHERE COALESCE(source, 'manual') != 'ai') as manual_count
+		FROM quotes
+		WHERE created_at >= NOW() - INTERVAL '90 days'
+	`
+	var aiAccepted, manualAccepted, manualCount int
+	err := r.db.Pool.QueryRow(ctx, countQuery).Scan(
+		&a.TotalQuotes, &a.DraftCount, &a.SentCount, &a.AcceptedCount, &a.RejectedCount, &a.ExpiredCount,
+		&a.TotalQuoteValue, &a.TotalAcceptedValue,
+		&a.AvgMarginAccepted, &a.AvgMarginRejected,
+		&a.AISourcedCount, &aiAccepted, &manualAccepted, &manualCount,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get analytics counts: %w", err)
+	}
+
+	// Conversion rates
+	closedCount := a.AcceptedCount + a.RejectedCount + a.ExpiredCount
+	if closedCount > 0 {
+		a.ConversionRate = float64(a.AcceptedCount) / float64(closedCount) * 100
+	}
+	if a.AISourcedCount > 0 {
+		a.AIConversionRate = float64(aiAccepted) / float64(a.AISourcedCount) * 100
+	}
+	if manualCount > 0 {
+		a.ManualConversionRate = float64(manualAccepted) / float64(manualCount) * 100
+	}
+
+	// Average days to close
+	daysQuery := `
+		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (accepted_at - created_at)) / 86400), 0)
+		FROM quotes
+		WHERE state = 'ACCEPTED' AND accepted_at IS NOT NULL
+		AND created_at >= NOW() - INTERVAL '90 days'
+	`
+	err = r.db.Pool.QueryRow(ctx, daysQuery).Scan(&a.AvgDaysToClose)
+	if err != nil {
+		a.AvgDaysToClose = 0
+	}
+
+	// Trend data (last 30 days)
+	trendQuery := `
+		SELECT
+			d::date as date,
+			COUNT(q.id) FILTER (WHERE q.id IS NOT NULL) as created,
+			COUNT(q.id) FILTER (WHERE q.state = 'ACCEPTED') as accepted,
+			COUNT(q.id) FILTER (WHERE q.state = 'REJECTED') as rejected,
+			COALESCE(SUM(q.total_amount), 0) as total_value,
+			COALESCE(SUM(q.total_amount) FILTER (WHERE q.state = 'ACCEPTED'), 0) as accepted_value
+		FROM generate_series(
+			(NOW() - INTERVAL '29 days')::date,
+			NOW()::date,
+			'1 day'::interval
+		) d
+		LEFT JOIN quotes q ON q.created_at::date = d::date
+		GROUP BY d::date
+		ORDER BY d::date
+	`
+	rows, err := r.db.Pool.Query(ctx, trendQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get trend data: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t QuoteAnalyticsTrend
+		var date time.Time
+		if err := rows.Scan(&date, &t.Created, &t.Accepted, &t.Rejected, &t.TotalValue, &t.AcceptedValue); err != nil {
+			return nil, fmt.Errorf("failed to scan trend: %w", err)
+		}
+		t.Date = date.Format("2006-01-02")
+		a.TrendData = append(a.TrendData, t)
+	}
+
+	return a, nil
 }

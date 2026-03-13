@@ -31,6 +31,13 @@ type Config struct {
 	TwilioAccountSID string
 	TwilioAuthToken  string
 	TwilioFromNumber string
+
+	// Anthropic (Claude AI — PIM Content Generation)
+	AnthropicAPIKey string
+	AnthropicModel  string
+
+	// Stability AI (PIM Image Generation)
+	StabilityAPIKey string
 }
 
 func Load() *Config {
@@ -61,6 +68,13 @@ func Load() *Config {
 		TwilioAccountSID: getEnv("TWILIO_ACCOUNT_SID", ""),
 		TwilioAuthToken:  getEnv("TWILIO_AUTH_TOKEN", ""),
 		TwilioFromNumber: getEnv("TWILIO_FROM_NUMBER", ""),
+
+		// Anthropic (Claude AI — PIM Content Generation)
+		AnthropicAPIKey: getEnv("ANTHROPIC_API_KEY", ""),
+		AnthropicModel:  getEnv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
+
+		// Stability AI (PIM Image Generation)
+		StabilityAPIKey: getEnv("STABILITY_API_KEY", ""),
 	}
 }
 

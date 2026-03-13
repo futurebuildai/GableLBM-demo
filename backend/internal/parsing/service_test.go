@@ -57,7 +57,7 @@ func testCatalog() []product.Product {
 }
 
 func TestExtractItems_BasicLumberList(t *testing.T) {
-	svc := NewService(&mockProductRepo{})
+	svc := NewService(&mockProductRepo{}, nil)
 
 	input := `50 pcs - 2x4x8 SPF Stud
 25 - 2x6x12 Doug Fir
@@ -83,7 +83,7 @@ func TestExtractItems_BasicLumberList(t *testing.T) {
 
 func TestMatchProducts_HighConfidence(t *testing.T) {
 	catalog := testCatalog()
-	svc := NewService(&mockProductRepo{products: catalog})
+	svc := NewService(&mockProductRepo{products: catalog}, nil)
 
 	extracted := svc.ExtractItems("50 pcs - 2x4x8 SPF Stud")
 	items, err := svc.MatchProducts(context.Background(), extracted)
@@ -112,7 +112,7 @@ func TestMatchProducts_HighConfidence(t *testing.T) {
 
 func TestMatchProducts_SpecialOrder(t *testing.T) {
 	catalog := testCatalog()
-	svc := NewService(&mockProductRepo{products: catalog})
+	svc := NewService(&mockProductRepo{products: catalog}, nil)
 
 	// This item should not match anything in the catalog
 	extracted := svc.ExtractItems("Custom powder-coat railing 12ft bronze")
@@ -135,7 +135,7 @@ func TestMatchProducts_SpecialOrder(t *testing.T) {
 }
 
 func TestMatchProducts_EmptyCatalog(t *testing.T) {
-	svc := NewService(&mockProductRepo{products: nil})
+	svc := NewService(&mockProductRepo{products: nil}, nil)
 
 	extracted := svc.ExtractItems("10 pcs - 2x4x8")
 	items, err := svc.MatchProducts(context.Background(), extracted)
@@ -154,7 +154,7 @@ func TestMatchProducts_EmptyCatalog(t *testing.T) {
 
 func TestMatchProducts_LowConfidenceWithAlternatives(t *testing.T) {
 	catalog := testCatalog()
-	svc := NewService(&mockProductRepo{products: catalog})
+	svc := NewService(&mockProductRepo{products: catalog}, nil)
 
 	// "2x12x20" is not in catalog exactly — might partially match some lumber items
 	extracted := svc.ExtractItems("8 pcs - 2x12x20")
@@ -183,7 +183,7 @@ func TestMatchProducts_LowConfidenceWithAlternatives(t *testing.T) {
 }
 
 func TestExtractItems_EmptyInput(t *testing.T) {
-	svc := NewService(&mockProductRepo{})
+	svc := NewService(&mockProductRepo{}, nil)
 	items := svc.ExtractItems("")
 	if len(items) != 0 {
 		t.Errorf("expected 0 items for empty input, got %d", len(items))

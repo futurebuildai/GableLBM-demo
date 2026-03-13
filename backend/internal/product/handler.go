@@ -22,7 +22,26 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /products", h.HandleListProducts)
 	mux.HandleFunc("POST /products", h.HandleCreateProduct)
 	mux.HandleFunc("GET /products/reorder-alerts", h.HandleReorderAlerts)
+	mux.HandleFunc("GET /products/{id}", h.HandleGetProduct)
 	mux.HandleFunc("PATCH /products/{id}/margins", h.HandleUpdateMarginRules)
+}
+
+// HandleGetProduct handles GET /products/{id}
+func (h *Handler) HandleGetProduct(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid id format", http.StatusBadRequest)
+		return
+	}
+
+	p, err := h.service.GetProduct(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(p)
 }
 
 // HandleCreateProduct handles POST /products

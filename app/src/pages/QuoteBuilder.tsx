@@ -47,6 +47,8 @@ export const QuoteBuilder = () => {
     // AI Parsing state
     const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
     const [showParsePanel, setShowParsePanel] = useState(false);
+    const [aiSource, setAiSource] = useState(false);
+    const [lastParseResult, setLastParseResult] = useState<ParseResponse | null>(null);
 
     useEffect(() => {
         const loadProducts = async () => {
@@ -95,10 +97,12 @@ export const QuoteBuilder = () => {
             escalator: defaultEscalator(),
         }));
         setLines(prev => [...prev, ...newLines]);
+        setAiSource(true);
+        setLastParseResult(parseResult);
         setShowParsePanel(false);
         setParseResult(null);
         showToast(`${parsedItems.length} items added from material list`, 'success');
-    }, [showToast]);
+    }, [showToast, parseResult]);
 
     const handleSave = async () => {
         if (!customer) return;
@@ -106,6 +110,7 @@ export const QuoteBuilder = () => {
         try {
             const payload: CreateQuoteRequest = {
                 customer_id: customer.id,
+                source: aiSource ? 'ai' : 'manual',
                 lines: lines.map(l => ({
                     product_id: l.product_id,
                     sku: l.sku,
@@ -115,8 +120,23 @@ export const QuoteBuilder = () => {
                     unit_price: l.unit_price,
                 })),
             };
-            await QuoteService.createQuote(payload);
-            navigate('/orders');
+
+            // Attach AI parse data if available
+            if (aiSource && lastParseResult) {
+                payload.parse_map = lastParseResult.items;
+                // Store original file as base64 (source_image is already a data URI)
+                if (lastParseResult.source_image) {
+                    const [header, data] = lastParseResult.source_image.split(',');
+                    const contentType = header?.match(/data:([^;]+)/)?.[1] || 'application/octet-stream';
+                    payload.original_file = data;
+                    payload.original_content_type = contentType;
+                    payload.original_filename = 'material-list-upload';
+                }
+            }
+
+            const quote = await QuoteService.createQuote(payload);
+            showToast('Draft quote created', 'success');
+            navigate(`/erp/quotes/${quote.id}`);
         } catch (err) {
             console.error(err);
             showToast('Failed to save quote', 'error');

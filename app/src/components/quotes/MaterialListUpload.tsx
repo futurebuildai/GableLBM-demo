@@ -65,7 +65,7 @@ export const MaterialListUpload = ({ onParseComplete, disabled }: MaterialListUp
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,.pdf"
+                accept="image/*,.pdf,.xlsx,.xls,.csv"
                 className="hidden"
                 onChange={handleFileChange}
                 id="material-list-upload-input"

@@ -160,16 +160,36 @@ func main() {
 		{"Ext Door 36x80 Steel 6-Panel", "DR-EXT-3680-STL", "PCS", "Millwork Masters", "Millwork", 180.00, 280.00, 85.0, 8, 20},
 		{"Baseboard 3-1/4 MDF 16'", "MLD-BASE-MDF", "PCS", "Millwork Masters", "Millwork", 12.00, 19.50, 8.0, 50, 100},
 		{"Casing 2-1/4 MDF 14'", "MLD-CASE-MDF", "PCS", "Millwork Masters", "Millwork", 8.00, 13.50, 5.0, 50, 100},
+
+		// Cornice / Exterior Trim Materials (Hunter's Ranch demo)
+		{"Flashing J 6 X 6 X 10", "CORN2006", "EA", "Gable Lumber Supply", "Cornice", 15.50, 23.25, 3.0, 20, 50},
+		{"Flashing Z Bar 3/4 X 10'", "CORN2009", "EA", "Gable Lumber Supply", "Cornice", 3.50, 5.25, 1.5, 30, 60},
+		{"Silicone Clear Caulk", "CORNCLEAR", "EA", "Hardware Wholesale Inc", "Cornice", 5.75, 8.65, 0.8, 40, 80},
+		{"Cemtrim Textured 7/16 X 4 X 12", "CORNCTRM412+", "EA", "Gable Lumber Supply", "Cornice", 7.54, 11.31, 12.0, 50, 120},
+		{"Cemtrim Textured 7/16 X 6 X 12", "CORNCTRMG12+", "EA", "Gable Lumber Supply", "Cornice", 11.94, 17.91, 18.0, 30, 80},
+		{"Vinyl H Mold 1/4 X 12'", "CORNHMOLD14", "EA", "Gable Lumber Supply", "Cornice", 4.00, 6.00, 1.0, 30, 60},
+		{"Poly Black 18 X 300", "CORNPOLY18", "RL", "Hardware Wholesale Inc", "Cornice", 23.12, 34.68, 25.0, 10, 25},
+		{"Solid Soffit Hardie Textured 1/4 X 12 X 12", "CORNSFT1212", "EA", "Gable Lumber Supply", "Cornice", 15.25, 22.88, 20.0, 30, 60},
+		{"Solid Soffit Hardie Textured 1/4 X 16 X 12", "CORNSFT1612", "EA", "Gable Lumber Supply", "Cornice", 20.45, 30.68, 28.0, 20, 50},
+		{"Vented Soffit Hardie Textured 1/4 X 16 X 12", "CORNSFT1612V", "EA", "Gable Lumber Supply", "Cornice", 26.15, 39.23, 30.0, 25, 60},
+		{"Vented Soffit Hardie Textured 1/4 X 24 X 8", "CORNSFT2408V", "EA", "Gable Lumber Supply", "Cornice", 17.50, 26.25, 22.0, 20, 50},
+		{"Sheathing 1/8 X 4 X 9 (Green) NSP DRYLine TSX", "CORNSHTGR49", "EA", "Gable Lumber Supply", "Cornice", 9.36, 14.04, 24.0, 40, 100},
+		{"Window Tape 6\" (100')", "CORNTAPE", "RL", "Hardware Wholesale Inc", "Cornice", 22.00, 33.00, 3.0, 15, 30},
+
+		// Lumber — Random Length / Economy Grade (Hunter's Ranch demo)
+		{"1 X 4 RL #3 SYP", "LUMB14RLN3+", "LF", "Gable Lumber Supply", "Lumber", 0.34, 0.52, 0.3, 500, 2000},
+		{"2 X 4 RL #3 SYP", "LUMB24RLN3", "LF", "Gable Lumber Supply", "Lumber", 0.30, 0.46, 0.5, 1000, 5000},
+		{"2 X 4 RL Utility", "LUMBUT24RL", "LF", "Gable Lumber Supply", "Lumber", 0.29, 0.44, 0.5, 500, 2000},
 	}
 
 	skuToID := make(map[string]uuid.UUID)
 	productPrices := make(map[string]float64)
 	for _, p := range products {
 		var id string
-		err := db.QueryRow(`INSERT INTO products (sku, description, uom_primary, weight_lbs, reorder_point, reorder_qty, base_price, category)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (sku) DO UPDATE SET description=$2, weight_lbs=$4, reorder_point=$5, reorder_qty=$6, base_price=$7, category=$8
-			RETURNING id`, p.SKU, p.Desc, p.UOM, p.Weight, p.ReorderPt, p.ReorderQty, p.Price, p.Category).Scan(&id)
+		err := db.QueryRow(`INSERT INTO products (sku, description, uom_primary, weight_lbs, reorder_point, reorder_qty, base_price, category, vendor, average_unit_cost)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			ON CONFLICT (sku) DO UPDATE SET description=$2, weight_lbs=$4, reorder_point=$5, reorder_qty=$6, base_price=$7, category=$8, vendor=$9, average_unit_cost=$10
+			RETURNING id`, p.SKU, p.Desc, p.UOM, p.Weight, p.ReorderPt, p.ReorderQty, p.Price, p.Category, p.Vendor, p.Cost).Scan(&id)
 		if err != nil {
 			log.Printf("Product %s: %v", p.Desc, err)
 			continue

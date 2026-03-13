@@ -1,13 +1,17 @@
 package parsing
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
+
+	"github.com/xuri/excelize/v2"
 )
 
 // Handler manages HTTP requests for material list parsing.
@@ -58,14 +62,38 @@ func (h *Handler) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	// Detect content type for data URI
 	contentType := http.DetectContentType(imageBytes)
 
-	// --- Simulated AI Text Extraction ---
-	// In a real implementation, the image bytes would be sent to an AI vision model.
-	// For the MVP, we use a hardcoded sample material list that demonstrates all
-	// confidence tiers (high, medium, special order).
-	sampleMaterialList := generateSampleMaterialList()
+	// Normalize content type for spreadsheets (DetectContentType may not identify xlsx properly)
+	filename := header.Filename
+	if contentType == "application/octet-stream" || contentType == "application/zip" {
+		switch {
+		case strings.HasSuffix(strings.ToLower(filename), ".xlsx") || strings.HasSuffix(strings.ToLower(filename), ".xls"):
+			contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+		case strings.HasSuffix(strings.ToLower(filename), ".csv"):
+			contentType = "text/csv"
+		}
+	}
 
-	// Extract items using rule-based parser
-	extracted := h.service.ExtractItems(sampleMaterialList)
+	// For spreadsheets, convert to text before sending to AI
+	aiContentType := contentType
+	aiBytes := imageBytes
+	if strings.Contains(contentType, "spreadsheet") || strings.HasSuffix(strings.ToLower(filename), ".xlsx") {
+		textContent, convErr := convertSpreadsheetToText(imageBytes)
+		if convErr != nil {
+			slog.Error("Failed to convert spreadsheet", "error", convErr)
+			http.Error(w, "Failed to process spreadsheet", http.StatusBadRequest)
+			return
+		}
+		aiBytes = []byte(textContent)
+		aiContentType = "text/plain"
+	}
+
+	// Extract items using AI (or rule-based fallback)
+	extracted, extractErr := h.service.ExtractItemsWithAI(r.Context(), aiBytes, aiContentType)
+	if extractErr != nil {
+		slog.Error("Failed to extract items", "error", extractErr)
+		http.Error(w, "Failed to extract items from file", http.StatusInternalServerError)
+		return
+	}
 
 	// Match against product catalog
 	items, err := h.service.MatchProducts(r.Context(), extracted)
@@ -93,19 +121,29 @@ func (h *Handler) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-// generateSampleMaterialList returns a realistic handwritten material list
-// that exercises all confidence tiers when matched against a typical LBM catalog.
-func generateSampleMaterialList() string {
-	return `50 pcs - 2x4x8 SPF Stud
-25 pcs - 2x6x12 Doug Fir #2
-30 sheets - OSB 7/16 4x8
-10 sheets - CDX Plywood 1/2 4x8
-15 pcs - 2x10x16 Hem Fir
-8 pcs - 2x12x20.
-20 bags - Quikrete 80lb
-4 rolls - Tyvek House Wrap
-100 lf - 2x4 Pressure Treated
-Custom powder-coat railing 12ft bronze
-6 pcs - Simpson Strong-Tie A35
-Specialty glass panel 48x72 frosted`
+// convertSpreadsheetToText reads an xlsx file and converts it to plain text
+// suitable for AI extraction.
+func convertSpreadsheetToText(data []byte) (string, error) {
+	f, err := excelize.OpenReader(bytes.NewReader(data))
+	if err != nil {
+		return "", fmt.Errorf("failed to open spreadsheet: %w", err)
+	}
+	defer f.Close()
+
+	var sb strings.Builder
+	sheets := f.GetSheetList()
+	for _, sheet := range sheets {
+		rows, err := f.GetRows(sheet)
+		if err != nil {
+			continue
+		}
+		for _, row := range rows {
+			line := strings.Join(row, "\t")
+			if strings.TrimSpace(line) != "" {
+				sb.WriteString(line)
+				sb.WriteString("\n")
+			}
+		}
+	}
+	return sb.String(), nil
 }
