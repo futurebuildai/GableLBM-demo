@@ -464,17 +464,25 @@ func main() {
 		{"Truck 3 - Box", "BOX_TRUCK", "OR-BOX-201", "3ALACWFC4HDGH5678", 16000, 2023, 28400, "Freightliner", "M2 106", "2026-07-01", "2026-05-10"},
 		{"Truck 4 - Boom", "CRANE", "OR-BOM-301", "1M2AX04C0CM345678", 18000, 2020, 71800, "Mack", "Granite", "2026-09-30", "2026-02-28"},
 		{"Truck 5 - Pickup", "PICKUP", "OR-PKP-401", "1FTFW1E55MFA56789", 3000, 2023, 15200, "Ford", "F-150", "2026-05-15", "2026-06-20"},
+		{"Truck 6 - Box (Liftgate)", "BOX_TRUCK", "OR-BOX-202", "3ALACWFC6HDGJ9012", 14000, 2024, 8750, "Isuzu", "NPR-HD", "2027-01-15", "2026-07-01"},
+		{"Truck 7 - Van", "VAN", "OR-VAN-501", "1GCWGAFG5K1234567", 5000, 2022, 34600, "Chevrolet", "Express 3500", "2026-04-10", "2026-03-20"},
+		{"Truck 8 - Flatbed (Long)", "FLATBED", "OR-FLT-103", "1HTMMAAL2CH345678", 30000, 2020, 89200, "Peterbilt", "348", "2026-03-01", "2026-04-15"},
 	}
 	vehicleIDs := make([]uuid.UUID, 0)
 	for _, v := range vehs {
 		var id string
 		db.QueryRow(`INSERT INTO vehicles (name, vehicle_type, license_plate, capacity_weight_lbs,
 				vin, year, make, model, insurance_expiry, next_service_date, odometer_miles)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::date,$10::date,$11) ON CONFLICT DO NOTHING RETURNING id`,
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::date,$10::date,$11)
+			ON CONFLICT (license_plate) WHERE deleted_at IS NULL
+			DO UPDATE SET name=$1, vehicle_type=$2, capacity_weight_lbs=$4,
+				vin=$5, year=$6, make=$7, model=$8, insurance_expiry=$9::date,
+				next_service_date=$10::date, odometer_miles=$11
+			RETURNING id`,
 			v.Name, v.VType, v.Plate, v.Cap,
 			v.VIN, v.Year, v.Make, v.Model, v.InsExpiry, v.NextService, v.Odometer).Scan(&id)
 		if id == "" {
-			db.QueryRow("SELECT id FROM vehicles WHERE license_plate=$1", v.Plate).Scan(&id)
+			db.QueryRow("SELECT id FROM vehicles WHERE license_plate=$1 AND deleted_at IS NULL", v.Plate).Scan(&id)
 		}
 		if id != "" {
 			vehicleIDs = append(vehicleIDs, uuid.MustParse(id))
@@ -489,15 +497,20 @@ func main() {
 		{"Carlos Rivera", "OR-CDL-77332", "503-555-4002", "carlos.r@gable.com", "B", "2027-02-28", "2020-06-15"},
 		{"Dave Thompson", "OR-CDL-66243", "503-555-4003", "dave.t@gable.com", "A", "2026-08-30", "2018-01-10"},
 		{"Jake Wilson", "OR-CDL-55154", "503-555-4004", "jake.w@gable.com", "B", "2027-05-15", "2021-09-20"},
+		{"Sarah Mitchell", "OR-CDL-44065", "503-555-4005", "sarah.m@gable.com", "A", "2027-01-20", "2022-04-15"},
+		{"Tommy Nguyen", "OR-CDL-33976", "503-555-4006", "tommy.n@gable.com", "C", "2026-12-01", "2023-01-08"},
 	}
 	driverIDs := make([]uuid.UUID, 0)
 	for _, d := range drvs {
 		var id string
 		db.QueryRow(`INSERT INTO drivers (name, license_number, phone_number, status, cdl_class, cdl_expiry, hire_date, email)
-			VALUES ($1,$2,$3,'ACTIVE',$4,$5::date,$6::date,$7) ON CONFLICT DO NOTHING RETURNING id`,
+			VALUES ($1,$2,$3,'ACTIVE',$4,$5::date,$6::date,$7)
+			ON CONFLICT (license_number) WHERE deleted_at IS NULL
+			DO UPDATE SET name=$1, phone_number=$3, cdl_class=$4, cdl_expiry=$5::date, hire_date=$6::date, email=$7
+			RETURNING id`,
 			d.Name, d.License, d.Phone, d.CDLClass, d.CDLExpiry, d.HireDate, d.Email).Scan(&id)
 		if id == "" {
-			db.QueryRow("SELECT id FROM drivers WHERE license_number=$1", d.License).Scan(&id)
+			db.QueryRow("SELECT id FROM drivers WHERE license_number=$1 AND deleted_at IS NULL", d.License).Scan(&id)
 		}
 		if id != "" {
 			driverIDs = append(driverIDs, uuid.MustParse(id))
