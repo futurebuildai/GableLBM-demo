@@ -1,6 +1,6 @@
 import type { Quote, CreateQuoteRequest } from '../types/quote';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export const QuoteService = {
     async createQuote(request: CreateQuoteRequest): Promise<Quote> {

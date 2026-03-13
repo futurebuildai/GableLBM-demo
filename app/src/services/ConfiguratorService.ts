@@ -1,6 +1,6 @@
 import type { ValidateConfigResponse, BuildSKUResponse, AvailableOption, ConfiguratorRule, ConfiguratorPreset } from '../types/configurator';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export const ConfiguratorService = {
     async getRules(): Promise<ConfiguratorRule[]> {

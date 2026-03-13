@@ -1,7 +1,7 @@
 import type { PurchaseOrder, CreatePORequest, ReceivePORequest, RecommendationSummary } from '../types/purchaseOrder';
 import type { ReorderAlert } from '../types/product';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export const PurchaseOrderService = {
     async listPOs(): Promise<PurchaseOrder[]> {

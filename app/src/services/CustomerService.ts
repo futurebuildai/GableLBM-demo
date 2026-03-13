@@ -1,6 +1,6 @@
 import type { Customer, PriceLevel } from '../types/customer';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export const CustomerService = {
     async listCustomers(): Promise<Customer[]> {

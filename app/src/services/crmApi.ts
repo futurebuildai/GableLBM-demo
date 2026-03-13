@@ -5,7 +5,7 @@ import type {
     CreateActivityRequest,
 } from '../types/crm';
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = '';
 
 export const crmApi = {
     // Contacts

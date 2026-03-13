@@ -1,6 +1,6 @@
 import type { MatchResult, MatchException, MatchConfig, UpdateMatchConfigRequest } from '../types/matching';
 
-const API = 'http://localhost:8080';
+const API = '';
 
 export async function runMatch(poId: string): Promise<MatchResult> {
     const res = await fetch(`${API}/api/matching/run/${poId}`, { method: 'POST' });

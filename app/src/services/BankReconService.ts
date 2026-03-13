@@ -8,7 +8,7 @@ import type {
     ImportResult,
 } from '../types/bankrecon';
 
-const API = 'http://localhost:8080';
+const API = '';
 
 // --- Bank Accounts ---
 

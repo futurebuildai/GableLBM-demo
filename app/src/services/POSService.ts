@@ -6,7 +6,7 @@ import type {
     TransactionSummary
 } from '../types/pos';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export const posService = {
     startTransaction: async (registerID = 'REG-01', cashierID?: string, customerID?: string): Promise<POSTransaction> => {

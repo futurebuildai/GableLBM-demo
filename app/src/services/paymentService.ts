@@ -8,7 +8,7 @@ import type {
     Refund
 } from '../types/payment';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export const paymentService = {
     // ---- Existing: Non-card payments (cash, check, account) ----

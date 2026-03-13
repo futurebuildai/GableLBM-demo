@@ -5,7 +5,7 @@ import { OrderService } from '../../services/OrderService';
 import { type Order, getStatusColor } from '../../types/order';
 import { useToast } from '../../components/ui/ToastContext';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export default function OrderDetail() {
     const { id } = useParams();

@@ -4,7 +4,7 @@ import type {
     AssignOrderRequest, UpdateDeliveryStatusRequest
 } from '../types/delivery';
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = '';
 
 export const deliveryService = {
     // Fleet

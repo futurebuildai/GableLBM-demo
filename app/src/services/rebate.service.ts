@@ -1,6 +1,6 @@
 import type { RebateProgram, RebateTier, RebateClaim, CalculateClaimRequest } from '../types/rebate';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export const RebateService = {
     createProgram: async (program: RebateProgram, tiers: RebateTier[]): Promise<RebateProgram> => {

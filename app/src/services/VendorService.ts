@@ -1,6 +1,6 @@
 import type { Vendor, CreateVendorRequest } from '../types/vendor';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export const VendorService = {
     async listVendors(): Promise<Vendor[]> {

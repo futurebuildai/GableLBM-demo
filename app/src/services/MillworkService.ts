@@ -1,6 +1,6 @@
 import type { MillworkOption, CreateOptionRequest } from '../types/millwork';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export const MillworkService = {
     async getOptionsByCategory(category: string): Promise<MillworkOption[]> {

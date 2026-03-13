@@ -9,7 +9,7 @@ import { Download, CreditCard, Mail, RotateCcw } from 'lucide-react';
 import { useToast } from '../../components/ui/ToastContext';
 import { ReportingService } from '../../services/ReportingService';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 export default function InvoiceDetail() {
     const { id } = useParams();

@@ -5,7 +5,7 @@ import type {
     CreateExemptionRequest,
 } from '../types/tax';
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = '';
 
 /**
  * Preview tax calculation for a cart or invoice.

@@ -7,7 +7,7 @@ import type {
     CreateJournalEntryRequest,
 } from '../types/gl';
 
-const API = 'http://localhost:8080';
+const API = '';
 
 // --- Accounts ---
 

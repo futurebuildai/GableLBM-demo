@@ -7,7 +7,7 @@ import { InventoryService } from "../../services/InventoryService";
 import { BarcodeScanner } from "../../components/BarcodeScanner";
 import { useToast } from "../../components/ui/ToastContext";
 
-const API_URL = 'http://localhost:8080';
+const API_URL = '';
 
 interface CountItem {
     product: Product;
