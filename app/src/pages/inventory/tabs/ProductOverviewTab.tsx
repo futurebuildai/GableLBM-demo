@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ProductDetail, PIMMedia } from '../../../types/pim';
-import { Package, Weight, BarChart3, DollarSign, Layers, Tag } from 'lucide-react';
+import { Package, Weight, BarChart3, DollarSign, Layers, Tag, Pencil } from 'lucide-react';
+import { ProductMarginModal } from '../../../components/inventory/ProductMarginModal';
 
 interface Props {
     product: ProductDetail;
+    onProductUpdate?: () => void;
 }
 
-export const ProductOverviewTab: React.FC<Props> = ({ product }) => {
+export const ProductOverviewTab: React.FC<Props> = ({ product, onProductUpdate }) => {
+    const [marginModalOpen, setMarginModalOpen] = useState(false);
     const available = (product.total_quantity || 0) - (product.total_allocated || 0);
     const primaryImage = product.media?.find((m: PIMMedia) => m.is_primary) || product.media?.[0];
     const visiblePrice = product.base_price || 0;
@@ -38,8 +41,26 @@ export const ProductOverviewTab: React.FC<Props> = ({ product }) => {
                     <InfoCard icon={<Weight className="w-4 h-4" />} label="Weight" value={`${(product.weight_lbs || 0).toFixed(1)} lbs`} />
                     <InfoCard icon={<DollarSign className="w-4 h-4" />} label="Avg Cost" value={`$${(product.average_unit_cost || 0).toFixed(2)}`} accent="emerald" />
                     <InfoCard icon={<DollarSign className="w-4 h-4" />} label="Base Price" value={`$${visiblePrice.toFixed(2)}`} accent="green" />
-                    <InfoCard icon={<BarChart3 className="w-4 h-4" />} label="Target Margin" value={`${margin.toFixed(1)}%`} />
-                    <InfoCard icon={<BarChart3 className="w-4 h-4" />} label="Commission" value={`${(product.commission_rate || 0).toFixed(1)}%`} />
+                    <div className="bg-zinc-900 border border-white/10 rounded-lg p-3 col-span-2 sm:col-span-1">
+                        <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+                                <BarChart3 className="w-4 h-4" />
+                                Margin / Commission
+                            </div>
+                            <button
+                                onClick={() => setMarginModalOpen(true)}
+                                className="p-1 rounded hover:bg-white/10 text-zinc-500 hover:text-gable-green transition-colors"
+                                title="Edit pricing controls"
+                            >
+                                <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-3 font-mono text-sm font-medium text-white">
+                            <span>{margin.toFixed(1)}%</span>
+                            <span className="text-zinc-600">/</span>
+                            <span>{(product.commission_rate || 0).toFixed(1)}%</span>
+                        </div>
+                    </div>
                     {product.upc && <InfoCard icon={<Tag className="w-4 h-4" />} label="UPC" value={product.upc} />}
                 </div>
 
@@ -78,6 +99,13 @@ export const ProductOverviewTab: React.FC<Props> = ({ product }) => {
                     </div>
                 )}
             </div>
+
+            <ProductMarginModal
+                isOpen={marginModalOpen}
+                onClose={() => setMarginModalOpen(false)}
+                product={product}
+                onSuccess={() => onProductUpdate?.()}
+            />
         </div>
     );
 };

@@ -123,7 +123,7 @@ export const ProductDetail: React.FC = () => {
 
             {/* Tab Content */}
             <div>
-                {activeTab === 'overview' && <ProductOverviewTab product={product} />}
+                {activeTab === 'overview' && <ProductOverviewTab product={product} onProductUpdate={loadProduct} />}
                 {activeTab === 'content' && (
                     <ProductContentTab productId={product.id} content={product.content} onContentUpdate={handleContentUpdate} />
                 )}
