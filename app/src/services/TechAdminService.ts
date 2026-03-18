@@ -80,4 +80,31 @@ export const techAdminService = {
         });
         if (!response.ok) throw new Error('Failed to delete API key');
     },
+
+    // --- Gemini Settings ---
+
+    async getGeminiSettings(): Promise<AISettings> {
+        const response = await fetch(`${API_URL}/api/admin/settings/gemini`);
+        if (!response.ok) throw new Error('Failed to fetch Gemini settings');
+        return response.json();
+    },
+
+    async saveGeminiKey(apiKey: string): Promise<void> {
+        const response = await fetch(`${API_URL}/api/admin/settings/gemini`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: apiKey }),
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'Failed to save Gemini API key');
+        }
+    },
+
+    async deleteGeminiKey(): Promise<void> {
+        const response = await fetch(`${API_URL}/api/admin/settings/gemini`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete Gemini API key');
+    },
 };

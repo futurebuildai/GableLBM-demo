@@ -9,17 +9,23 @@ import (
 )
 
 type Handler struct {
-	service      *Service
-	aiKeyStore   *ai.KeyStore
+	service        *Service
+	aiKeyStore     *ai.KeyStore
+	geminiKeyStore *ai.KeyStore
 }
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// WithAIKeyStore sets the AI key store for admin settings management.
+// WithAIKeyStore sets the Anthropic AI key store for admin settings management.
 func (h *Handler) WithAIKeyStore(ks *ai.KeyStore) {
 	h.aiKeyStore = ks
+}
+
+// WithGeminiKeyStore sets the Gemini key store for admin settings management.
+func (h *Handler) WithGeminiKeyStore(ks *ai.KeyStore) {
+	h.geminiKeyStore = ks
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
@@ -29,6 +35,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/admin/settings/ai", h.GetAISettings)
 	mux.HandleFunc("PUT /api/admin/settings/ai", h.SaveAISettings)
 	mux.HandleFunc("DELETE /api/admin/settings/ai", h.DeleteAISettings)
+	mux.HandleFunc("GET /api/admin/settings/gemini", h.GetGeminiSettings)
+	mux.HandleFunc("PUT /api/admin/settings/gemini", h.SaveGeminiSettings)
+	mux.HandleFunc("DELETE /api/admin/settings/gemini", h.DeleteGeminiSettings)
 }
 
 type CreateKeyRequest struct {
@@ -166,6 +175,84 @@ func (h *Handler) DeleteAISettings(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.aiKeyStore.Delete(r.Context()); err != nil {
 		http.Error(w, "Failed to delete API key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// --- Gemini Settings ---
+
+func (h *Handler) GetGeminiSettings(w http.ResponseWriter, r *http.Request) {
+	if h.geminiKeyStore == nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(AISettingsResponse{Source: "none"})
+		return
+	}
+
+	ctx := r.Context()
+	key := h.geminiKeyStore.Get(ctx)
+	hasDB := h.geminiKeyStore.HasDBOverride(ctx)
+
+	resp := AISettingsResponse{
+		Configured: key != "",
+	}
+
+	if key != "" {
+		if len(key) > 12 {
+			resp.KeyHint = key[:10] + "..." + key[len(key)-4:]
+		} else {
+			resp.KeyHint = "****"
+		}
+		if hasDB {
+			resp.Source = "admin"
+		} else {
+			resp.Source = "env"
+		}
+	} else {
+		resp.Source = "none"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (h *Handler) SaveGeminiSettings(w http.ResponseWriter, r *http.Request) {
+	if h.geminiKeyStore == nil {
+		http.Error(w, "Gemini key store not available", http.StatusInternalServerError)
+		return
+	}
+
+	var body struct {
+		APIKey string `json:"api_key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if body.APIKey == "" {
+		http.Error(w, "api_key is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.geminiKeyStore.Set(r.Context(), body.APIKey); err != nil {
+		http.Error(w, "Failed to save Gemini API key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+}
+
+func (h *Handler) DeleteGeminiSettings(w http.ResponseWriter, r *http.Request) {
+	if h.geminiKeyStore == nil {
+		http.Error(w, "Gemini key store not available", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.geminiKeyStore.Delete(r.Context()); err != nil {
+		http.Error(w, "Failed to delete Gemini API key: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

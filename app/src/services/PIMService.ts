@@ -61,7 +61,10 @@ export const PIMService = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error('Failed to generate image');
+        if (!res.ok) {
+            const msg = await res.text();
+            throw new Error(msg || 'Failed to generate image');
+        }
         return res.json();
     },
 
@@ -71,7 +74,10 @@ export const PIMService = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error('Failed to generate collateral');
+        if (!res.ok) {
+            const msg = await res.text();
+            throw new Error(msg || 'Failed to generate collateral');
+        }
         return res.json();
     },
 

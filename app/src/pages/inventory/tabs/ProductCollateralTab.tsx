@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import type { PIMCollateral, CollateralType } from '../../../types/pim';
 import { PIMService } from '../../../services/PIMService';
-import { Sparkles, Trash2, Copy, Loader2, FileText, RefreshCw } from 'lucide-react';
+import { Sparkles, Trash2, Copy, Loader2, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
 
 interface Props {
     productId: string;
@@ -26,14 +26,17 @@ export const ProductCollateralTab: React.FC<Props> = ({ productId, collateral, o
     const [audience, setAudience] = useState('contractors and builders');
     const [generating, setGenerating] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const handleGenerate = useCallback(async () => {
         setGenerating(true);
+        setError(null);
         try {
             await PIMService.generateCollateral(productId, { type, tone, audience });
             onCollateralUpdate();
-        } catch (err) {
-            console.error('Generate failed:', err);
+        } catch (err: any) {
+            const msg = err?.message || 'Collateral generation failed';
+            setError(msg);
         } finally {
             setGenerating(false);
         }
@@ -92,6 +95,12 @@ export const ProductCollateralTab: React.FC<Props> = ({ productId, collateral, o
                         {generating ? 'Generating...' : 'Generate'}
                     </button>
                 </div>
+                {error && (
+                    <div className="flex items-start gap-2 p-3 mt-4 bg-rose-500/10 border border-rose-500/20 rounded-lg text-sm text-rose-400">
+                        <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                )}
             </div>
 
             {/* Collateral Items */}

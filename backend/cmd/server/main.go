@@ -122,17 +122,31 @@ func main() {
 	parsingHandler := parsing.NewHandler(parsingSvc)
 	parsingHandler.RegisterRoutes(mux)
 
+	// Gemini Key Store — for image generation via Google Gemini
+	geminiKeyStore := ai.NewKeyStore(db.Pool, "gemini_api_key", cfg.GeminiAPIKey)
+	if cfg.GeminiAPIKey != "" {
+		logger.Info("Gemini AI initialized (env key present, admin can override via settings)")
+	} else {
+		logger.Info("Gemini AI initialized (no env key — admin can configure via Tech Admin > AI Settings)")
+	}
+
 	// PIM Module (AI-Powered Product Information Management)
 	pimRepo := pim.NewRepository(db)
 	pimSvc := pim.NewService(pimRepo, productSvc)
 
-	// PIM uses its own client but reads from the same key store
+	// PIM text AI (Anthropic Claude)
 	pimSvc.WithTextAI(pim.NewTextAIClient(aiKeyStore.Get(context.Background()), cfg.AnthropicModel))
-	if cfg.StabilityAPIKey != "" {
+
+	// PIM image AI — prefer Gemini, fall back to Stability, then Claude SVG
+	geminiKey := geminiKeyStore.Get(context.Background())
+	if geminiKey != "" {
+		pimSvc.WithGeminiAI(pim.NewGeminiImageClient(geminiKey))
+		logger.Info("PIM image AI (Gemini) initialized")
+	} else if cfg.StabilityAPIKey != "" {
 		pimSvc.WithImageAI(pim.NewImageAIClient(cfg.StabilityAPIKey))
 		logger.Info("PIM image AI (Stability) initialized")
 	} else {
-		logger.Warn("STABILITY_API_KEY not set — PIM AI image generation disabled")
+		logger.Info("PIM image AI: will use Claude SVG fallback (set GEMINI_API_KEY for real images)")
 	}
 
 	pimHandler := pim.NewHandler(pimSvc)
@@ -381,6 +395,7 @@ func main() {
 	techAdminSvc := techadmin.NewService(techAdminRepo)
 	techAdminHandler := techadmin.NewHandler(techAdminSvc)
 	techAdminHandler.WithAIKeyStore(aiKeyStore)
+	techAdminHandler.WithGeminiKeyStore(geminiKeyStore)
 	techAdminHandler.RegisterRoutes(mux)
 
 	// Portal Module (Sovereign Dealer Portal)

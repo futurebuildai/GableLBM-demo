@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import type { PIMMedia } from '../../../types/pim';
 import { PIMService } from '../../../services/PIMService';
-import { Sparkles, Trash2, Star, Loader2, ImageIcon } from 'lucide-react';
+import { Sparkles, Trash2, Star, Loader2, ImageIcon, AlertTriangle } from 'lucide-react';
 
 interface Props {
     productId: string;
@@ -15,14 +15,17 @@ export const ProductMediaTab: React.FC<Props> = ({ productId, media, onMediaUpda
     const [style, setStyle] = useState('');
     const [prompt, setPrompt] = useState('');
     const [generating, setGenerating] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleGenerate = useCallback(async () => {
         setGenerating(true);
+        setError(null);
         try {
             await PIMService.generateImage(productId, { style, prompt });
             onMediaUpdate();
-        } catch (err) {
-            console.error('Image generation failed:', err);
+        } catch (err: any) {
+            const msg = err?.message || 'Image generation failed';
+            setError(msg);
         } finally {
             setGenerating(false);
         }
@@ -83,6 +86,12 @@ export const ProductMediaTab: React.FC<Props> = ({ productId, media, onMediaUpda
                             className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-gable-green/50"
                         />
                     </div>
+                    {error && (
+                        <div className="flex items-start gap-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-sm text-rose-400">
+                            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                            <span>{error}</span>
+                        </div>
+                    )}
                 </div>
             </div>
 

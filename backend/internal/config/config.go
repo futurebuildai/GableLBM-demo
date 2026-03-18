@@ -36,8 +36,11 @@ type Config struct {
 	AnthropicAPIKey string
 	AnthropicModel  string
 
-	// Stability AI (PIM Image Generation)
+	// Stability AI (PIM Image Generation) — legacy, replaced by Gemini
 	StabilityAPIKey string
+
+	// Google Gemini (PIM Image Generation)
+	GeminiAPIKey string
 }
 
 func Load() *Config {
@@ -73,8 +76,11 @@ func Load() *Config {
 		AnthropicAPIKey: getEnv("ANTHROPIC_API_KEY", ""),
 		AnthropicModel:  getEnv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
 
-		// Stability AI (PIM Image Generation)
+		// Stability AI (PIM Image Generation) — legacy
 		StabilityAPIKey: getEnv("STABILITY_API_KEY", ""),
+
+		// Google Gemini (PIM Image Generation)
+		GeminiAPIKey: getEnv("GEMINI_API_KEY", ""),
 	}
 }
 

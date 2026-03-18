@@ -71,19 +71,34 @@ type ProductResponse struct {
 	Price    int64   `json:"price"` // cents
 }
 
-// ListProductsByCategory returns products filtered by category
+// ListProductsByCategory returns products filtered by category and/or text search
 func (h *Handler) ListProductsByCategory(w http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
-	if category == "" {
-		writeError(w, http.StatusBadRequest, "category query parameter required")
+	query := r.URL.Query().Get("q")
+
+	if category == "" && query == "" {
+		writeError(w, http.StatusBadRequest, "category or q query parameter required")
 		return
 	}
 
-	rows, err := h.db.Pool.Query(r.Context(), `
-		SELECT p.id, p.sku, p.description, COALESCE(p.category, ''), p.uom_primary::text, COALESCE(p.base_price, 0)
-		FROM products p
-		WHERE p.category = $1
-		ORDER BY p.sku`, category)
+	sqlQuery := `SELECT p.id, p.sku, p.description, COALESCE(p.category, ''), p.uom_primary::text, COALESCE(p.base_price, 0)
+		FROM products p WHERE 1=1`
+	args := []interface{}{}
+	argIdx := 1
+
+	if category != "" {
+		sqlQuery += fmt.Sprintf(` AND p.category = $%d`, argIdx)
+		args = append(args, category)
+		argIdx++
+	}
+	if query != "" {
+		sqlQuery += fmt.Sprintf(` AND (p.sku ILIKE $%d OR p.description ILIKE $%d)`, argIdx, argIdx)
+		args = append(args, "%"+query+"%")
+		argIdx++
+	}
+	sqlQuery += ` ORDER BY p.sku LIMIT 20`
+
+	rows, err := h.db.Pool.Query(r.Context(), sqlQuery, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

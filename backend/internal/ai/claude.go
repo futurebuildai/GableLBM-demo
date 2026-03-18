@@ -227,9 +227,23 @@ func (c *Client) ExtractFreightInvoice(ctx context.Context, fileBytes []byte, co
 
 	raw := rawText.String()
 
+	// Strip markdown code fences if present (e.g. ```json ... ```)
+	cleaned := strings.TrimSpace(raw)
+	if strings.HasPrefix(cleaned, "```") {
+		// Remove opening fence (```json or ```)
+		if idx := strings.Index(cleaned, "\n"); idx != -1 {
+			cleaned = cleaned[idx+1:]
+		}
+		// Remove closing fence
+		if idx := strings.LastIndex(cleaned, "```"); idx != -1 {
+			cleaned = cleaned[:idx]
+		}
+		cleaned = strings.TrimSpace(cleaned)
+	}
+
 	// Parse the JSON response
 	var result FreightInvoiceResult
-	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+	if err := json.Unmarshal([]byte(cleaned), &result); err != nil {
 		return nil, raw, fmt.Errorf("failed to parse AI response as JSON: %w", err)
 	}
 

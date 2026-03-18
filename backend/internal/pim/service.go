@@ -2,6 +2,7 @@ package pim
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -10,6 +11,10 @@ import (
 	"github.com/gablelbm/gable/internal/product"
 	"github.com/google/uuid"
 )
+
+func base64Encode(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
+}
 
 const lumberSystemPrompt = `You are a product content specialist for a lumber and building materials distributor.
 You understand wood species (SPF, Douglas Fir, Cedar, Treated Pine, Hardwoods), grading systems (Select Structural, #1, #2, Utility, Appearance),
@@ -23,6 +28,7 @@ type Service struct {
 	productSvc *product.Service
 	textAI     *TextAIClient
 	imageAI    *ImageAIClient
+	geminiAI   *GeminiImageClient
 }
 
 // NewService creates a new PIM service
@@ -41,6 +47,11 @@ func (s *Service) WithTextAI(client *TextAIClient) {
 // WithImageAI attaches the Stability AI image client
 func (s *Service) WithImageAI(client *ImageAIClient) {
 	s.imageAI = client
+}
+
+// WithGeminiAI attaches the Google Gemini image client
+func (s *Service) WithGeminiAI(client *GeminiImageClient) {
+	s.geminiAI = client
 }
 
 // GetProductDetail returns the full product + PIM aggregate
@@ -303,10 +314,10 @@ Respond with ONLY valid JSON (no markdown fences):
 	return content, nil
 }
 
-// GenerateImage uses Stability AI to generate a product image
+// GenerateImage generates a product image using Gemini (preferred) or Claude SVG fallback
 func (s *Service) GenerateImage(ctx context.Context, productID uuid.UUID, style, prompt string) (*PIMMedia, error) {
-	if s.imageAI == nil {
-		return nil, fmt.Errorf("image AI client not configured (set STABILITY_API_KEY)")
+	if s.geminiAI == nil && s.textAI == nil {
+		return nil, fmt.Errorf("no image AI configured — set GEMINI_API_KEY in Admin > AI Settings")
 	}
 
 	p, err := s.productSvc.GetProduct(ctx, productID)
@@ -315,12 +326,22 @@ func (s *Service) GenerateImage(ctx context.Context, productID uuid.UUID, style,
 	}
 
 	if prompt == "" {
-		prompt = fmt.Sprintf("Professional product photo of %s, lumber building material, clean white background, studio lighting, high resolution", p.Description)
+		prompt = fmt.Sprintf("Professional product photo of %s, lumber building material, clean white background, studio lighting, high resolution, product catalog style", p.Description)
 	}
 
-	dataURI, err := s.imageAI.Generate(prompt, style)
+	// Prefer Gemini for real image generation
+	if s.geminiAI != nil {
+		return s.generateImageGemini(ctx, productID, p, style, prompt)
+	}
+
+	// Fallback: Claude SVG illustration
+	return s.generateImageSVG(ctx, productID, p, style, prompt)
+}
+
+func (s *Service) generateImageGemini(ctx context.Context, productID uuid.UUID, p *product.Product, style, prompt string) (*PIMMedia, error) {
+	dataURI, err := s.geminiAI.Generate(prompt, style)
 	if err != nil {
-		return nil, fmt.Errorf("generate image: %w", err)
+		return nil, fmt.Errorf("gemini image generation: %w", err)
 	}
 
 	now := time.Now()
@@ -331,8 +352,80 @@ func (s *Service) GenerateImage(ctx context.Context, productID uuid.UUID, style,
 		AltText:     p.Description,
 		SortOrder:   0,
 		IsPrimary:   false,
-		GenModel:    "stability-core",
+		GenModel:    "gemini-2.0-flash",
 		GenPrompt:   prompt,
+		GenStyle:    style,
+		GeneratedAt: &now,
+	}
+
+	if err := s.repo.CreateMedia(ctx, media); err != nil {
+		return nil, fmt.Errorf("save media: %w", err)
+	}
+
+	return media, nil
+}
+
+func (s *Service) generateImageSVG(ctx context.Context, productID uuid.UUID, p *product.Product, style, prompt string) (*PIMMedia, error) {
+	styleHint := "clean, modern, professional"
+	switch style {
+	case "photographic":
+		styleHint = "photorealistic illustration style with shadows and depth"
+	case "digital-art":
+		styleHint = "vibrant digital art style with bold colors"
+	case "cinematic":
+		styleHint = "dramatic cinematic style with moody lighting and contrast"
+	case "3d-model":
+		styleHint = "3D rendered look with perspective and lighting"
+	case "isometric":
+		styleHint = "isometric 3D view with clean geometric style"
+	}
+
+	userPrompt := fmt.Sprintf(`Generate an SVG product illustration for a lumber/building materials catalog.
+
+Product: %s
+SKU: %s
+Price: $%.2f
+Visual Style: %s
+Additional Instructions: %s
+
+Requirements:
+- Output ONLY valid SVG markup, nothing else — no markdown fences, no explanation
+- SVG must use viewBox="0 0 400 400" with width="400" height="400"
+- Create a visually appealing product illustration showing the actual product (not just text)
+- Use a subtle gradient background
+- Include a small product label area at the bottom with the product name
+- Use professional colors appropriate for building materials
+- Keep the SVG simple and clean — no external references, no images, only SVG primitives
+- Make the illustration recognizable as the actual product`,
+		p.Description, p.SKU, p.BasePrice, styleHint, prompt)
+
+	svgSystemPrompt := `You are an SVG illustration generator for a lumber and building materials product catalog.
+You create clean, professional SVG product illustrations that visually represent building materials.
+Output ONLY raw SVG markup. No markdown, no explanation, no code fences.
+Your SVGs must be self-contained with no external dependencies.`
+
+	text, model, err := s.textAI.Generate(svgSystemPrompt, userPrompt, 4096)
+	if err != nil {
+		return nil, fmt.Errorf("generate SVG: %w", err)
+	}
+
+	trimmed := strings.TrimSpace(text)
+	if !strings.HasPrefix(trimmed, "<svg") && !strings.HasPrefix(trimmed, "<?xml") {
+		return nil, fmt.Errorf("AI did not return valid SVG (starts with: %.50s...)", trimmed)
+	}
+
+	dataURI := "data:image/svg+xml;base64," + base64Encode([]byte(trimmed))
+
+	now := time.Now()
+	media := &PIMMedia{
+		ProductID:   productID,
+		MediaType:   "hero",
+		URL:         dataURI,
+		AltText:     p.Description,
+		SortOrder:   0,
+		IsPrimary:   false,
+		GenModel:    model,
+		GenPrompt:   userPrompt,
 		GenStyle:    style,
 		GeneratedAt: &now,
 	}

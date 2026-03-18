@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Key, Globe, Activity, Plus, Trash2, Copy, Check, Eye, Sparkles, Shield, AlertCircle } from 'lucide-react';
+import { Key, Globe, Activity, Plus, Trash2, Copy, Check, Eye, Sparkles, Shield, AlertCircle, ImageIcon } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { techAdminService, type APIKey, type AISettings } from '../../../services/TechAdminService';
 import { cn } from '../../../lib/utils';
@@ -408,6 +408,185 @@ const AISettingsPanel = () => {
     );
 };
 
+// --- Gemini Settings Component ---
+
+const GeminiSettingsPanel = () => {
+    const [settings, setSettings] = useState<AISettings | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [newKey, setNewKey] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [showInput, setShowInput] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadSettings();
+    }, []);
+
+    const loadSettings = async () => {
+        try {
+            const data = await techAdminService.getGeminiSettings();
+            setSettings(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!newKey.trim()) return;
+        setSaving(true);
+        setError(null);
+        setSuccess(null);
+        try {
+            await techAdminService.saveGeminiKey(newKey.trim());
+            setNewKey('');
+            setShowInput(false);
+            setSuccess('Gemini API key saved. Image generation is now active. Restart backend to apply.');
+            await loadSettings();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to save');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('Remove the Gemini API key? Image generation will fall back to Claude SVG.')) return;
+        try {
+            await techAdminService.deleteGeminiKey();
+            setSuccess('Gemini API key removed.');
+            await loadSettings();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to delete');
+        }
+    };
+
+    if (loading) return <div className="text-slate-400 p-8">Loading Gemini settings...</div>;
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-blue-400" />
+                    Gemini Image Settings
+                </h2>
+                <p className="text-slate-400 text-sm mt-1">Configure your Google Gemini API key to enable AI product image generation.</p>
+            </div>
+
+            {/* Status Card */}
+            <div className={cn(
+                "border rounded-lg p-6",
+                settings?.configured
+                    ? "bg-blue-500/5 border-blue-500/20"
+                    : "bg-amber-500/5 border-amber-500/20"
+            )}>
+                <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                        <div className={cn(
+                            "w-10 h-10 rounded-lg flex items-center justify-center",
+                            settings?.configured ? "bg-blue-500/20 text-blue-400" : "bg-amber-500/20 text-amber-400"
+                        )}>
+                            {settings?.configured ? <Check size={20} /> : <AlertCircle size={20} />}
+                        </div>
+                        <div>
+                            <h3 className="text-white font-medium">
+                                {settings?.configured ? 'Image Generation Active' : 'Image Generation Inactive'}
+                            </h3>
+                            {settings?.configured ? (
+                                <div className="text-sm text-slate-400 mt-1 space-y-1">
+                                    <p>
+                                        Key: <code className="text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded text-xs">{settings.key_hint}</code>
+                                    </p>
+                                    <p>
+                                        Source: <span className={cn(
+                                            "text-xs font-medium px-2 py-0.5 rounded",
+                                            settings.source === 'admin' ? "bg-blue-500/15 text-blue-400" : "bg-zinc-500/15 text-zinc-400"
+                                        )}>
+                                            {settings.source === 'admin' ? 'Admin configured' : 'Environment variable'}
+                                        </span>
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-400 mt-1">
+                                    Enter your Google Gemini API key to generate product images. Without it, Claude SVG illustrations are used as fallback.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        {settings?.source === 'admin' && (
+                            <Button variant="outline" onClick={handleDelete} className="text-red-400 border-red-500/30 hover:bg-red-500/10">
+                                <Trash2 size={14} className="mr-2" /> Remove
+                            </Button>
+                        )}
+                        <Button onClick={() => setShowInput(true)} disabled={showInput}>
+                            {settings?.configured ? 'Update Key' : 'Add Key'}
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Key Input */}
+                <AnimatePresence>
+                    {showInput && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="mt-6 pt-6 border-t border-white/5 overflow-hidden"
+                        >
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
+                                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                                    <input
+                                        type="password"
+                                        value={newKey}
+                                        onChange={(e) => setNewKey(e.target.value)}
+                                        className="w-full bg-deep-space border border-white/10 rounded px-10 py-2.5 text-white font-mono text-sm placeholder-slate-500 focus:outline-none focus:border-blue-400 transition-colors"
+                                        placeholder="AIza..."
+                                        autoFocus
+                                    />
+                                </div>
+                                <Button variant="outline" onClick={() => { setShowInput(false); setNewKey(''); }}>Cancel</Button>
+                                <Button onClick={handleSave} disabled={!newKey.trim() || saving} isLoading={saving}>
+                                    Save Key
+                                </Button>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                                <Shield size={12} /> Get your API key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Google AI Studio</a>. Stored securely in the database.
+                            </p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* Feedback Messages */}
+            {error && <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400">{error}</div>}
+            {success && <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm text-blue-400">{success}</div>}
+
+            {/* Features Powered */}
+            <div>
+                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">Features Powered by Gemini</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={cn(
+                        "border rounded-lg p-4 transition-colors",
+                        settings?.configured
+                            ? "bg-slate-steel border-white/5"
+                            : "bg-slate-steel/50 border-white/5 opacity-60"
+                    )}>
+                        <div className="flex items-center gap-2 mb-2">
+                            <ImageIcon className={cn("w-4 h-4", settings?.configured ? "text-blue-400" : "text-slate-600")} />
+                            <span className="text-white text-sm font-medium">Product Image Generation</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Generate professional product photos for your catalog using Gemini AI</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- Main Page Component ---
 
 export const TechAdminPage = () => {
@@ -454,7 +633,12 @@ export const TechAdminPage = () => {
             {/* Content Area */}
             <div className="max-w-5xl">
                 {activeTab === 'keys' && <APIKeyManager />}
-                {activeTab === 'ai' && <AISettingsPanel />}
+                {activeTab === 'ai' && (
+                    <div className="space-y-10">
+                        <AISettingsPanel />
+                        <GeminiSettingsPanel />
+                    </div>
+                )}
                 {activeTab === 'integrations' && <Integrations />}
                 {activeTab === 'health' && (
                     <div className="bg-slate-steel border border-white/5 rounded-lg p-12 text-center">
