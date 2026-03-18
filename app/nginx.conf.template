@@ -1,37 +1,42 @@
+resolver 8.8.8.8 8.8.4.4 valid=30s;
+
 server {
     listen ${PORT};
     server_name _;
     root /usr/share/nginx/html;
     index index.html;
 
+    set $backend "https://${BACKEND_URL}";
+
     # Reverse proxy API routes to the backend service
     location /api/ {
-        proxy_pass https://${BACKEND_URL}/api/;
+        proxy_pass $backend;
         proxy_set_header Host ${BACKEND_URL};
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
     }
 
     # Reverse proxy non-prefixed backend routes
-    location /products { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /customers { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /vendors { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /orders { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /quotes { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /invoices { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /locations { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /health { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /activities { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /contacts { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /documents { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /gl { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /parsing { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /price_levels { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /pricing { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /purchase-orders { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /sales-team { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
-    location /uploads { proxy_pass https://${BACKEND_URL}; proxy_set_header Host ${BACKEND_URL}; }
+    location /products { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /customers { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /vendors { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /orders { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /quotes { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /invoices { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /locations { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /health { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /activities { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /contacts { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /documents { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /gl { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /parsing { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /price_levels { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /pricing { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /purchase-orders { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /sales-team { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
+    location /uploads { proxy_pass $backend; proxy_set_header Host ${BACKEND_URL}; proxy_ssl_server_name on; }
 
     # SPA fallback — send all non-file requests to index.html
     location / {
