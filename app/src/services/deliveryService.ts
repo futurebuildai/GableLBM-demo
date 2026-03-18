@@ -6,7 +6,7 @@ import type {
     AssignOrderRequest, UpdateDeliveryStatusRequest
 } from '../types/delivery';
 
-const API_BASE = '';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export const deliveryService = {
     // Fleet

@@ -1,7 +1,7 @@
 import type { PurchaseOrder, CreatePORequest, ReceivePORequest, RecommendationSummary, FreightCharge, FreightUploadResponse } from '../types/purchaseOrder';
 import type { ReorderAlert } from '../types/product';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const PurchaseOrderService = {
     async listPOs(): Promise<PurchaseOrder[]> {

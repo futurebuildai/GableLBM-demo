@@ -18,7 +18,7 @@ import type {
     UpdateUserStatusRequest,
 } from '../types/portal';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 2_000;

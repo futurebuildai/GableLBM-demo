@@ -1,6 +1,6 @@
 import type { AccountSummary, CustomerTransaction } from '../types/account';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = `${import.meta.env.VITE_API_URL || ''}/api`;
 
 export const AccountService = {
     getAccountSummary: async (customerId: string): Promise<AccountSummary> => {

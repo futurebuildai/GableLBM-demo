@@ -1,6 +1,6 @@
 import type { Customer, PriceLevel } from '../types/customer';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const CustomerService = {
     async listCustomers(): Promise<Customer[]> {

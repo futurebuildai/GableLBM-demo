@@ -1,6 +1,6 @@
 import type { Location } from '../types/location';
 
-const API_URL = ''; // TODO: use environment variable
+const API_URL = import.meta.env.VITE_API_URL || ''; // TODO: use environment variable
 
 export const LocationService = {
     async listLocations(): Promise<Location[]> {

@@ -10,7 +10,7 @@ import type {
     UpdateContentRequest,
 } from '../types/pim';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const PIMService = {
     async getProductDetail(id: string): Promise<ProductDetail> {

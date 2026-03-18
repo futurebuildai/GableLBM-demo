@@ -6,7 +6,7 @@ import type {
     TransactionSummary
 } from '../types/pos';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const posService = {
     startTransaction: async (registerID = 'REG-01', cashierID?: string, customerID?: string): Promise<POSTransaction> => {

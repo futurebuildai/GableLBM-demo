@@ -5,7 +5,7 @@ import type {
     CreateActivityRequest,
 } from '../types/crm';
 
-const API_BASE = '';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export const crmApi = {
     // Contacts

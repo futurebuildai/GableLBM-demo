@@ -1,6 +1,6 @@
 import type { MillworkOption, CreateOptionRequest } from '../types/millwork';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const MillworkService = {
     async getOptionsByCategory(category: string): Promise<MillworkOption[]> {

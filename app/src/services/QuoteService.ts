@@ -1,6 +1,6 @@
 import type { Quote, QuoteState, CreateQuoteRequest, QuoteAnalytics } from '../types/quote';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const QuoteService = {
     async createQuote(request: CreateQuoteRequest): Promise<Quote> {

@@ -1,6 +1,6 @@
 import type { BlueprintScanResponse } from '../types/configurator';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const VisionService = {
     async scanBlueprint(

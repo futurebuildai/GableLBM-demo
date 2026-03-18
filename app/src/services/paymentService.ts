@@ -8,7 +8,7 @@ import type {
     Refund
 } from '../types/payment';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const paymentService = {
     // ---- Existing: Non-card payments (cash, check, account) ----

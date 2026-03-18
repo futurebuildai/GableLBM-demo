@@ -17,7 +17,7 @@ export interface StockMovementRequest {
     is_delta?: boolean; // Added matching what likely exists or removing
 }
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const InventoryService = {
     async adjustStock(data: StockAdjustmentRequest): Promise<void> {

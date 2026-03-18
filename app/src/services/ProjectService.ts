@@ -5,7 +5,7 @@ import type {
     UpdateProjectRequest
 } from '../types/project';
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'portal_token';
 
 async function fetchWithAuth<T>(url: string, options: RequestInit = {}): Promise<T> {
