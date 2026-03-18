@@ -27,10 +27,9 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Railway provides PORT env var — default to 80 for local
 ENV PORT=80
-
-# Nginx's docker-entrypoint uses envsubst on /etc/nginx/templates/*.template
-# and outputs to /etc/nginx/conf.d/ automatically
+ENV BACKEND_URL=localhost
 
 EXPOSE ${PORT}
 
-CMD ["nginx", "-g", "daemon off;"]
+# Use explicit envsubst variable list to preserve nginx variables ($uri, $remote_addr, etc.)
+CMD ["/bin/sh", "-c", "envsubst '$PORT $BACKEND_URL' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
