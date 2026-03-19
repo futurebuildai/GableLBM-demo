@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { PageTransition } from '../../components/ui/PageTransition';
-import { Truck, Users, Plus, Pencil, Trash2, AlertTriangle, RefreshCw, X, Camera, Upload } from 'lucide-react';
+import { Truck, Users, Plus, Pencil, Trash2, AlertTriangle, RefreshCw, X, Upload } from 'lucide-react';
 import { deliveryService } from '../../services/deliveryService';
 import type { Vehicle, Driver, CreateVehicleRequest, UpdateVehicleRequest, CreateDriverRequest, UpdateDriverRequest, VehicleType, DriverStatus } from '../../types/delivery';
 
@@ -118,7 +118,7 @@ export const FleetManagement = () => {
 
 /* ─── Vehicles Tab ──────────────────────────────────────────────── */
 
-function VehiclesTab({ vehicles, onEdit, onAdd, onRefresh }: { vehicles: Vehicle[]; onEdit: (v: Vehicle) => void; onAdd: () => void; onRefresh: () => void }) {
+function VehiclesTab({ vehicles, onEdit, onAdd }: { vehicles: Vehicle[]; onEdit: (v: Vehicle) => void; onAdd: () => void; onRefresh?: () => void }) {
     return (
         <Card variant="glass">
             <CardContent className="p-0">
@@ -190,7 +190,7 @@ function VehiclesTab({ vehicles, onEdit, onAdd, onRefresh }: { vehicles: Vehicle
 
 /* ─── Drivers Tab ──────────────────────────────────────────────── */
 
-function DriversTab({ drivers, onEdit, onAdd, onRefresh }: { drivers: Driver[]; onEdit: (d: Driver) => void; onAdd: () => void; onRefresh: () => void }) {
+function DriversTab({ drivers, onEdit, onAdd }: { drivers: Driver[]; onEdit: (d: Driver) => void; onAdd: () => void; onRefresh?: () => void }) {
     const statusColors: Record<string, string> = {
         ACTIVE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
         INACTIVE: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
