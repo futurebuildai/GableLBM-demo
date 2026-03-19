@@ -4,6 +4,10 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Basic auth
+    auth_basic "Demo Access";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
     # SPA fallback — send all non-file requests to index.html
     location / {
         try_files $uri $uri/ /index.html;
