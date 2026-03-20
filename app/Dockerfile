@@ -24,7 +24,7 @@ RUN rm /etc/nginx/conf.d/default.conf
 
 # Copy nginx config template and htpasswd
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
-RUN printf 'demo:$apr1$Pr.1cBF2$tMe7mpaSF5way96jadiEh.\n' > /etc/nginx/.htpasswd
+RUN printf 'demo:$apr1$Pr.1cBF2$CAP94My7JqraSWM2wm9gK.\n' > /etc/nginx/.htpasswd
 
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
