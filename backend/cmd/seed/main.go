@@ -711,10 +711,251 @@ func main() {
 	fmt.Printf("Seed: %d Pricing Rules\n", len(rules))
 
 	// =========================================================================
-	// 14. GL JOURNAL ENTRIES
+	// 14. GL ACCOUNTS, FISCAL PERIODS & JOURNAL ENTRIES
 	// =========================================================================
-	months := []string{"Jan", "Feb", "Mar", "Apr", "May", "Jun"}
-	fmt.Printf("Seed: %d GL Journal Entries (6 months x 3)\n", len(months)*3)
+
+	// 14a. Seed Chart of Accounts (idempotent, matches migration 025)
+	type glAcct struct {
+		Code, Name, Type, Subtype, NormalBal, Desc string
+	}
+	glAccounts := []glAcct{
+		{"1010", "Cash", "ASSET", "Current Asset", "DEBIT", "Cash and checking accounts"},
+		{"1020", "Accounts Receivable", "ASSET", "Current Asset", "DEBIT", "Customer balances due"},
+		{"1030", "Inventory", "ASSET", "Current Asset", "DEBIT", "Lumber, hardware, and building materials on hand"},
+		{"1040", "Prepaid Expenses", "ASSET", "Current Asset", "DEBIT", "Insurance, deposits, prepaid rent"},
+		{"1500", "Trucks & Equipment", "ASSET", "Fixed Asset", "DEBIT", "Delivery trucks, forklifts, yard equipment"},
+		{"1510", "Accum. Depreciation", "ASSET", "Fixed Asset", "CREDIT", "Contra-asset for depreciation"},
+		{"2010", "Accounts Payable", "LIABILITY", "Current Liability", "CREDIT", "Vendor balances owed"},
+		{"2020", "Sales Tax Payable", "LIABILITY", "Current Liability", "CREDIT", "Collected sales tax awaiting remittance"},
+		{"2030", "Accrued Expenses", "LIABILITY", "Current Liability", "CREDIT", "Wages, utilities, and other accruals"},
+		{"3010", "Owner Equity", "EQUITY", "Owner Equity", "CREDIT", "Owner investment and retained earnings"},
+		{"3020", "Retained Earnings", "EQUITY", "Retained Earnings", "CREDIT", "Cumulative net income retained"},
+		{"4010", "Sales Revenue", "REVENUE", "Operating", "CREDIT", "Revenue from material sales"},
+		{"4020", "Delivery Revenue", "REVENUE", "Operating", "CREDIT", "Revenue from delivery charges"},
+		{"5010", "Cost of Goods Sold", "EXPENSE", "COGS", "DEBIT", "Direct cost of materials sold"},
+		{"5020", "Operating Expenses", "EXPENSE", "Operating", "DEBIT", "Rent, utilities, wages, and general overhead"},
+	}
+	acctIDs := make(map[string]uuid.UUID)
+	for _, a := range glAccounts {
+		var id string
+		err := db.QueryRow(`INSERT INTO gl_accounts (code, name, type, subtype, normal_balance, description)
+			VALUES ($1,$2,$3,$4,$5,$6)
+			ON CONFLICT (code) DO UPDATE SET name=$2, type=$3, subtype=$4, normal_balance=$5, description=$6
+			RETURNING id`, a.Code, a.Name, a.Type, a.Subtype, a.NormalBal, a.Desc).Scan(&id)
+		if err != nil {
+			db.QueryRow("SELECT id FROM gl_accounts WHERE code=$1", a.Code).Scan(&id)
+		}
+		if id != "" {
+			acctIDs[a.Code] = uuid.MustParse(id)
+		}
+	}
+	fmt.Printf("Seed: %d GL Accounts\n", len(glAccounts))
+
+	// 14b. Seed Fiscal Periods (current year, monthly)
+	var fpCount int
+	db.QueryRow("SELECT COUNT(*) FROM gl_fiscal_periods").Scan(&fpCount)
+	if fpCount == 0 {
+		glYear := time.Now().Year()
+		for m := 1; m <= 12; m++ {
+			start := time.Date(glYear, time.Month(m), 1, 0, 0, 0, 0, time.UTC)
+			end := start.AddDate(0, 1, -1)
+			fpName := start.Format("Jan 2006")
+			db.Exec(`INSERT INTO gl_fiscal_periods (name, start_date, end_date, status)
+				VALUES ($1, $2, $3, 'OPEN')`, fpName, start, end)
+		}
+		fmt.Println("Seed: 12 Fiscal Periods")
+	} else {
+		fmt.Printf("Seed: Fiscal Periods already exist (%d)\n", fpCount)
+	}
+
+	// 14c. Seed Journal Entries
+	// Clear previous seed entries for idempotent re-seeding
+	db.Exec("DELETE FROM gl_journal_lines WHERE journal_entry_id IN (SELECT id FROM gl_journal_entries WHERE memo LIKE 'SEED:%')")
+	db.Exec("DELETE FROM gl_journal_entries WHERE memo LIKE 'SEED:%'")
+
+	type jLine struct {
+		AcctCode string
+		Desc     string
+		Debit    float64
+		Credit   float64
+	}
+	type je struct {
+		Date   string // YYYY-MM-DD
+		Memo   string
+		Source string
+		Status string
+		Lines  []jLine
+	}
+
+	glYear := time.Now().Year()
+	glDate := func(month, day int) string {
+		return fmt.Sprintf("%d-%02d-%02d", glYear, month, day)
+	}
+
+	journalEntries := []je{
+		// Opening balance
+		{glDate(1, 1), "SEED: Opening balance - beginning of year", "ADJUSTMENT", "POSTED", []jLine{
+			{"1010", "Opening cash balance", 250000, 0},
+			{"1020", "Opening AR balance", 45000, 0},
+			{"1030", "Opening inventory balance", 180000, 0},
+			{"1040", "Opening prepaid expenses", 15000, 0},
+			{"1500", "Opening fixed assets", 350000, 0},
+			{"1510", "Opening accumulated depreciation", 0, 42000},
+			{"2010", "Opening AP balance", 0, 28000},
+			{"2030", "Opening accrued expenses", 0, 8000},
+			{"3010", "Owner equity", 0, 500000},
+			{"3020", "Retained earnings carried forward", 0, 262000},
+		}},
+		// January
+		{glDate(1, 15), "SEED: January material sales - multiple customer orders", "INVOICE", "POSTED", []jLine{
+			{"1020", "AR - January invoices", 52340, 0},
+			{"4010", "Material sales revenue", 0, 48840},
+			{"4020", "Delivery fees collected", 0, 3500},
+		}},
+		{glDate(1, 15), "SEED: January COGS - materials delivered", "INVOICE", "POSTED", []jLine{
+			{"5010", "Cost of materials sold", 30250, 0},
+			{"1030", "Inventory reduction", 0, 30250},
+		}},
+		{glDate(1, 25), "SEED: January customer payments received", "PAYMENT", "POSTED", []jLine{
+			{"1010", "Deposits from customers", 41200, 0},
+			{"1020", "AR payments applied", 0, 41200},
+		}},
+		{glDate(1, 31), "SEED: January operating expenses - rent, utilities, wages", "MANUAL", "POSTED", []jLine{
+			{"5020", "Monthly operating expenses", 15800, 0},
+			{"1010", "Operating expense payments", 0, 15800},
+		}},
+		// February
+		{glDate(2, 14), "SEED: February material sales - contractor season starting", "INVOICE", "POSTED", []jLine{
+			{"1020", "AR - February invoices", 58920, 0},
+			{"4010", "Material sales revenue", 0, 55420},
+			{"4020", "Delivery fees", 0, 3500},
+		}},
+		{glDate(2, 14), "SEED: February COGS", "INVOICE", "POSTED", []jLine{
+			{"5010", "Cost of materials sold", 34650, 0},
+			{"1030", "Inventory reduction", 0, 34650},
+		}},
+		{glDate(2, 20), "SEED: February inventory restock - lumber and sheet goods", "MANUAL", "POSTED", []jLine{
+			{"1030", "Inventory received from vendors", 48000, 0},
+			{"2010", "AP - vendor invoices", 0, 48000},
+		}},
+		{glDate(2, 25), "SEED: February customer payments", "PAYMENT", "POSTED", []jLine{
+			{"1010", "Customer payment deposits", 52800, 0},
+			{"1020", "AR payments applied", 0, 52800},
+		}},
+		{glDate(2, 28), "SEED: February vendor payment - Gable Lumber Supply", "PAYMENT", "POSTED", []jLine{
+			{"2010", "AP payment to vendors", 38000, 0},
+			{"1010", "Check payments to vendors", 0, 38000},
+		}},
+		// March
+		{glDate(3, 12), "SEED: March material sales - spring construction surge", "INVOICE", "POSTED", []jLine{
+			{"1020", "AR - March invoices", 67450, 0},
+			{"4010", "Material sales revenue", 0, 63950},
+			{"4020", "Delivery revenue", 0, 3500},
+		}},
+		{glDate(3, 12), "SEED: March COGS", "INVOICE", "POSTED", []jLine{
+			{"5010", "Cost of materials sold", 39780, 0},
+			{"1030", "Inventory reduction", 0, 39780},
+		}},
+		{glDate(3, 22), "SEED: March customer payments", "PAYMENT", "POSTED", []jLine{
+			{"1010", "Customer payment deposits", 55600, 0},
+			{"1020", "AR payments applied", 0, 55600},
+		}},
+		{glDate(3, 31), "SEED: March operating expenses and depreciation", "MANUAL", "POSTED", []jLine{
+			{"5020", "Monthly operating expenses", 14200, 0},
+			{"1010", "Operating expense payments", 0, 8367},
+			{"1510", "Monthly depreciation", 0, 5833},
+		}},
+		// April
+		{glDate(4, 10), "SEED: April material sales - roofing and framing season", "INVOICE", "POSTED", []jLine{
+			{"1020", "AR - April invoices", 58400, 0},
+			{"4010", "Material sales revenue", 0, 54900},
+			{"4020", "Delivery fees", 0, 3500},
+		}},
+		{glDate(4, 10), "SEED: April COGS", "INVOICE", "POSTED", []jLine{
+			{"5010", "Cost of materials sold", 36200, 0},
+			{"1030", "Inventory reduction", 0, 36200},
+		}},
+		{glDate(4, 25), "SEED: April customer payments", "PAYMENT", "POSTED", []jLine{
+			{"1010", "Customer payment deposits", 62000, 0},
+			{"1020", "AR payments applied", 0, 62000},
+		}},
+		{glDate(4, 30), "SEED: April operating expenses and accruals", "MANUAL", "POSTED", []jLine{
+			{"5020", "Monthly operating expenses", 16800, 0},
+			{"1010", "Operating expense payments", 0, 12800},
+			{"2030", "Accrued wages and utilities", 0, 4000},
+		}},
+		// May
+		{glDate(5, 12), "SEED: May material sales - peak building season", "INVOICE", "POSTED", []jLine{
+			{"1020", "AR - May invoices", 71600, 0},
+			{"4010", "Material sales revenue", 0, 71600},
+		}},
+		{glDate(5, 12), "SEED: May COGS", "INVOICE", "POSTED", []jLine{
+			{"5010", "Cost of materials sold", 44400, 0},
+			{"1030", "Inventory reduction", 0, 44400},
+		}},
+		{glDate(5, 20), "SEED: May inventory restock - large vendor PO", "MANUAL", "POSTED", []jLine{
+			{"1030", "Inventory received from vendors", 55000, 0},
+			{"2010", "AP - vendor invoices", 0, 55000},
+		}},
+		{glDate(5, 25), "SEED: May customer payments", "PAYMENT", "POSTED", []jLine{
+			{"1010", "Customer payment deposits", 58000, 0},
+			{"1020", "AR payments applied", 0, 58000},
+		}},
+		// June
+		{glDate(6, 10), "SEED: June material sales and delivery revenue", "INVOICE", "POSTED", []jLine{
+			{"1020", "AR - June invoices", 68500, 0},
+			{"4010", "Material sales revenue", 0, 64200},
+			{"4020", "Delivery revenue", 0, 4300},
+		}},
+		{glDate(6, 10), "SEED: June COGS", "INVOICE", "POSTED", []jLine{
+			{"5010", "Cost of materials sold", 42470, 0},
+			{"1030", "Inventory reduction", 0, 42470},
+		}},
+		{glDate(6, 20), "SEED: June vendor payment - Hardware Wholesale + Roofing", "PAYMENT", "POSTED", []jLine{
+			{"2010", "AP payments to vendors", 50000, 0},
+			{"1010", "Check payments to vendors", 0, 50000},
+		}},
+		// Draft entry for demo
+		{glDate(6, 28), "SEED: June month-end accruals (pending review)", "MANUAL", "DRAFT", []jLine{
+			{"5020", "Estimated month-end expenses", 8500, 0},
+			{"1010", "Cash for utilities", 0, 5000},
+			{"2030", "Accrued payroll", 0, 3500},
+		}},
+	}
+
+	jeCount := 0
+	for _, entry := range journalEntries {
+		var entryID string
+		err := db.QueryRow(`INSERT INTO gl_journal_entries (entry_date, memo, source, status, posted_by)
+			VALUES ($1::date, $2, $3, $4, $5) RETURNING id`,
+			entry.Date, entry.Memo, entry.Source, entry.Status,
+			func() *string {
+				if entry.Status == "POSTED" {
+					s := "system-seed"
+					return &s
+				}
+				return nil
+			}()).Scan(&entryID)
+		if err != nil {
+			log.Printf("GL JE '%s': %v", entry.Memo, err)
+			continue
+		}
+		eID := uuid.MustParse(entryID)
+		for _, line := range entry.Lines {
+			aID, ok := acctIDs[line.AcctCode]
+			if !ok {
+				log.Printf("GL JE line: account code %s not found", line.AcctCode)
+				continue
+			}
+			_, err := db.Exec(`INSERT INTO gl_journal_lines (journal_entry_id, account_id, description, debit, credit)
+				VALUES ($1, $2, $3, $4, $5)`, eID, aID, line.Desc, line.Debit, line.Credit)
+			if err != nil {
+				log.Printf("GL JE line: %v", err)
+			}
+		}
+		jeCount++
+	}
+	fmt.Printf("Seed: %d GL Journal Entries (25 POSTED, 1 DRAFT)\n", jeCount)
 
 	// =========================================================================
 	// 15. PROJECTS
