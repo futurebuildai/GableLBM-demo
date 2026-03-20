@@ -7,7 +7,7 @@ import type {
     CreateJournalEntryRequest,
 } from '../types/gl';
 
-const API = '';
+const API = import.meta.env.VITE_API_URL || '';
 
 // --- Accounts ---
 

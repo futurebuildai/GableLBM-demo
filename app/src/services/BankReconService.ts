@@ -8,7 +8,7 @@ import type {
     ImportResult,
 } from '../types/bankrecon';
 
-const API = '';
+const API = import.meta.env.VITE_API_URL || '';
 
 // --- Bank Accounts ---
 

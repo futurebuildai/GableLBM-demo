@@ -1,6 +1,6 @@
 import type { MatchResult, MatchException, MatchConfig, UpdateMatchConfigRequest } from '../types/matching';
 
-const API = '';
+const API = import.meta.env.VITE_API_URL || '';
 
 export async function runMatch(poId: string): Promise<MatchResult> {
     const res = await fetch(`${API}/api/matching/run/${poId}`, { method: 'POST' });
