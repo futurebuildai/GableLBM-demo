@@ -61,6 +61,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Write-back endpoints (Velocity → FB-Brain → GableLBM)
 	mux.HandleFunc("POST /api/integration/invoices/{id}/payment", h.authMiddleware(h.RecordPayment))
 	mux.HandleFunc("PUT /api/integration/invoices/{id}/status", h.authMiddleware(h.UpdateInvoiceStatus))
+
+	// Demo lifecycle
+	mux.HandleFunc("POST /api/integration/reset", h.authMiddleware(h.HandleReset))
 }
 
 func (h *Handler) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
@@ -273,6 +276,7 @@ func (h *Handler) CreateQuote(w http.ResponseWriter, r *http.Request) {
 		State:      quote.QuoteStateDraft,
 		ExpiresAt:  &expires,
 		Lines:      lines,
+		Source:     "integration",
 	}
 	// Set CreatedBy via context or field - the service will handle totals
 	_ = demoCreatedBy
@@ -342,11 +346,7 @@ func (h *Handler) AcceptAndConvertQuote(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// 4. Confirm the order
-	if err := h.confirmOrder(ctx, o.ID); err != nil {
-		// Order created but not confirmed - still return success
-		fmt.Printf("WARNING: order created but not confirmed: %v\n", err)
-	}
+	// Order stays DRAFT for dealer review in the ERP UI.
 
 	writeJSON(w, http.StatusOK, OrderResponse{
 		ID:      o.ID.String(),
@@ -980,5 +980,169 @@ func (h *Handler) UpdateInvoiceStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
 		"invoice_id": invoiceID.String(),
 		"status":     req.Status,
+	})
+}
+
+// ── Demo Reset Endpoint ─────────────────────────────────────────────────────
+
+// HandleReset deletes all integration-created quotes, orders, invoices, and
+// payments so the demo can be run again from a clean state. It identifies
+// integration records by quotes.source = 'integration' and walks the
+// quote → order → invoice → payment chain.
+func (h *Handler) HandleReset(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Use a transaction so the reset is atomic.
+	tx, err := h.db.Pool.Begin(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("begin tx: %v", err))
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. Collect integration quote IDs
+	var quoteIDs []uuid.UUID
+	rows, err := tx.Query(ctx, `SELECT id FROM quotes WHERE source = 'integration'`)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("find integration quotes: %v", err))
+		return
+	}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("scan quote id: %v", err))
+			return
+		}
+		quoteIDs = append(quoteIDs, id)
+	}
+	rows.Close()
+
+	if len(quoteIDs) == 0 {
+		_ = tx.Commit(ctx)
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"reset":            true,
+			"quotes_deleted":   0,
+			"orders_deleted":   0,
+			"invoices_deleted": 0,
+			"payments_deleted": 0,
+		})
+		return
+	}
+
+	// 2. Collect orders that originated from those quotes
+	var orderIDs []uuid.UUID
+	rows, err = tx.Query(ctx, `SELECT id FROM orders WHERE quote_id = ANY($1)`, quoteIDs)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("find orders: %v", err))
+		return
+	}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("scan order id: %v", err))
+			return
+		}
+		orderIDs = append(orderIDs, id)
+	}
+	rows.Close()
+
+	var invoiceIDs []uuid.UUID
+	var paymentsDeleted int64
+
+	if len(orderIDs) > 0 {
+		// 3. Collect invoices for those orders
+		rows, err = tx.Query(ctx, `SELECT id FROM invoices WHERE order_id = ANY($1)`, orderIDs)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("find invoices: %v", err))
+			return
+		}
+		for rows.Next() {
+			var id uuid.UUID
+			if err := rows.Scan(&id); err != nil {
+				rows.Close()
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("scan invoice id: %v", err))
+				return
+			}
+			invoiceIDs = append(invoiceIDs, id)
+		}
+		rows.Close()
+
+		if len(invoiceIDs) > 0 {
+			// 4a. Delete payments
+			tag, err := tx.Exec(ctx,
+				`DELETE FROM payments WHERE invoice_id = ANY($1)`, invoiceIDs)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("delete payments: %v", err))
+				return
+			}
+			paymentsDeleted = tag.RowsAffected()
+
+			// 4b. Delete invoice lines
+			_, err = tx.Exec(ctx,
+				`DELETE FROM invoice_lines WHERE invoice_id = ANY($1)`, invoiceIDs)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("delete invoice lines: %v", err))
+				return
+			}
+
+			// 4c. Delete invoices
+			_, err = tx.Exec(ctx,
+				`DELETE FROM invoices WHERE id = ANY($1)`, invoiceIDs)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("delete invoices: %v", err))
+				return
+			}
+		}
+
+		// 5a. Delete deliveries for those orders (if any exist)
+		_, _ = tx.Exec(ctx,
+			`DELETE FROM deliveries WHERE order_id = ANY($1)`, orderIDs)
+
+		// 5b. Delete order lines
+		_, err = tx.Exec(ctx,
+			`DELETE FROM order_lines WHERE order_id = ANY($1)`, orderIDs)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("delete order lines: %v", err))
+			return
+		}
+
+		// 5c. Delete orders
+		_, err = tx.Exec(ctx,
+			`DELETE FROM orders WHERE id = ANY($1)`, orderIDs)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("delete orders: %v", err))
+			return
+		}
+	}
+
+	// 6a. Delete quote lines
+	_, err = tx.Exec(ctx,
+		`DELETE FROM quote_lines WHERE quote_id = ANY($1)`, quoteIDs)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("delete quote lines: %v", err))
+		return
+	}
+
+	// 6b. Delete quotes
+	_, err = tx.Exec(ctx,
+		`DELETE FROM quotes WHERE id = ANY($1)`, quoteIDs)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("delete quotes: %v", err))
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("commit: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"reset":            true,
+		"quotes_deleted":   len(quoteIDs),
+		"orders_deleted":   len(orderIDs),
+		"invoices_deleted": len(invoiceIDs),
+		"payments_deleted": paymentsDeleted,
 	})
 }

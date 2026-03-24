@@ -1276,6 +1276,7 @@ func main() {
 		{"Acme Construction", "demo@gable.com", "Colton Demo", "admin"},
 		{"Summit Contracting", "summit@gable.com", "Sarah Summit", "admin"},
 		{"Elite Homes", "elite@gable.com", "Eric Elite", "member"},
+		{"Shade Home Builders", "shade+gable@futurebuild.ai", "Gable Dealer Admin", "admin"},
 	}
 	for _, pu := range portalUsers {
 		cid, ok := customerIDs[pu.Customer]
