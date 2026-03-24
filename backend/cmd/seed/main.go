@@ -252,6 +252,7 @@ func main() {
 		{"Structure Masters", "STR-707", "bills@structuremasters.com", "503-555-3000", "5500 Frame Rd, Tualatin OR 97062", "GOLD", "NET30", "Contractor", 80000, []string{"Warehouse 9 Framing", "Retail Strip Mall"}},
 		{"Valley Roofing", "VAL-808", "admin@valleyroofing.com", "503-555-3100", "200 Ridge Rd, Sherwood OR 97140", "SILVER", "NET30", "Contractor", 40000, []string{"School Roof Repair", "Church Shingle Replacement"}},
 		{"Cornerstone Concrete", "CORN-909", "dispatch@cornerstone.com", "503-555-3200", "1800 Aggregate Ln, Oregon City OR 97045", "SILVER", "NET30", "Contractor", 35000, []string{"Foundation Lot 8", "Driveway Smith"}},
+		{"Shade Home Builders", "SHB-001", "ar@shadehomebuilders.com", "619-555-0101", "742 Builder Lane, San Diego CA 92101", "GOLD", "NET30", "Contractor", 75000, []string{"Riverside New Home Build", "Mission Bay Remodel", "Harbor View Townhomes"}},
 	}
 
 	customerIDs := make(map[string]uuid.UUID)
@@ -625,6 +626,158 @@ func main() {
 		}
 	}
 	fmt.Printf("Seed: 15 Routes, %d Deliveries\n", deliveryCount)
+
+	// =========================================================================
+	// 10b. SHADE HOME BUILDERS — Deterministic orders for FB-Brain integration demo
+	// =========================================================================
+	if shbID, ok := customerIDs["Shade Home Builders"]; ok {
+		shbProjects := custToProjects[shbID]
+		var shbJobIDs [3]uuid.UUID
+		for i, pid := range shbProjects {
+			if i < 3 {
+				shbJobIDs[i] = pid
+			}
+		}
+
+		// Order 1: Roofing materials for Riverside — FULFILLED with PAID invoice + COMPLETED delivery
+		shbOrder1ID := uuid.New()
+		order1Date := time.Now().AddDate(0, 0, -45)
+		order1Lines := []struct {
+			SKU  string
+			Qty  float64
+			Price float64
+		}{
+			{"RF-ARCH-30", 65, 35.70},
+			{"RF-FELT-15", 12, 18.50},
+			{"RF-ICE-65", 8, 42.00},
+			{"RF-DRIP-10", 20, 6.25},
+			{"RF-RIDGE-4", 15, 28.00},
+			{"RF-NAIL-125", 4, 48.00},
+		}
+		var order1Total float64
+		db.Exec(`INSERT INTO orders (id, customer_id, total_amount, status, created_at) VALUES ($1,$2,0,'FULFILLED',$3)`,
+			shbOrder1ID, shbID, order1Date)
+		for _, l := range order1Lines {
+			if pid, ok := skuToID[l.SKU]; ok {
+				lineTotal := l.Qty * l.Price
+				order1Total += lineTotal
+				db.Exec(`INSERT INTO order_lines (order_id, product_id, quantity, price_each) VALUES ($1,$2,$3,$4)`,
+					shbOrder1ID, pid, l.Qty, l.Price)
+			}
+		}
+		db.Exec("UPDATE orders SET total_amount=$1 WHERE id=$2", order1Total, shbOrder1ID)
+
+		// Invoice for order 1 — PAID
+		shbInv1ID := uuid.New()
+		taxRate1 := 0.0825
+		tax1 := order1Total * taxRate1
+		total1 := order1Total + tax1
+		paidAt1 := order1Date.AddDate(0, 0, 15)
+		db.Exec(`INSERT INTO invoices (id, order_id, customer_id, status, total_amount, subtotal, tax_rate, tax_amount, due_date, payment_terms, paid_at, created_at)
+			VALUES ($1,$2,$3,'PAID',$4,$5,$6,$7,$8,'NET30',$9,$10)`,
+			shbInv1ID, shbOrder1ID, shbID, total1, order1Total, taxRate1, tax1,
+			order1Date.AddDate(0, 0, 30), paidAt1, order1Date.AddDate(0, 0, 1))
+		db.Exec(`INSERT INTO payments (invoice_id, amount, method, reference) VALUES ($1,$2,'CHECK','CHK-7742')`, shbInv1ID, total1)
+		invoiceIDs = append(invoiceIDs, shbInv1ID)
+
+		// Delivery for order 1 — COMPLETED with POD
+		if len(vehicleIDs) > 0 && len(driverIDs) > 0 {
+			var routeID1 string
+			db.QueryRow(`INSERT INTO delivery_routes (vehicle_id, driver_id, scheduled_date, status, notes)
+				VALUES ($1,$2,$3,'COMPLETED','SHB Riverside roofing delivery') RETURNING id`,
+				vehicleIDs[0], driverIDs[0], order1Date.AddDate(0, 0, 3)).Scan(&routeID1)
+			if routeID1 != "" {
+				podURL1 := "https://storage.gable.com/pod/" + uuid.New().String() + ".jpg"
+				podSigner1 := "Alex Thompson"
+				podTS1 := order1Date.AddDate(0, 0, 3).Add(10 * time.Hour)
+				db.Exec(`INSERT INTO deliveries (route_id, order_id, stop_sequence, status, pod_proof_url, pod_signed_by, pod_timestamp, delivery_instructions)
+					VALUES ($1,$2,1,'DELIVERED',$3,$4,$5,'Gate code: 4455, deliver to rear staging area')`,
+					uuid.MustParse(routeID1), shbOrder1ID, podURL1, podSigner1, podTS1)
+			}
+		}
+
+		// Order 2: Lumber for Mission Bay — CONFIRMED with UNPAID invoice + SCHEDULED delivery
+		shbOrder2ID := uuid.New()
+		order2Date := time.Now().AddDate(0, 0, -10)
+		order2Lines := []struct {
+			SKU  string
+			Qty  float64
+			Price float64
+		}{
+			{"LUM-248-PREM", 120, 5.25},
+			{"LUM-2610-PREM", 80, 9.50},
+			{"LUM-2810-NO2", 40, 7.80},
+			{"PLY-34-CDX", 30, 34.00},
+			{"OSB-34-TG", 25, 28.50},
+		}
+		var order2Total float64
+		db.Exec(`INSERT INTO orders (id, customer_id, total_amount, status, created_at) VALUES ($1,$2,0,'CONFIRMED',$3)`,
+			shbOrder2ID, shbID, order2Date)
+		for _, l := range order2Lines {
+			if pid, ok := skuToID[l.SKU]; ok {
+				lineTotal := l.Qty * l.Price
+				order2Total += lineTotal
+				db.Exec(`INSERT INTO order_lines (order_id, product_id, quantity, price_each) VALUES ($1,$2,$3,$4)`,
+					shbOrder2ID, pid, l.Qty, l.Price)
+			}
+		}
+		db.Exec("UPDATE orders SET total_amount=$1 WHERE id=$2", order2Total, shbOrder2ID)
+
+		// Invoice for order 2 — UNPAID
+		shbInv2ID := uuid.New()
+		taxRate2 := 0.0825
+		tax2 := order2Total * taxRate2
+		total2 := order2Total + tax2
+		db.Exec(`INSERT INTO invoices (id, order_id, customer_id, status, total_amount, subtotal, tax_rate, tax_amount, due_date, payment_terms, created_at)
+			VALUES ($1,$2,$3,'UNPAID',$4,$5,$6,$7,$8,'NET30',$9)`,
+			shbInv2ID, shbOrder2ID, shbID, total2, order2Total, taxRate2, tax2,
+			order2Date.AddDate(0, 0, 30), order2Date.AddDate(0, 0, 1))
+		invoiceIDs = append(invoiceIDs, shbInv2ID)
+
+		// Delivery for order 2 — SCHEDULED
+		if len(vehicleIDs) > 0 && len(driverIDs) > 0 {
+			var routeID2 string
+			db.QueryRow(`INSERT INTO delivery_routes (vehicle_id, driver_id, scheduled_date, status, notes)
+				VALUES ($1,$2,$3,'SCHEDULED','SHB Mission Bay lumber delivery') RETURNING id`,
+				vehicleIDs[0], driverIDs[0], time.Now().AddDate(0, 0, 3)).Scan(&routeID2)
+			if routeID2 != "" {
+				db.Exec(`INSERT INTO deliveries (route_id, order_id, stop_sequence, status, delivery_instructions)
+					VALUES ($1,$2,1,'PENDING','Deliver to lot 7, contact Mike Johnson 619-555-0102')`,
+					uuid.MustParse(routeID2), shbOrder2ID)
+			}
+		}
+
+		// Order 3: Hardware for Harbor View — DRAFT (no invoice, no delivery)
+		shbOrder3ID := uuid.New()
+		order3Date := time.Now().AddDate(0, 0, -2)
+		order3Lines := []struct {
+			SKU  string
+			Qty  float64
+			Price float64
+		}{
+			{"NAIL-16D-50", 6, 58.00},
+			{"SCR-DECK-3-5", 8, 32.00},
+			{"HANGER-26", 200, 1.25},
+		}
+		var order3Total float64
+		db.Exec(`INSERT INTO orders (id, customer_id, total_amount, status, created_at) VALUES ($1,$2,0,'DRAFT',$3)`,
+			shbOrder3ID, shbID, order3Date)
+		for _, l := range order3Lines {
+			if pid, ok := skuToID[l.SKU]; ok {
+				lineTotal := l.Qty * l.Price
+				order3Total += lineTotal
+				db.Exec(`INSERT INTO order_lines (order_id, product_id, quantity, price_each) VALUES ($1,$2,$3,$4)`,
+					shbOrder3ID, pid, l.Qty, l.Price)
+			}
+		}
+		db.Exec("UPDATE orders SET total_amount=$1 WHERE id=$2", order3Total, shbOrder3ID)
+
+		fmt.Printf("Seed: SHB deterministic orders — 3 orders (%.2f + %.2f + %.2f), 2 invoices, 2 deliveries\n",
+			order1Total, order2Total, order3Total)
+
+		// Ignore unused vars
+		_ = shbJobIDs
+	}
 
 	// =========================================================================
 	// 11. PURCHASE ORDERS

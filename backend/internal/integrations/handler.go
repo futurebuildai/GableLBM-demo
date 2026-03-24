@@ -48,6 +48,19 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/integration/quotes/bulk-price", h.authMiddleware(h.BulkCalculatePrice))
 	mux.HandleFunc("POST /api/integration/quotes", h.authMiddleware(h.CreateQuote))
 	mux.HandleFunc("POST /api/integration/quotes/{id}/accept-and-convert", h.authMiddleware(h.AcceptAndConvertQuote))
+
+	// Read-only endpoints for FB-Brain sync
+	mux.HandleFunc("GET /api/integration/customers", h.authMiddleware(h.ListCustomers))
+	mux.HandleFunc("GET /api/integration/customers/{id}", h.authMiddleware(h.GetCustomer))
+	mux.HandleFunc("GET /api/integration/orders", h.authMiddleware(h.ListOrders))
+	mux.HandleFunc("GET /api/integration/orders/{id}", h.authMiddleware(h.GetOrderDetail))
+	mux.HandleFunc("GET /api/integration/invoices", h.authMiddleware(h.ListInvoices))
+	mux.HandleFunc("GET /api/integration/invoices/{id}", h.authMiddleware(h.GetInvoiceDetail))
+	mux.HandleFunc("GET /api/integration/deliveries", h.authMiddleware(h.ListDeliveries))
+
+	// Write-back endpoints (Velocity → FB-Brain → GableLBM)
+	mux.HandleFunc("POST /api/integration/invoices/{id}/payment", h.authMiddleware(h.RecordPayment))
+	mux.HandleFunc("PUT /api/integration/invoices/{id}/status", h.authMiddleware(h.UpdateInvoiceStatus))
 }
 
 func (h *Handler) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
@@ -356,4 +369,616 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+// ── Integration Read Endpoints (FB-Brain sync) ─────────────────────────────
+
+// IntegrationCustomerResponse is the integration-facing customer model
+type IntegrationCustomerResponse struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	AccountNumber string `json:"account_number"`
+	Email         string `json:"email"`
+	Phone         string `json:"phone"`
+	Address       string `json:"address"`
+	Tier          string `json:"tier"`
+	CreditLimit   int64  `json:"credit_limit"` // cents
+	BalanceDue    int64  `json:"balance_due"`   // cents
+	IsActive      bool   `json:"is_active"`
+}
+
+// ListCustomers returns customers with optional filters: ?active=true, ?account_number=X
+func (h *Handler) ListCustomers(w http.ResponseWriter, r *http.Request) {
+	query := `SELECT id, name, account_number, COALESCE(email, ''), COALESCE(phone, ''),
+		COALESCE(address, ''), COALESCE(tier::text, 'RETAIL'), COALESCE(credit_limit, 0), COALESCE(balance_due, 0), is_active
+		FROM customers WHERE 1=1`
+	args := []interface{}{}
+	argIdx := 1
+
+	if v := r.URL.Query().Get("active"); v != "" {
+		query += fmt.Sprintf(` AND is_active = $%d`, argIdx)
+		args = append(args, v == "true")
+		argIdx++
+	}
+	if v := r.URL.Query().Get("account_number"); v != "" {
+		query += fmt.Sprintf(` AND account_number = $%d`, argIdx)
+		args = append(args, v)
+		argIdx++
+	}
+	query += ` ORDER BY name LIMIT 200`
+
+	rows, err := h.db.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var customers []IntegrationCustomerResponse
+	for rows.Next() {
+		var c IntegrationCustomerResponse
+		var creditFloat, balanceFloat float64
+		if err := rows.Scan(&c.ID, &c.Name, &c.AccountNumber, &c.Email, &c.Phone,
+			&c.Address, &c.Tier, &creditFloat, &balanceFloat, &c.IsActive); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		c.CreditLimit = int64(creditFloat * 100)
+		c.BalanceDue = int64(balanceFloat * 100)
+		customers = append(customers, c)
+	}
+
+	writeJSON(w, http.StatusOK, customers)
+}
+
+// GetCustomer returns a single customer by ID
+func (h *Handler) GetCustomer(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid customer id")
+		return
+	}
+
+	query := `SELECT id, name, account_number, COALESCE(email, ''), COALESCE(phone, ''),
+		COALESCE(address, ''), COALESCE(tier::text, 'RETAIL'), COALESCE(credit_limit, 0), COALESCE(balance_due, 0), is_active
+		FROM customers WHERE id = $1`
+
+	var c IntegrationCustomerResponse
+	var creditFloat, balanceFloat float64
+	err = h.db.Pool.QueryRow(r.Context(), query, id).Scan(
+		&c.ID, &c.Name, &c.AccountNumber, &c.Email, &c.Phone,
+		&c.Address, &c.Tier, &creditFloat, &balanceFloat, &c.IsActive)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "customer not found")
+		return
+	}
+	c.CreditLimit = int64(creditFloat * 100)
+	c.BalanceDue = int64(balanceFloat * 100)
+
+	writeJSON(w, http.StatusOK, c)
+}
+
+// IntegrationOrderResponse is the integration-facing order model
+type IntegrationOrderResponse struct {
+	ID                    string                       `json:"id"`
+	CustomerID            string                       `json:"customer_id"`
+	CustomerAccountNumber string                       `json:"customer_account_number"`
+	QuoteID               *string                      `json:"quote_id,omitempty"`
+	Status                string                       `json:"status"`
+	TotalAmount           int64                        `json:"total_amount"` // cents
+	CreatedAt             string                       `json:"created_at"`
+	Lines                 []IntegrationOrderLineResult `json:"lines,omitempty"`
+}
+
+type IntegrationOrderLineResult struct {
+	ProductID   string  `json:"product_id"`
+	SKU         string  `json:"sku"`
+	Description string  `json:"description"`
+	Quantity    float64 `json:"quantity"`
+	PriceEach   int64   `json:"price_each"` // cents
+	UOM         string  `json:"uom"`
+}
+
+// ListOrders returns orders with optional filters: ?customer_id=X, ?status=X, ?since=ISO8601
+func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
+	query := `SELECT o.id, o.customer_id, c.account_number, o.quote_id, o.status, o.total_amount, o.created_at
+		FROM orders o
+		LEFT JOIN customers c ON c.id = o.customer_id
+		WHERE 1=1`
+	args := []interface{}{}
+	argIdx := 1
+
+	if v := r.URL.Query().Get("customer_id"); v != "" {
+		cid, err := uuid.Parse(v)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid customer_id")
+			return
+		}
+		query += fmt.Sprintf(` AND o.customer_id = $%d`, argIdx)
+		args = append(args, cid)
+		argIdx++
+	}
+	if v := r.URL.Query().Get("status"); v != "" {
+		query += fmt.Sprintf(` AND o.status = $%d`, argIdx)
+		args = append(args, v)
+		argIdx++
+	}
+	if v := r.URL.Query().Get("since"); v != "" {
+		since, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid since (use ISO8601)")
+			return
+		}
+		query += fmt.Sprintf(` AND o.created_at >= $%d`, argIdx)
+		args = append(args, since)
+		argIdx++
+	}
+	query += ` ORDER BY o.created_at DESC LIMIT 200`
+
+	rows, err := h.db.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var orders []IntegrationOrderResponse
+	for rows.Next() {
+		var o IntegrationOrderResponse
+		var quoteID *uuid.UUID
+		var totalFloat float64
+		var createdAt time.Time
+		if err := rows.Scan(&o.ID, &o.CustomerID, &o.CustomerAccountNumber, &quoteID, &o.Status, &totalFloat, &createdAt); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		o.TotalAmount = int64(totalFloat * 100)
+		o.CreatedAt = createdAt.Format(time.RFC3339)
+		if quoteID != nil {
+			s := quoteID.String()
+			o.QuoteID = &s
+		}
+		orders = append(orders, o)
+	}
+
+	writeJSON(w, http.StatusOK, orders)
+}
+
+// GetOrderDetail returns a single order with its line items
+func (h *Handler) GetOrderDetail(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid order id")
+		return
+	}
+
+	// Fetch order header
+	query := `SELECT o.id, o.customer_id, c.account_number, o.quote_id, o.status, o.total_amount, o.created_at
+		FROM orders o
+		LEFT JOIN customers c ON c.id = o.customer_id
+		WHERE o.id = $1`
+
+	var o IntegrationOrderResponse
+	var quoteID *uuid.UUID
+	var totalFloat float64
+	var createdAt time.Time
+	err = h.db.Pool.QueryRow(r.Context(), query, id).Scan(
+		&o.ID, &o.CustomerID, &o.CustomerAccountNumber, &quoteID, &o.Status, &totalFloat, &createdAt)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "order not found")
+		return
+	}
+	o.TotalAmount = int64(totalFloat * 100)
+	o.CreatedAt = createdAt.Format(time.RFC3339)
+	if quoteID != nil {
+		s := quoteID.String()
+		o.QuoteID = &s
+	}
+
+	// Fetch lines
+	linesQuery := `SELECT ol.product_id, COALESCE(p.sku, ''), COALESCE(p.description, ''),
+		ol.quantity, ol.price_each, COALESCE(p.uom_primary::text, 'EACH')
+		FROM order_lines ol
+		LEFT JOIN products p ON p.id = ol.product_id
+		WHERE ol.order_id = $1`
+
+	rows, err := h.db.Pool.Query(r.Context(), linesQuery, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var l IntegrationOrderLineResult
+		var priceFloat float64
+		if err := rows.Scan(&l.ProductID, &l.SKU, &l.Description, &l.Quantity, &priceFloat, &l.UOM); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		l.PriceEach = int64(priceFloat * 100)
+		o.Lines = append(o.Lines, l)
+	}
+
+	writeJSON(w, http.StatusOK, o)
+}
+
+// IntegrationInvoiceResponse is the integration-facing invoice model
+type IntegrationInvoiceResponse struct {
+	ID                    string                         `json:"id"`
+	OrderID               string                         `json:"order_id"`
+	CustomerID            string                         `json:"customer_id"`
+	CustomerAccountNumber string                         `json:"customer_account_number"`
+	Status                string                         `json:"status"`
+	Subtotal              int64                          `json:"subtotal"`     // cents
+	TaxRate               float64                        `json:"tax_rate"`     // e.g. 800 = 8%
+	TaxAmount             int64                          `json:"tax_amount"`   // cents
+	TotalAmount           int64                          `json:"total_amount"` // cents
+	PaymentTerms          string                         `json:"payment_terms"`
+	DueDate               *string                        `json:"due_date,omitempty"`
+	CreatedAt             string                         `json:"created_at"`
+	Lines                 []IntegrationInvoiceLineResult `json:"lines,omitempty"`
+}
+
+type IntegrationInvoiceLineResult struct {
+	ProductID   string  `json:"product_id"`
+	SKU         string  `json:"sku"`
+	Description string  `json:"description"`
+	Quantity    float64 `json:"quantity"`
+	PriceEach   int64   `json:"price_each"` // cents
+}
+
+// ListInvoices returns invoices with optional filters: ?customer_id=X, ?status=X, ?since=ISO8601
+func (h *Handler) ListInvoices(w http.ResponseWriter, r *http.Request) {
+	query := `SELECT i.id, i.order_id, i.customer_id, c.account_number, i.status,
+		COALESCE(i.subtotal, i.total_amount), COALESCE(i.tax_rate, 0), COALESCE(i.tax_amount, 0),
+		i.total_amount, COALESCE(i.payment_terms, 'NET30'), i.due_date, i.created_at
+		FROM invoices i
+		LEFT JOIN customers c ON c.id = i.customer_id
+		WHERE 1=1`
+	args := []interface{}{}
+	argIdx := 1
+
+	if v := r.URL.Query().Get("customer_id"); v != "" {
+		cid, err := uuid.Parse(v)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid customer_id")
+			return
+		}
+		query += fmt.Sprintf(` AND i.customer_id = $%d`, argIdx)
+		args = append(args, cid)
+		argIdx++
+	}
+	if v := r.URL.Query().Get("status"); v != "" {
+		query += fmt.Sprintf(` AND i.status = $%d`, argIdx)
+		args = append(args, v)
+		argIdx++
+	}
+	if v := r.URL.Query().Get("since"); v != "" {
+		since, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid since (use ISO8601)")
+			return
+		}
+		query += fmt.Sprintf(` AND i.created_at >= $%d`, argIdx)
+		args = append(args, since)
+		argIdx++
+	}
+	query += ` ORDER BY i.created_at DESC LIMIT 200`
+
+	rows, err := h.db.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var invoices []IntegrationInvoiceResponse
+	for rows.Next() {
+		var inv IntegrationInvoiceResponse
+		var subtotalFloat, taxRateFloat, taxAmountFloat, totalFloat float64
+		var dueDate *time.Time
+		var createdAt time.Time
+		if err := rows.Scan(&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.CustomerAccountNumber,
+			&inv.Status, &subtotalFloat, &taxRateFloat, &taxAmountFloat, &totalFloat,
+			&inv.PaymentTerms, &dueDate, &createdAt); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		inv.Subtotal = int64(subtotalFloat * 100)
+		inv.TaxRate = taxRateFloat * 10000 // 0.0825 -> 825
+		inv.TaxAmount = int64(taxAmountFloat * 100)
+		inv.TotalAmount = int64(totalFloat * 100)
+		inv.CreatedAt = createdAt.Format(time.RFC3339)
+		if dueDate != nil {
+			s := dueDate.Format("2006-01-02")
+			inv.DueDate = &s
+		}
+		invoices = append(invoices, inv)
+	}
+
+	writeJSON(w, http.StatusOK, invoices)
+}
+
+// GetInvoiceDetail returns a single invoice with its line items
+func (h *Handler) GetInvoiceDetail(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid invoice id")
+		return
+	}
+
+	query := `SELECT i.id, i.order_id, i.customer_id, c.account_number, i.status,
+		COALESCE(i.subtotal, i.total_amount), COALESCE(i.tax_rate, 0), COALESCE(i.tax_amount, 0),
+		i.total_amount, COALESCE(i.payment_terms, 'NET30'), i.due_date, i.created_at
+		FROM invoices i
+		LEFT JOIN customers c ON c.id = i.customer_id
+		WHERE i.id = $1`
+
+	var inv IntegrationInvoiceResponse
+	var subtotalFloat, taxRateFloat, taxAmountFloat, totalFloat float64
+	var dueDate *time.Time
+	var createdAt time.Time
+	err = h.db.Pool.QueryRow(r.Context(), query, id).Scan(
+		&inv.ID, &inv.OrderID, &inv.CustomerID, &inv.CustomerAccountNumber,
+		&inv.Status, &subtotalFloat, &taxRateFloat, &taxAmountFloat, &totalFloat,
+		&inv.PaymentTerms, &dueDate, &createdAt)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "invoice not found")
+		return
+	}
+	inv.Subtotal = int64(subtotalFloat * 100)
+	inv.TaxRate = taxRateFloat * 10000
+	inv.TaxAmount = int64(taxAmountFloat * 100)
+	inv.TotalAmount = int64(totalFloat * 100)
+	inv.CreatedAt = createdAt.Format(time.RFC3339)
+	if dueDate != nil {
+		s := dueDate.Format("2006-01-02")
+		inv.DueDate = &s
+	}
+
+	// Fetch lines
+	linesQuery := `SELECT il.product_id, COALESCE(p.sku, ''), COALESCE(p.description, ''),
+		il.quantity, il.price_each
+		FROM invoice_lines il
+		LEFT JOIN products p ON p.id = il.product_id
+		WHERE il.invoice_id = $1`
+
+	rows, err := h.db.Pool.Query(r.Context(), linesQuery, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var l IntegrationInvoiceLineResult
+		var priceFloat float64
+		if err := rows.Scan(&l.ProductID, &l.SKU, &l.Description, &l.Quantity, &priceFloat); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		l.PriceEach = int64(priceFloat * 100)
+		inv.Lines = append(inv.Lines, l)
+	}
+
+	writeJSON(w, http.StatusOK, inv)
+}
+
+// IntegrationDeliveryResponse is the integration-facing delivery model
+type IntegrationDeliveryResponse struct {
+	ID           string  `json:"id"`
+	RouteID      string  `json:"route_id"`
+	OrderID      string  `json:"order_id"`
+	Status       string  `json:"status"`
+	StopSequence int     `json:"stop_sequence"`
+	PODSignedBy  *string `json:"pod_signed_by,omitempty"`
+	PODProofURL  *string `json:"pod_proof_url,omitempty"`
+	PODTimestamp *string `json:"pod_timestamp,omitempty"`
+	CreatedAt    string  `json:"created_at"`
+}
+
+// ListDeliveries returns deliveries with optional filters: ?order_id=X, ?status=X
+func (h *Handler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
+	query := `SELECT d.id, d.route_id, d.order_id, d.status, d.stop_sequence,
+		d.pod_signed_by, d.pod_proof_url, d.pod_timestamp, d.created_at
+		FROM deliveries d WHERE 1=1`
+	args := []interface{}{}
+	argIdx := 1
+
+	if v := r.URL.Query().Get("order_id"); v != "" {
+		oid, err := uuid.Parse(v)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid order_id")
+			return
+		}
+		query += fmt.Sprintf(` AND d.order_id = $%d`, argIdx)
+		args = append(args, oid)
+		argIdx++
+	}
+	if v := r.URL.Query().Get("status"); v != "" {
+		query += fmt.Sprintf(` AND d.status = $%d`, argIdx)
+		args = append(args, v)
+		argIdx++
+	}
+	query += ` ORDER BY d.created_at DESC LIMIT 200`
+
+	rows, err := h.db.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var deliveries []IntegrationDeliveryResponse
+	for rows.Next() {
+		var d IntegrationDeliveryResponse
+		var podTimestamp *time.Time
+		var createdAt time.Time
+		if err := rows.Scan(&d.ID, &d.RouteID, &d.OrderID, &d.Status, &d.StopSequence,
+			&d.PODSignedBy, &d.PODProofURL, &podTimestamp, &createdAt); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		d.CreatedAt = createdAt.Format(time.RFC3339)
+		if podTimestamp != nil {
+			s := podTimestamp.Format(time.RFC3339)
+			d.PODTimestamp = &s
+		}
+		deliveries = append(deliveries, d)
+	}
+
+	writeJSON(w, http.StatusOK, deliveries)
+}
+
+// ── Write-back Endpoints (reverse flow: Velocity → FB-Brain → GableLBM) ────
+
+// RecordPaymentRequest is the body for POST /api/integration/invoices/{id}/payment
+type RecordPaymentRequest struct {
+	Amount    float64 `json:"amount"`    // dollars
+	Method    string  `json:"method"`    // CASH, CARD, CHECK, ACCOUNT
+	Reference string  `json:"reference"` // external ref (Velocity payment ID)
+}
+
+// RecordPayment records a payment against an invoice and updates status/balance
+func (h *Handler) RecordPayment(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	invoiceID, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid invoice id")
+		return
+	}
+
+	var req RecordPaymentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Amount <= 0 {
+		writeError(w, http.StatusBadRequest, "amount must be positive")
+		return
+	}
+	if req.Method == "" {
+		req.Method = "ACCOUNT"
+	}
+
+	ctx := r.Context()
+
+	// Get current invoice
+	var totalFloat float64
+	var currentStatus string
+	var customerID uuid.UUID
+	err = h.db.Pool.QueryRow(ctx,
+		`SELECT total_amount, status, customer_id FROM invoices WHERE id = $1`, invoiceID,
+	).Scan(&totalFloat, &currentStatus, &customerID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "invoice not found")
+		return
+	}
+
+	// Sum existing payments
+	var paidFloat float64
+	_ = h.db.Pool.QueryRow(ctx,
+		`SELECT COALESCE(SUM(amount), 0) FROM payments WHERE invoice_id = $1`, invoiceID,
+	).Scan(&paidFloat)
+
+	// Insert payment
+	_, err = h.db.Pool.Exec(ctx,
+		`INSERT INTO payments (invoice_id, amount, method, reference) VALUES ($1, $2, $3, $4)`,
+		invoiceID, req.Amount, req.Method, req.Reference)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("insert payment: %v", err))
+		return
+	}
+
+	// Determine new status
+	newPaid := paidFloat + req.Amount
+	newStatus := currentStatus
+	now := time.Now()
+	var paidAt *time.Time
+	if newPaid >= totalFloat {
+		newStatus = "PAID"
+		paidAt = &now
+	} else if newPaid > 0 {
+		newStatus = "PARTIAL"
+	}
+
+	// Update invoice status
+	_, err = h.db.Pool.Exec(ctx,
+		`UPDATE invoices SET status = $1, paid_at = $2, updated_at = NOW() WHERE id = $3`,
+		newStatus, paidAt, invoiceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("update invoice: %v", err))
+		return
+	}
+
+	// Update customer balance (reduce by payment amount)
+	_, err = h.db.Pool.Exec(ctx,
+		`UPDATE customers SET balance_due = balance_due - $1, updated_at = NOW() WHERE id = $2`,
+		req.Amount, customerID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("update balance: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"invoice_id": invoiceID.String(),
+		"status":     newStatus,
+		"amount":     req.Amount,
+	})
+}
+
+// UpdateInvoiceStatusRequest is the body for PUT /api/integration/invoices/{id}/status
+type UpdateInvoiceStatusRequest struct {
+	Status string `json:"status"` // UNPAID, PARTIAL, PAID, VOID, OVERDUE
+}
+
+// UpdateInvoiceStatus directly sets the invoice status
+func (h *Handler) UpdateInvoiceStatus(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	invoiceID, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid invoice id")
+		return
+	}
+
+	var req UpdateInvoiceStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	validStatuses := map[string]bool{
+		"UNPAID": true, "PARTIAL": true, "PAID": true, "VOID": true, "OVERDUE": true,
+	}
+	if !validStatuses[req.Status] {
+		writeError(w, http.StatusBadRequest, "invalid status")
+		return
+	}
+
+	var paidAt *time.Time
+	if req.Status == "PAID" {
+		now := time.Now()
+		paidAt = &now
+	}
+
+	tag, err := h.db.Pool.Exec(r.Context(),
+		`UPDATE invoices SET status = $1, paid_at = $2, updated_at = NOW() WHERE id = $3`,
+		req.Status, paidAt, invoiceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("update invoice: %v", err))
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		writeError(w, http.StatusNotFound, "invoice not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"invoice_id": invoiceID.String(),
+		"status":     req.Status,
+	})
 }
