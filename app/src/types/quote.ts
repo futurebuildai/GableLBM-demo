@@ -34,6 +34,7 @@ export interface Quote {
 
     // Delivery
     delivery_type: 'PICKUP' | 'DELIVERY';
+    delivery_address?: string;
     freight_amount: number;
     vehicle_id?: string;
     vehicle_name?: string;

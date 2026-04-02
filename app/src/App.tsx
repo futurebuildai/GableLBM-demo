@@ -70,8 +70,8 @@ function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          {/* Demo Landing Page */}
-          <Route path="/" element={<DemoLanding />} />
+          {/* Root redirects to ERP Quotes */}
+          <Route path="/" element={<Navigate to="/erp/quotes" replace />} />
 
           {/* POS Terminal */}
           <Route path="/pos" element={<POSTerminal />} />

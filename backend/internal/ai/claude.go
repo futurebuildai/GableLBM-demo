@@ -389,3 +389,73 @@ func (c *Client) ExtractMaterialList(ctx context.Context, fileBytes []byte, cont
 
 	return result.String(), nil
 }
+
+// SendMessage sends a text prompt to Claude and returns the text response.
+// Used for general-purpose AI tasks like quote editing commands.
+func (c *Client) SendMessage(ctx context.Context, systemPromptText, userMessage string) (string, error) {
+	apiKey := c.getKey(ctx)
+	if apiKey == "" {
+		return "", fmt.Errorf("no Anthropic API key configured")
+	}
+
+	req := messageRequest{
+		Model:     anthropicModel,
+		MaxTokens: 4096,
+		System:    systemPromptText,
+		Messages: []messageContent{
+			{
+				Role: "user",
+				Content: []contentPart{
+					{Type: "text", Text: userMessage},
+				},
+			},
+		},
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", anthropicAPIURL, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-api-key", apiKey)
+	httpReq.Header.Set("anthropic-version", apiVersion)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var apiErr apiError
+		if json.Unmarshal(respBody, &apiErr) == nil {
+			return "", fmt.Errorf("Claude API error (%d): %s", resp.StatusCode, apiErr.Error.Message)
+		}
+		return "", fmt.Errorf("Claude API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var msgResp messageResponse
+	if err := json.Unmarshal(respBody, &msgResp); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	var result strings.Builder
+	for _, block := range msgResp.Content {
+		if block.Type == "text" {
+			result.WriteString(block.Text)
+		}
+	}
+
+	return result.String(), nil
+}

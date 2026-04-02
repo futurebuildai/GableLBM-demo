@@ -41,6 +41,13 @@ type Config struct {
 
 	// Google Gemini (PIM Image Generation)
 	GeminiAPIKey string
+
+	// Resend (Email Notifications)
+	ResendAPIKey string
+
+	// Quote Notification
+	QuoteNotificationEmail string
+	AppBaseURL             string
 }
 
 func Load() *Config {
@@ -81,6 +88,13 @@ func Load() *Config {
 
 		// Google Gemini (PIM Image Generation)
 		GeminiAPIKey: getEnv("GEMINI_API_KEY", ""),
+
+		// Resend (Email Notifications)
+		ResendAPIKey: getEnv("RESEND_API_KEY", ""),
+
+		// Quote Notification
+		QuoteNotificationEmail: getEnv("QUOTE_NOTIFICATION_EMAIL", "jameson@intellipim.com"),
+		AppBaseURL:             getEnv("APP_BASE_URL", "http://localhost:5173"),
 	}
 }
 

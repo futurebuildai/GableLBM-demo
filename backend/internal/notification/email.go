@@ -10,6 +10,7 @@ import (
 type EmailService interface {
 	SendInvoice(ctx context.Context, to string, invoiceID string, pdfBytes []byte) error
 	SendDeliveryNotification(ctx context.Context, to string, subject string, body string) error
+	SendQuoteNotification(ctx context.Context, to string, quoteID string, customerName string, totalAmount float64, quoteURL string) error
 }
 
 // LogEmailService is a dev/demo fallback that logs emails instead of sending.
@@ -37,6 +38,17 @@ func (s *LogEmailService) SendDeliveryNotification(ctx context.Context, to strin
 		"to", to,
 		"subject", subject,
 		"body", body,
+	)
+	return nil
+}
+
+func (s *LogEmailService) SendQuoteNotification(ctx context.Context, to string, quoteID string, customerName string, totalAmount float64, quoteURL string) error {
+	s.logger.Info("MOCK QUOTE NOTIFICATION EMAIL SENT",
+		"to", to,
+		"quote_id", quoteID,
+		"customer_name", customerName,
+		"total_amount", totalAmount,
+		"quote_url", quoteURL,
 	)
 	return nil
 }

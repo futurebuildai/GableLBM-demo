@@ -1,6 +1,7 @@
 package portal
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,6 +41,40 @@ type PortalConfig struct {
 	SupportPhone string    `json:"support_phone"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// --- Quick Quote DTOs ---
+
+// ParseTextRequest is the payload for parsing typed/spoken material list text.
+type ParseTextRequest struct {
+	Text string `json:"text"`
+}
+
+// PortalQuoteRequest is the payload for creating a quote from parsed material list items.
+type PortalQuoteRequest struct {
+	Items            []PortalQuoteLineRequest `json:"items"`
+	Notes            string                   `json:"notes,omitempty"`
+	DeliveryMethod   string                   `json:"delivery_method,omitempty"`
+	DeliveryAddress  string                   `json:"delivery_address,omitempty"`
+	OriginalText     string                   `json:"original_text,omitempty"`
+	OriginalFilename string                   `json:"original_filename,omitempty"`
+	ParseMap         json.RawMessage          `json:"parse_map,omitempty"`
+}
+
+// PortalQuoteLineRequest is a single line item for a portal quote request.
+type PortalQuoteLineRequest struct {
+	ProductID   uuid.UUID `json:"product_id"`
+	SKU         string    `json:"sku"`
+	Description string    `json:"description"`
+	Quantity    float64   `json:"quantity"`
+	UOM         string    `json:"uom"`
+	UnitPrice   float64   `json:"unit_price"`
+}
+
+// PortalQuoteResponse confirms a created quote.
+type PortalQuoteResponse struct {
+	QuoteID uuid.UUID `json:"quote_id"`
+	Message string    `json:"message"`
 }
 
 // --- Request/Response DTOs ---

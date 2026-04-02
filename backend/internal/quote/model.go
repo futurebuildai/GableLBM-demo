@@ -35,10 +35,11 @@ type Quote struct {
 	RejectedAt *time.Time `json:"rejected_at,omitempty"`
 
 	// Delivery fields
-	DeliveryType  string     `json:"delivery_type"`            // "PICKUP" or "DELIVERY"
-	FreightAmount float64    `json:"freight_amount"`
-	VehicleID     *uuid.UUID `json:"vehicle_id,omitempty"`
-	VehicleName   string     `json:"vehicle_name,omitempty"`
+	DeliveryType    string     `json:"delivery_type"`            // "PICKUP" or "DELIVERY"
+	DeliveryAddress string     `json:"delivery_address,omitempty"`
+	FreightAmount   float64    `json:"freight_amount"`
+	VehicleID       *uuid.UUID `json:"vehicle_id,omitempty"`
+	VehicleName     string     `json:"vehicle_name,omitempty"`
 
 	// Analytics fields
 	MarginTotal float64 `json:"margin_total"`

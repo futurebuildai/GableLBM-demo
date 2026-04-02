@@ -60,13 +60,13 @@ func (r *PostgresRepository) CreateQuote(ctx context.Context, q *Quote) error {
 		INSERT INTO quotes (
 			id, customer_id, job_id, state, total_amount, expires_at, created_at, updated_at,
 			margin_total, source, original_file, original_filename, original_content_type, parse_map,
-			delivery_type, freight_amount, vehicle_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+			delivery_type, delivery_address, freight_amount, vehicle_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 	`
 	_, err = tx.Exec(ctx, queryHeader,
 		q.ID, q.CustomerID, q.JobID, q.State, q.TotalAmount, q.ExpiresAt, q.CreatedAt, q.UpdatedAt,
 		q.MarginTotal, q.Source, q.OriginalFile, q.OriginalFilename, q.OriginalContentType, q.ParseMap,
-		q.DeliveryType, q.FreightAmount, q.VehicleID,
+		q.DeliveryType, q.DeliveryAddress, q.FreightAmount, q.VehicleID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert quote header: %w", err)
@@ -113,7 +113,7 @@ func (r *PostgresRepository) GetQuote(ctx context.Context, id uuid.UUID) (*Quote
 		SELECT q.id, q.customer_id, COALESCE(c.name, ''), q.job_id, q.state, q.total_amount, q.expires_at, q.created_at, q.updated_at,
 			q.sent_at, q.accepted_at, q.rejected_at, COALESCE(q.margin_total, 0), COALESCE(q.source, 'manual'),
 			COALESCE(q.original_filename, ''), COALESCE(q.original_content_type, ''), q.parse_map,
-			COALESCE(q.delivery_type, 'PICKUP'), COALESCE(q.freight_amount, 0), q.vehicle_id, COALESCE(v.name, '')
+			COALESCE(q.delivery_type, 'PICKUP'), COALESCE(q.delivery_address, ''), COALESCE(q.freight_amount, 0), q.vehicle_id, COALESCE(v.name, '')
 		FROM quotes q
 		LEFT JOIN customers c ON c.id = q.customer_id
 		LEFT JOIN vehicles v ON v.id = q.vehicle_id
@@ -123,7 +123,7 @@ func (r *PostgresRepository) GetQuote(ctx context.Context, id uuid.UUID) (*Quote
 		&q.ID, &q.CustomerID, &q.CustomerName, &q.JobID, &q.State, &q.TotalAmount, &q.ExpiresAt, &q.CreatedAt, &q.UpdatedAt,
 		&q.SentAt, &q.AcceptedAt, &q.RejectedAt, &q.MarginTotal, &q.Source,
 		&q.OriginalFilename, &q.OriginalContentType, &q.ParseMap,
-		&q.DeliveryType, &q.FreightAmount, &q.VehicleID, &q.VehicleName,
+		&q.DeliveryType, &q.DeliveryAddress, &q.FreightAmount, &q.VehicleID, &q.VehicleName,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -242,7 +242,7 @@ func (r *PostgresRepository) ListQuotes(ctx context.Context) ([]Quote, error) {
 	query := `
 		SELECT q.id, q.customer_id, COALESCE(c.name, ''), q.job_id, q.state, q.total_amount, q.expires_at, q.created_at, q.updated_at,
 			q.sent_at, q.accepted_at, q.rejected_at, COALESCE(q.margin_total, 0), COALESCE(q.source, 'manual'),
-			COALESCE(q.delivery_type, 'PICKUP'), COALESCE(q.freight_amount, 0), q.vehicle_id, COALESCE(v.name, '')
+			COALESCE(q.delivery_type, 'PICKUP'), COALESCE(q.delivery_address, ''), COALESCE(q.freight_amount, 0), q.vehicle_id, COALESCE(v.name, '')
 		FROM quotes q
 		LEFT JOIN customers c ON c.id = q.customer_id
 		LEFT JOIN vehicles v ON v.id = q.vehicle_id
@@ -260,7 +260,7 @@ func (r *PostgresRepository) ListQuotes(ctx context.Context) ([]Quote, error) {
 		if err := rows.Scan(
 			&q.ID, &q.CustomerID, &q.CustomerName, &q.JobID, &q.State, &q.TotalAmount, &q.ExpiresAt, &q.CreatedAt, &q.UpdatedAt,
 			&q.SentAt, &q.AcceptedAt, &q.RejectedAt, &q.MarginTotal, &q.Source,
-			&q.DeliveryType, &q.FreightAmount, &q.VehicleID, &q.VehicleName,
+			&q.DeliveryType, &q.DeliveryAddress, &q.FreightAmount, &q.VehicleID, &q.VehicleName,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan quote: %w", err)
 		}

@@ -13,33 +13,36 @@ import (
 	"github.com/gablelbm/gable/internal/pricing"
 	"github.com/gablelbm/gable/internal/product"
 	"github.com/gablelbm/gable/internal/quote"
+	"github.com/gablelbm/gable/internal/reporting"
 	"github.com/gablelbm/gable/pkg/database"
 	"github.com/google/uuid"
 )
 
 type Handler struct {
-	db          *database.DB
-	pricingSvc  *pricing.Service
-	quoteSvc    *quote.Service
-	orderSvc    *order.Service
-	customerSvc *customer.Service
-	productSvc  *product.Service
-	apiKey      string
+	db           *database.DB
+	pricingSvc   *pricing.Service
+	quoteSvc     *quote.Service
+	orderSvc     *order.Service
+	customerSvc  *customer.Service
+	productSvc   *product.Service
+	reportingSvc *reporting.Service
+	apiKey       string
 }
 
-func NewHandler(db *database.DB, pricingSvc *pricing.Service, quoteSvc *quote.Service, orderSvc *order.Service, customerSvc *customer.Service, productSvc *product.Service) *Handler {
+func NewHandler(db *database.DB, pricingSvc *pricing.Service, quoteSvc *quote.Service, orderSvc *order.Service, customerSvc *customer.Service, productSvc *product.Service, reportingSvc *reporting.Service) *Handler {
 	apiKey := os.Getenv("INTEGRATION_API_KEY")
 	if apiKey == "" {
 		apiKey = "fb-brain-demo-key-2026"
 	}
 	return &Handler{
-		db:          db,
-		pricingSvc:  pricingSvc,
-		quoteSvc:    quoteSvc,
-		orderSvc:    orderSvc,
-		customerSvc: customerSvc,
-		productSvc:  productSvc,
-		apiKey:      apiKey,
+		db:           db,
+		pricingSvc:   pricingSvc,
+		quoteSvc:     quoteSvc,
+		orderSvc:     orderSvc,
+		customerSvc:  customerSvc,
+		productSvc:   productSvc,
+		reportingSvc: reportingSvc,
+		apiKey:       apiKey,
 	}
 }
 
@@ -57,6 +60,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/integration/invoices", h.authMiddleware(h.ListInvoices))
 	mux.HandleFunc("GET /api/integration/invoices/{id}", h.authMiddleware(h.GetInvoiceDetail))
 	mux.HandleFunc("GET /api/integration/deliveries", h.authMiddleware(h.ListDeliveries))
+	mux.HandleFunc("GET /api/integration/statements", h.authMiddleware(h.ListStatements))
+	mux.HandleFunc("GET /api/integration/payments", h.authMiddleware(h.ListPayments))
 
 	// Write-back endpoints (Velocity → FB-Brain → GableLBM)
 	mux.HandleFunc("POST /api/integration/invoices/{id}/payment", h.authMiddleware(h.RecordPayment))
@@ -832,6 +837,127 @@ func (h *Handler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, deliveries)
+}
+
+// ── Statement & Payment Read Endpoints ───────────────────────────────────────
+
+// IntegrationStatementResponse is the integration-facing statement model
+type IntegrationStatementResponse struct {
+	CustomerID   string  `json:"customer_id"`
+	CustomerName string  `json:"customer_name"`
+	PeriodStart  string  `json:"period_start"`
+	PeriodEnd    string  `json:"period_end"`
+	OpenBalance  float64 `json:"open_balance"`
+	CloseBalance float64 `json:"close_balance"`
+}
+
+// ListStatements returns monthly statements for a customer over the last 6 months
+func (h *Handler) ListStatements(w http.ResponseWriter, r *http.Request) {
+	customerID := r.URL.Query().Get("customer_id")
+	if customerID == "" {
+		writeError(w, http.StatusBadRequest, "customer_id required")
+		return
+	}
+	if _, err := uuid.Parse(customerID); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid customer_id")
+		return
+	}
+
+	var statements []IntegrationStatementResponse
+	now := time.Now()
+
+	for i := 0; i < 6; i++ {
+		monthStart := time.Date(now.Year(), now.Month()-time.Month(i), 1, 0, 0, 0, 0, time.UTC)
+		monthEnd := time.Date(now.Year(), now.Month()-time.Month(i)+1, 0, 0, 0, 0, 0, time.UTC) // last day of month
+
+		stmt, err := h.reportingSvc.GetCustomerStatement(
+			r.Context(), customerID,
+			monthStart.Format("2006-01-02"),
+			monthEnd.Format("2006-01-02"),
+		)
+		if err != nil {
+			continue
+		}
+
+		statements = append(statements, IntegrationStatementResponse{
+			CustomerID:   stmt.CustomerID,
+			CustomerName: stmt.CustomerName,
+			PeriodStart:  monthStart.Format("2006-01-02"),
+			PeriodEnd:    monthEnd.Format("2006-01-02"),
+			OpenBalance:  stmt.OpenBalance,
+			CloseBalance: stmt.CloseBalance,
+		})
+	}
+
+	if statements == nil {
+		statements = []IntegrationStatementResponse{}
+	}
+	writeJSON(w, http.StatusOK, statements)
+}
+
+// IntegrationPaymentResponse is the integration-facing payment model
+type IntegrationPaymentResponse struct {
+	ID         string `json:"id"`
+	InvoiceID  string `json:"invoice_id"`
+	CustomerID string `json:"customer_id"`
+	Amount     int64  `json:"amount"` // cents
+	Method     string `json:"method"`
+	Reference  string `json:"reference"`
+	CardLast4  string `json:"card_last4,omitempty"`
+	CardBrand  string `json:"card_brand,omitempty"`
+	CreatedAt  string `json:"created_at"`
+}
+
+// ListPayments returns payments for a customer
+func (h *Handler) ListPayments(w http.ResponseWriter, r *http.Request) {
+	customerID := r.URL.Query().Get("customer_id")
+	if customerID == "" {
+		writeError(w, http.StatusBadRequest, "customer_id required")
+		return
+	}
+	cid, err := uuid.Parse(customerID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid customer_id")
+		return
+	}
+
+	query := `
+		SELECT p.id, p.invoice_id, i.customer_id, p.amount, p.method,
+			   COALESCE(p.reference, ''), COALESCE(p.card_last4, ''),
+			   COALESCE(p.card_brand, ''), p.created_at
+		FROM payments p
+		JOIN invoices i ON i.id = p.invoice_id
+		WHERE i.customer_id = $1
+		ORDER BY p.created_at DESC
+		LIMIT 100
+	`
+
+	rows, err := h.db.Pool.Query(r.Context(), query, cid)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var payments []IntegrationPaymentResponse
+	for rows.Next() {
+		var p IntegrationPaymentResponse
+		var amountFloat float64
+		var createdAt time.Time
+		if err := rows.Scan(&p.ID, &p.InvoiceID, &p.CustomerID, &amountFloat,
+			&p.Method, &p.Reference, &p.CardLast4, &p.CardBrand, &createdAt); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		p.Amount = int64(amountFloat * 100)
+		p.CreatedAt = createdAt.Format(time.RFC3339)
+		payments = append(payments, p)
+	}
+
+	if payments == nil {
+		payments = []IntegrationPaymentResponse{}
+	}
+	writeJSON(w, http.StatusOK, payments)
 }
 
 // ── Write-back Endpoints (reverse flow: Velocity → FB-Brain → GableLBM) ────

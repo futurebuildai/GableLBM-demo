@@ -1,12 +1,16 @@
 package portal
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gablelbm/gable/pkg/middleware"
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 )
 
 // maxBodySize is the maximum request body size (1MB).
@@ -71,6 +75,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) h
 	mux.Handle("POST /api/portal/v1/invites", authMw(http.HandlerFunc(h.HandleInviteUser)))
 	mux.Handle("PUT /api/portal/v1/users/{id}/role", authMw(http.HandlerFunc(h.HandleUpdateUserRole)))
 	mux.Handle("PUT /api/portal/v1/users/{id}/status", authMw(http.HandlerFunc(h.HandleUpdateUserStatus)))
+
+	// Quick Quote endpoints (AI-powered material list parsing)
+	mux.Handle("POST /api/portal/v1/parsing/upload", authMw(http.HandlerFunc(h.HandleParseUpload)))
+	mux.Handle("POST /api/portal/v1/parsing/text", authMw(http.HandlerFunc(h.HandleParseText)))
+	mux.Handle("POST /api/portal/v1/quotes", authMw(http.HandlerFunc(h.HandleCreateQuickQuote)))
 }
 
 // HandleLogin authenticates a contractor and returns JWT + config.
@@ -458,4 +467,134 @@ func (h *Handler) HandleUpdateUserStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// --- Quick Quote Handlers ---
+
+// HandleParseUpload processes a material list file upload and returns parsed/matched items.
+func (h *Handler) HandleParseUpload(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "File too large or invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Missing 'file' field in form data", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		portalWriteError(w, "Failed to read uploaded file", err, http.StatusInternalServerError)
+		return
+	}
+
+	contentType := http.DetectContentType(fileBytes)
+
+	// Normalize content type for spreadsheets
+	filename := header.Filename
+	if contentType == "application/octet-stream" || contentType == "application/zip" {
+		switch {
+		case strings.HasSuffix(strings.ToLower(filename), ".xlsx") || strings.HasSuffix(strings.ToLower(filename), ".xls"):
+			contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+		case strings.HasSuffix(strings.ToLower(filename), ".csv"):
+			contentType = "text/csv"
+		}
+	}
+
+	// For spreadsheets, convert to text
+	if strings.Contains(contentType, "spreadsheet") || strings.HasSuffix(strings.ToLower(filename), ".xlsx") {
+		textContent, convErr := convertSpreadsheetToText(fileBytes)
+		if convErr != nil {
+			portalWriteError(w, "Failed to process spreadsheet", convErr, http.StatusBadRequest)
+			return
+		}
+		fileBytes = []byte(textContent)
+		contentType = "text/plain"
+	}
+
+	resp, err := h.svc.ParseMaterialList(r.Context(), fileBytes, contentType)
+	if err != nil {
+		portalWriteError(w, "Failed to parse material list", err, http.StatusInternalServerError)
+		return
+	}
+
+	portalWriteJSON(w, resp)
+}
+
+// HandleParseText parses a text material list and returns parsed/matched items.
+func (h *Handler) HandleParseText(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req ParseTextRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		portalWriteError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(req.Text) == "" {
+		http.Error(w, "Text is required", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.svc.ParseMaterialText(r.Context(), req.Text)
+	if err != nil {
+		portalWriteError(w, "Failed to parse text", err, http.StatusInternalServerError)
+		return
+	}
+
+	portalWriteJSON(w, resp)
+}
+
+// HandleCreateQuickQuote creates a draft quote from parsed material list items.
+func (h *Handler) HandleCreateQuickQuote(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	customerID := getPortalCustomerID(r)
+
+	var req PortalQuoteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		portalWriteError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Items) == 0 {
+		http.Error(w, "At least one item is required", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.svc.CreateQuickQuote(r.Context(), customerID, req)
+	if err != nil {
+		portalWriteError(w, "Failed to create quote", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	portalWriteJSON(w, resp)
+}
+
+// convertSpreadsheetToText reads an xlsx file and converts it to plain text for AI extraction.
+func convertSpreadsheetToText(data []byte) (string, error) {
+	f, err := excelize.OpenReader(bytes.NewReader(data))
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	var sb strings.Builder
+	for _, sheet := range f.GetSheetList() {
+		rows, err := f.GetRows(sheet)
+		if err != nil {
+			continue
+		}
+		for _, row := range rows {
+			line := strings.Join(row, "\t")
+			if strings.TrimSpace(line) != "" {
+				sb.WriteString(line)
+				sb.WriteString("\n")
+			}
+		}
+	}
+	return sb.String(), nil
 }

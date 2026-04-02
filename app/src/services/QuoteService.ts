@@ -74,6 +74,19 @@ export const QuoteService = {
         return response.json();
     },
 
+    async aiEditQuote(quoteId: string, message: string): Promise<{ quote: Quote; explanation: string }> {
+        const response = await fetch(`${API_URL}/quotes/${quoteId}/ai-edit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'AI edit failed');
+        }
+        return response.json();
+    },
+
     async convertToOrder(quoteId: string): Promise<{ customer_id: string; quote_id: string; lines: { product_id: string; quantity: number; price_each: number }[] }> {
         const response = await fetch(`${API_URL}/quotes/${quoteId}/convert`, {
             method: 'POST',

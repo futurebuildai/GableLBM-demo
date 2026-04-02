@@ -25,6 +25,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /quotes/{id}", h.HandleUpdateQuote)
 	mux.HandleFunc("PUT /quotes/{id}/state", h.HandleUpdateState)
 	mux.HandleFunc("POST /quotes/{id}/convert", h.HandleConvertToOrder)
+	mux.HandleFunc("POST /quotes/{id}/ai-edit", h.HandleAIEdit)
 }
 
 // createQuoteRequest is the JSON payload for creating a quote.
@@ -248,4 +249,41 @@ func (h *Handler) HandleDownloadOriginalFile(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", "inline; filename=\""+filename+"\"")
 	w.Write(data)
+}
+
+func (h *Handler) HandleAIEdit(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		return
+	}
+
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if body.Message == "" {
+		http.Error(w, "message is required", http.StatusBadRequest)
+		return
+	}
+
+	updated, explanation, err := h.service.AIEditQuote(r.Context(), id, body.Message)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if err.Error() == "only DRAFT quotes can be edited" || err.Error() == "AI client not configured" {
+			status = http.StatusBadRequest
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"quote":       updated,
+		"explanation": explanation,
+	})
 }

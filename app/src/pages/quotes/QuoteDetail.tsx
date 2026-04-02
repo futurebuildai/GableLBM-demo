@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, Download, ArrowLeft, ShoppingCart, Send, Check, X, Sparkles, Eye, Map, Package, AlertTriangle, ShieldAlert, Truck, TrendingUp } from 'lucide-react';
+import { FileText, Download, ArrowLeft, ShoppingCart, Send, Check, X, Sparkles, Eye, Map, Package, AlertTriangle, ShieldAlert, Truck, TrendingUp, Pencil } from 'lucide-react';
 import { QuoteService } from '../../services/QuoteService';
 import type { Quote, QuoteState, ParseMapItem } from '../../types/quote';
 import { useToast } from '../../components/ui/ToastContext';
 import { OrderService } from '../../services/OrderService';
+import QuoteAIChat from '../../components/quotes/QuoteAIChat';
 
 type Tab = 'details' | 'original' | 'mapping';
 
@@ -105,6 +106,12 @@ export default function QuoteDetail() {
                 </div>
                 <div className="flex gap-2">
                     {quote.state === 'DRAFT' && (
+                        <button onClick={() => navigate(`/erp/quotes/${quote.id}/edit`)} disabled={processing}
+                            className="bg-surface-3 text-white px-4 py-2 rounded hover:bg-surface-2 transition-colors flex items-center gap-2 text-sm font-medium border border-white/10 disabled:opacity-50">
+                            <Pencil size={14} /> Edit Quote
+                        </button>
+                    )}
+                    {quote.state === 'DRAFT' && (
                         <button onClick={() => handleStateChange('SENT')} disabled={processing}
                             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50">
                             <Send size={14} /> Mark Sent
@@ -150,21 +157,100 @@ export default function QuoteDetail() {
             </div>
 
             {/* Tab Content */}
-            {activeTab === 'details' && <DetailsTab quote={quote} />}
+            {activeTab === 'details' && <DetailsTab quote={quote} onQuoteUpdated={() => loadQuote(quote.id)} />}
             {activeTab === 'original' && <OriginalUploadTab quote={quote} />}
             {activeTab === 'mapping' && <MappingTab parseMap={quote.parse_map || []} />}
+
+            {/* AI Chat Panel — only for draft quotes */}
+            {quote.state === 'DRAFT' && (
+                <QuoteAIChat quoteId={quote.id} onQuoteUpdated={() => loadQuote(quote.id)} />
+            )}
         </div>
     );
 }
 
 // --- Details Tab ---
-function DetailsTab({ quote }: { quote: Quote }) {
+function DetailsTab({ quote, onQuoteUpdated }: { quote: Quote; onQuoteUpdated?: () => void }) {
+    const [editingLineId, setEditingLineId] = useState<string | null>(null);
+    const [editPrice, setEditPrice] = useState('');
+    const [saving, setSaving] = useState(false);
+
     const lines = quote.lines || [];
-    const totalRevenue = lines.reduce((s, l) => s + l.line_total, 0);
+    const isDraft = quote.state === 'DRAFT';
+
+    // Compute live preview values when editing
+    const getLinePrice = (line: typeof lines[0]) => {
+        if (editingLineId === line.id && editPrice !== '') {
+            const p = parseFloat(editPrice);
+            return isNaN(p) ? line.unit_price : p;
+        }
+        return line.unit_price;
+    };
+
+    const getLineTotal = (line: typeof lines[0]) => getLinePrice(line) * line.quantity;
+
+    const getLineMarginPct = (line: typeof lines[0]) => {
+        const price = getLinePrice(line);
+        const total = price * line.quantity;
+        const cost = line.unit_cost * line.quantity;
+        return total > 0 ? ((total - cost) / total) * 100 : 0;
+    };
+
+    const totalRevenue = lines.reduce((s, l) => s + getLineTotal(l), 0);
     const totalCost = lines.reduce((s, l) => s + l.unit_cost * l.quantity, 0);
     const projectedMargin = totalRevenue - totalCost;
     const marginPct = totalRevenue > 0 ? (projectedMargin / totalRevenue) * 100 : 0;
     const hasCostData = lines.some(l => l.unit_cost > 0);
+
+    const startEditing = (line: typeof lines[0]) => {
+        if (!isDraft) return;
+        setEditingLineId(line.id);
+        setEditPrice(line.unit_price.toFixed(2));
+    };
+
+    const cancelEditing = () => {
+        setEditingLineId(null);
+        setEditPrice('');
+    };
+
+    const savePrice = async () => {
+        if (!editingLineId || saving) return;
+        const newPrice = parseFloat(editPrice);
+        if (isNaN(newPrice) || newPrice < 0) { cancelEditing(); return; }
+
+        setSaving(true);
+        try {
+            const updatedLines = lines.map(l => ({
+                product_id: l.product_id,
+                sku: l.sku,
+                description: l.description,
+                quantity: l.quantity,
+                uom: l.uom,
+                unit_price: l.id === editingLineId ? newPrice : l.unit_price,
+            }));
+            await QuoteService.updateQuote(quote.id, {
+                customer_id: quote.customer_id,
+                delivery_type: quote.delivery_type,
+                freight_amount: quote.freight_amount,
+                vehicle_id: quote.vehicle_id,
+                lines: updatedLines,
+            });
+            cancelEditing();
+            onQuoteUpdated?.();
+        } catch {
+            // keep editing state on failure
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') { e.preventDefault(); savePrice(); }
+        if (e.key === 'Escape') { cancelEditing(); }
+    };
+
+    // Live preview total (including freight)
+    const liveTotal = totalRevenue + quote.freight_amount;
 
     return (
         <div className="space-y-6">
@@ -209,7 +295,7 @@ function DetailsTab({ quote }: { quote: Quote }) {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <SummaryCard label="Total Amount" value={`$${quote.total_amount.toFixed(2)}`} accent="text-gable-green" />
+                <SummaryCard label="Total Amount" value={`$${liveTotal.toFixed(2)}`} accent="text-gable-green" />
                 <SummaryCard label="Lines" value={String(lines.length)} />
                 <SummaryCard label="Fulfillment" value={quote.delivery_type === 'DELIVERY' ? 'Delivery' : 'Pickup'} accent={quote.delivery_type === 'DELIVERY' ? 'text-blue-400' : undefined} />
                 <SummaryCard label="Source" value={quote.source === 'ai' ? 'AI Parsed' : 'Manual'} />
@@ -220,6 +306,12 @@ function DetailsTab({ quote }: { quote: Quote }) {
                 <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 flex items-center gap-4">
                     <Truck className="w-5 h-5 text-blue-400 shrink-0" />
                     <div className="flex-1 flex items-center gap-6 text-sm">
+                        {quote.delivery_address && (
+                            <div>
+                                <span className="text-zinc-500 mr-2">Address:</span>
+                                <span className="text-white font-medium">{quote.delivery_address}</span>
+                            </div>
+                        )}
                         {quote.vehicle_name && (
                             <div>
                                 <span className="text-zinc-500 mr-2">Truck:</span>
@@ -263,9 +355,10 @@ function DetailsTab({ quote }: { quote: Quote }) {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                         {lines.map(line => {
-                            const lineCost = line.unit_cost * line.quantity;
-                            const lineMargin = line.line_total - lineCost;
-                            const lineMarginPct = line.line_total > 0 ? (lineMargin / line.line_total) * 100 : 0;
+                            const isEditing = editingLineId === line.id;
+                            const livePrice = getLinePrice(line);
+                            const liveLineTotal = getLineTotal(line);
+                            const liveMarginPct = getLineMarginPct(line);
                             return (
                                 <tr key={line.id} className="hover:bg-white/5 transition-colors">
                                     <td className="p-4 font-mono text-white">{line.sku}</td>
@@ -273,18 +366,41 @@ function DetailsTab({ quote }: { quote: Quote }) {
                                     <td className="p-4 text-right font-mono text-zinc-300">
                                         {line.quantity} <span className="text-zinc-600 text-xs">{line.uom}</span>
                                     </td>
-                                    <td className="p-4 text-right font-mono text-zinc-300">${line.unit_price.toFixed(2)}</td>
+                                    <td className="p-4 text-right font-mono text-zinc-300">
+                                        {isEditing ? (
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                className="w-24 bg-surface-2 border border-gable-green/50 rounded px-2 py-1 text-right font-mono text-white text-sm focus:outline-none focus:border-gable-green"
+                                                value={editPrice}
+                                                onChange={e => setEditPrice(e.target.value)}
+                                                onBlur={savePrice}
+                                                onKeyDown={handleKeyDown}
+                                                autoFocus
+                                                disabled={saving}
+                                            />
+                                        ) : (
+                                            <span
+                                                className={isDraft ? 'cursor-pointer group inline-flex items-center gap-1 hover:text-gable-green transition-colors' : ''}
+                                                onClick={() => startEditing(line)}
+                                            >
+                                                ${livePrice.toFixed(2)}
+                                                {isDraft && <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />}
+                                            </span>
+                                        )}
+                                    </td>
                                     {hasCostData && (
                                         <td className="p-4 text-right font-mono text-zinc-500">
                                             {line.unit_cost > 0 ? `$${line.unit_cost.toFixed(2)}` : '—'}
                                         </td>
                                     )}
-                                    <td className="p-4 text-right font-mono text-gable-green font-medium">${line.line_total.toFixed(2)}</td>
+                                    <td className="p-4 text-right font-mono text-gable-green font-medium">${liveLineTotal.toFixed(2)}</td>
                                     {hasCostData && (
                                         <td className="p-4 text-right font-mono">
                                             {line.unit_cost > 0 ? (
-                                                <span className={lineMarginPct >= 20 ? 'text-gable-green' : lineMarginPct >= 10 ? 'text-amber-400' : 'text-red-400'}>
-                                                    {lineMarginPct.toFixed(1)}%
+                                                <span className={liveMarginPct >= 20 ? 'text-gable-green' : liveMarginPct >= 10 ? 'text-amber-400' : 'text-red-400'}>
+                                                    {liveMarginPct.toFixed(1)}%
                                                 </span>
                                             ) : (
                                                 <span className="text-zinc-600">—</span>
@@ -315,7 +431,7 @@ function DetailsTab({ quote }: { quote: Quote }) {
                             )}
                             <tr className={quote.freight_amount > 0 ? 'border-t border-white/5' : ''}>
                                 <td colSpan={hasCostData ? 6 : 4} className="p-4 text-right font-medium text-zinc-400 uppercase tracking-wider text-xs">Total</td>
-                                <td className="p-4 text-right font-mono text-xl font-bold text-gable-green">${quote.total_amount.toFixed(2)}</td>
+                                <td className="p-4 text-right font-mono text-xl font-bold text-gable-green">${liveTotal.toFixed(2)}</td>
                             </tr>
                         </tfoot>
                     )}

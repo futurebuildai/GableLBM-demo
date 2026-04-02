@@ -183,7 +183,8 @@ func main() {
 	accountHandler.RegisterRoutes(mux)
 
 	quoteRepo := quote.NewRepository(db)
-	quoteHandler := quote.NewHandler(quote.NewService(quoteRepo))
+	quoteSvc := quote.NewServiceWithDeps(quoteRepo, claudeClient, productSvc)
+	quoteHandler := quote.NewHandler(quoteSvc)
 	quoteHandler.RegisterRoutes(mux)
 
 	// GL Module (Full General Ledger)
@@ -243,8 +244,15 @@ func main() {
 	orderHandler := order.NewHandler(orderSvc)
 	orderHandler.RegisterRoutes(mux)
 
-	// Notification Module
-	emailSvc := notification.NewLogEmailService(logger)
+	// Notification Module (Email)
+	var emailSvc notification.EmailService
+	if cfg.ResendAPIKey != "" {
+		emailSvc = notification.NewResendEmailService(cfg.ResendAPIKey, logger)
+		logger.Info("Resend email service initialized")
+	} else {
+		emailSvc = notification.NewLogEmailService(logger)
+		logger.Warn("RESEND_API_KEY not set — using mock email service")
+	}
 
 	// Document Module
 	docSvc := document.NewService(productRepo)
@@ -400,7 +408,7 @@ func main() {
 
 	// Portal Module (Sovereign Dealer Portal)
 	portalRepo := portal.NewRepository(db)
-	portalSvc := portal.NewService(portalRepo, logger, pricingSvc, customerSvc, inventorySvc, orderSvc, productSvc)
+	portalSvc := portal.NewService(portalRepo, logger, pricingSvc, customerSvc, inventorySvc, orderSvc, productSvc, parsingSvc, quoteSvc, emailSvc, cfg.QuoteNotificationEmail, cfg.AppBaseURL)
 	portalHandler := portal.NewHandler(portalSvc)
 
 	// In dev/demo mode (no JWKS_URL), bypass portal auth and inject demo claims
@@ -442,7 +450,7 @@ func main() {
 	projectHandler.RegisterRoutes(mux, portalMw)
 
 	// Integration API (FB-Brain cross-system endpoints)
-	integrationHandler := integrations.NewHandler(db, pricingSvc, quote.NewService(quoteRepo), orderSvc, customerSvc, productSvc)
+	integrationHandler := integrations.NewHandler(db, pricingSvc, quoteSvc, orderSvc, customerSvc, productSvc, reportingSvc)
 	integrationHandler.RegisterRoutes(mux)
 
 	// Static file serving for uploaded photos

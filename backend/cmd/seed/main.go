@@ -110,76 +110,91 @@ func main() {
 		ReorderPt, ReorderQty            int
 	}
 	products := []product{
-		{"2x4x8 SPF Premium", "LUM-248-PREM", "PCS", "Gable Lumber Supply", "Lumber", 3.50, 5.50, 9.0, 200, 500},
-		{"2x4x10 SPF Premium", "LUM-2410-PREM", "PCS", "Gable Lumber Supply", "Lumber", 4.50, 7.25, 11.3, 150, 400},
-		{"2x4x12 SPF Premium", "LUM-2412-PREM", "PCS", "Gable Lumber Supply", "Lumber", 5.40, 8.75, 13.5, 100, 300},
-		{"2x4x92-5/8 SPF Stud", "LUM-2492-STUD", "PCS", "Gable Lumber Supply", "Lumber", 3.20, 5.10, 8.5, 300, 600},
-		{"2x6x10 SPF Premium", "LUM-2610-PREM", "PCS", "Gable Lumber Supply", "Lumber", 6.00, 9.80, 16.9, 120, 300},
-		{"2x6x12 SPF Premium", "LUM-2612-PREM", "PCS", "Gable Lumber Supply", "Lumber", 7.20, 11.75, 20.3, 100, 250},
-		{"2x6x16 SPF Premium", "LUM-2616-PREM", "PCS", "Gable Lumber Supply", "Lumber", 9.60, 15.60, 27.0, 80, 200},
-		{"2x8x10 SPF No.2", "LUM-2810-NO2", "PCS", "Gable Lumber Supply", "Lumber", 8.50, 13.90, 22.5, 80, 200},
-		{"2x8x16 SPF No.2", "LUM-2816-NO2", "PCS", "Gable Lumber Supply", "Lumber", 13.60, 22.25, 36.0, 50, 150},
-		{"2x10x12 SPF No.2", "LUM-21012-NO2", "PCS", "Gable Lumber Supply", "Lumber", 15.00, 24.50, 33.8, 60, 150},
-		{"2x12x16 SPF No.2", "LUM-21216-NO2", "PCS", "Gable Lumber Supply", "Lumber", 28.00, 45.00, 54.0, 30, 80},
-		{"4x4x8 Pressure Treated", "LUM-448-PT", "PCS", "Gable Lumber Supply", "Lumber", 8.00, 12.50, 22.0, 100, 200},
-		{"4x4x10 Pressure Treated", "LUM-4410-PT", "PCS", "Gable Lumber Supply", "Lumber", 10.00, 15.75, 27.5, 80, 150},
-		{"6x6x12 Pressure Treated", "LUM-6612-PT", "PCS", "Gable Lumber Supply", "Lumber", 35.00, 55.00, 72.0, 30, 60},
-		{"3/4 Plywood CDX 4x8", "PLY-34-CDX", "PCS", "Gable Lumber Supply", "Sheet Goods", 24.00, 38.00, 70.0, 80, 200},
-		{"1/2 Plywood CDX 4x8", "PLY-12-CDX", "PCS", "Gable Lumber Supply", "Sheet Goods", 18.00, 28.50, 48.0, 80, 200},
-		{"3/4 OSB T&G 4x8", "OSB-34-TG", "PCS", "Gable Lumber Supply", "Sheet Goods", 22.00, 34.00, 65.0, 100, 250},
-		{"1/2 OSB 4x8", "OSB-12", "PCS", "Gable Lumber Supply", "Sheet Goods", 12.00, 19.50, 44.0, 120, 300},
-		{"1/2 Drywall Regular 4x8", "DW-12-REG", "PCS", "Gable Lumber Supply", "Sheet Goods", 11.00, 16.00, 57.0, 100, 250},
-		{"5/8 Drywall Firecode 4x8", "DW-58-FC", "PCS", "Gable Lumber Supply", "Sheet Goods", 14.00, 21.00, 70.0, 60, 150},
-		{"16d Common Nails (50lb)", "NAIL-16D-50", "BOX", "Fastener Depot", "Hardware", 45.00, 65.00, 50.0, 20, 50},
-		{"10d Common Nails (50lb)", "NAIL-10D-50", "BOX", "Fastener Depot", "Hardware", 45.00, 65.00, 50.0, 20, 50},
-		{"3\" Deck Screws (5lb)", "SCR-DECK-3-5", "BOX", "Fastener Depot", "Hardware", 18.00, 29.99, 5.0, 40, 100},
-		{"Joist Hanger 2x6", "HANGER-26", "PCS", "Hardware Wholesale Inc", "Hardware", 0.80, 1.45, 0.5, 200, 500},
-		{"Joist Hanger 2x8", "HANGER-28", "PCS", "Hardware Wholesale Inc", "Hardware", 0.95, 1.65, 0.6, 150, 400},
-		{"Joist Hanger 2x10", "HANGER-210", "PCS", "Hardware Wholesale Inc", "Hardware", 1.10, 1.85, 0.7, 100, 300},
-		{"Hurricane Tie H1", "TIE-H1", "PCS", "Hardware Wholesale Inc", "Hardware", 0.65, 1.15, 0.3, 200, 500},
-		{"Simpson Strong-Tie LUS28", "SIMP-LUS28", "PCS", "Hardware Wholesale Inc", "Hardware", 0.90, 1.50, 0.4, 150, 400},
-		{"Architectural Shingles 30yr", "RF-ARCH-30", "BUNDLE", "Roofing Specialists Ltd", "Roofing", 28.00, 42.00, 70.0, 50, 100},
-		{"Architectural Shingles (Black)", "RF-SH-BLK", "BUNDLE", "Roofing Specialists Ltd", "Roofing", 28.00, 42.00, 70.0, 50, 100},
-		{"Architectural Shingles (Weathered Wood)", "RF-SH-WW", "BUNDLE", "Roofing Specialists Ltd", "Roofing", 28.00, 42.00, 70.0, 50, 100},
-		{"Roofing Felt #15", "RF-FELT-15", "RL", "Roofing Specialists Ltd", "Roofing", 15.00, 22.50, 15.0, 30, 80},
-		{"Ice & Water Shield 65'", "RF-ICE-65", "RL", "Roofing Specialists Ltd", "Roofing", 65.00, 98.00, 36.0, 20, 50},
-		{"Roof Edge Drip 10'", "RF-DRIP-10", "PCS", "Roofing Specialists Ltd", "Roofing", 4.50, 7.50, 2.0, 60, 150},
-		{"Ridge Vent 4'", "RF-RIDGE-4", "PCS", "Roofing Specialists Ltd", "Roofing", 8.00, 13.50, 3.0, 40, 80},
-		{"Starter Strip", "RF-START", "PCS", "Roofing Specialists Ltd", "Roofing", 6.00, 10.00, 2.5, 40, 80},
-		{"1.25\" Roofing Nails 5lb", "RF-NAIL-125", "BOX", "Roofing Specialists Ltd", "Roofing", 12.00, 19.00, 5.0, 30, 60},
-		{"Step Flashing", "RF-FLASH-STEP", "PCS", "Roofing Specialists Ltd", "Roofing", 2.50, 4.50, 0.5, 60, 120},
-		{"Pipe Boot Flashing", "RF-FLASH-PIPE", "PCS", "Roofing Specialists Ltd", "Roofing", 8.00, 14.00, 1.5, 20, 40},
-		{"Ice & Water Shield", "RF-ICE-WTR", "RL", "Roofing Specialists Ltd", "Roofing", 65.00, 98.00, 36.0, 20, 50},
-		{"Roof Edge Drip 10'", "RF-EDGE-WHT", "PCS", "Roofing Specialists Ltd", "Roofing", 4.50, 7.50, 2.0, 60, 150},
-		{"R-13 Fiberglass Batts 15x93", "INS-R13-15", "BAG", "Valley Insulation", "Insulation", 45.00, 68.00, 32.0, 30, 60},
-		{"R-19 Fiberglass Batts 15x93", "INS-R19-15", "BAG", "Valley Insulation", "Insulation", 55.00, 82.00, 42.0, 25, 50},
-		{"R-30 Fiberglass Batts 24x48", "INS-R30-24", "BAG", "Valley Insulation", "Insulation", 65.00, 98.00, 48.0, 20, 40},
-		{"Int Door 30x80 6-Panel Hollow", "DR-INT-3080-6P", "PCS", "Millwork Masters", "Millwork", 65.00, 95.00, 38.0, 15, 30},
-		{"Int Door 32x80 6-Panel Hollow", "DR-INT-3280-6P", "PCS", "Millwork Masters", "Millwork", 65.00, 95.00, 40.0, 15, 30},
-		{"Int Door 36x80 6-Panel Hollow", "DR-INT-3680-6P", "PCS", "Millwork Masters", "Millwork", 68.00, 99.00, 42.0, 15, 30},
-		{"Ext Door 36x80 Steel 6-Panel", "DR-EXT-3680-STL", "PCS", "Millwork Masters", "Millwork", 180.00, 280.00, 85.0, 8, 20},
-		{"Baseboard 3-1/4 MDF 16'", "MLD-BASE-MDF", "PCS", "Millwork Masters", "Millwork", 12.00, 19.50, 8.0, 50, 100},
-		{"Casing 2-1/4 MDF 14'", "MLD-CASE-MDF", "PCS", "Millwork Masters", "Millwork", 8.00, 13.50, 5.0, 50, 100},
+		// Lumber — costs at ~75-78% of price → margins 22-25%
+		{"2x4x8 SPF Premium", "LUM-248-PREM", "PCS", "Gable Lumber Supply", "Lumber", 4.18, 5.50, 9.0, 200, 500},
+		{"2x4x10 SPF Premium", "LUM-2410-PREM", "PCS", "Gable Lumber Supply", "Lumber", 5.58, 7.25, 11.3, 150, 400},
+		{"2x4x12 SPF Premium", "LUM-2412-PREM", "PCS", "Gable Lumber Supply", "Lumber", 6.56, 8.75, 13.5, 100, 300},
+		{"2x4x92-5/8 SPF Stud", "LUM-2492-STUD", "PCS", "Gable Lumber Supply", "Lumber", 3.88, 5.10, 8.5, 300, 600},
+		{"2x6x10 SPF Premium", "LUM-2610-PREM", "PCS", "Gable Lumber Supply", "Lumber", 7.45, 9.80, 16.9, 120, 300},
+		{"2x6x12 SPF Premium", "LUM-2612-PREM", "PCS", "Gable Lumber Supply", "Lumber", 9.05, 11.75, 20.3, 100, 250},
+		{"2x6x16 SPF Premium", "LUM-2616-PREM", "PCS", "Gable Lumber Supply", "Lumber", 11.70, 15.60, 27.0, 80, 200},
+		{"2x8x10 SPF No.2", "LUM-2810-NO2", "PCS", "Gable Lumber Supply", "Lumber", 10.56, 13.90, 22.5, 80, 200},
+		{"2x8x16 SPF No.2", "LUM-2816-NO2", "PCS", "Gable Lumber Supply", "Lumber", 17.13, 22.25, 36.0, 50, 150},
+		{"2x10x12 SPF No.2", "LUM-21012-NO2", "PCS", "Gable Lumber Supply", "Lumber", 18.38, 24.50, 33.8, 60, 150},
+		{"2x12x16 SPF No.2", "LUM-21216-NO2", "PCS", "Gable Lumber Supply", "Lumber", 34.20, 45.00, 54.0, 30, 80},
+		{"4x4x8 Pressure Treated", "LUM-448-PT", "PCS", "Gable Lumber Supply", "Lumber", 9.63, 12.50, 22.0, 100, 200},
+		{"4x4x10 Pressure Treated", "LUM-4410-PT", "PCS", "Gable Lumber Supply", "Lumber", 11.97, 15.75, 27.5, 80, 150},
+		{"6x6x12 Pressure Treated", "LUM-6612-PT", "PCS", "Gable Lumber Supply", "Lumber", 41.25, 55.00, 72.0, 30, 60},
 
-		// Cornice / Exterior Trim Materials (Hunter's Ranch demo)
-		{"Flashing J 6 X 6 X 10", "CORN2006", "EA", "Gable Lumber Supply", "Cornice", 15.50, 23.25, 3.0, 20, 50},
-		{"Flashing Z Bar 3/4 X 10'", "CORN2009", "EA", "Gable Lumber Supply", "Cornice", 3.50, 5.25, 1.5, 30, 60},
-		{"Silicone Clear Caulk", "CORNCLEAR", "EA", "Hardware Wholesale Inc", "Cornice", 5.75, 8.65, 0.8, 40, 80},
-		{"Cemtrim Textured 7/16 X 4 X 12", "CORNCTRM412+", "EA", "Gable Lumber Supply", "Cornice", 7.54, 11.31, 12.0, 50, 120},
-		{"Cemtrim Textured 7/16 X 6 X 12", "CORNCTRMG12+", "EA", "Gable Lumber Supply", "Cornice", 11.94, 17.91, 18.0, 30, 80},
-		{"Vinyl H Mold 1/4 X 12'", "CORNHMOLD14", "EA", "Gable Lumber Supply", "Cornice", 4.00, 6.00, 1.0, 30, 60},
-		{"Poly Black 18 X 300", "CORNPOLY18", "RL", "Hardware Wholesale Inc", "Cornice", 23.12, 34.68, 25.0, 10, 25},
-		{"Solid Soffit Hardie Textured 1/4 X 12 X 12", "CORNSFT1212", "EA", "Gable Lumber Supply", "Cornice", 15.25, 22.88, 20.0, 30, 60},
-		{"Solid Soffit Hardie Textured 1/4 X 16 X 12", "CORNSFT1612", "EA", "Gable Lumber Supply", "Cornice", 20.45, 30.68, 28.0, 20, 50},
-		{"Vented Soffit Hardie Textured 1/4 X 16 X 12", "CORNSFT1612V", "EA", "Gable Lumber Supply", "Cornice", 26.15, 39.23, 30.0, 25, 60},
-		{"Vented Soffit Hardie Textured 1/4 X 24 X 8", "CORNSFT2408V", "EA", "Gable Lumber Supply", "Cornice", 17.50, 26.25, 22.0, 20, 50},
-		{"Sheathing 1/8 X 4 X 9 (Green) NSP DRYLine TSX", "CORNSHTGR49", "EA", "Gable Lumber Supply", "Cornice", 9.36, 14.04, 24.0, 40, 100},
-		{"Window Tape 6\" (100')", "CORNTAPE", "RL", "Hardware Wholesale Inc", "Cornice", 22.00, 33.00, 3.0, 15, 30},
+		// Sheet Goods — costs at ~74-78% of price → margins 22-26%
+		{"3/4 Plywood CDX 4x8", "PLY-34-CDX", "PCS", "Gable Lumber Supply", "Sheet Goods", 28.88, 38.00, 70.0, 80, 200},
+		{"1/2 Plywood CDX 4x8", "PLY-12-CDX", "PCS", "Gable Lumber Supply", "Sheet Goods", 21.95, 28.50, 48.0, 80, 200},
+		{"3/4 OSB T&G 4x8", "OSB-34-TG", "PCS", "Gable Lumber Supply", "Sheet Goods", 25.50, 34.00, 65.0, 100, 250},
+		{"1/2 OSB 4x8", "OSB-12", "PCS", "Gable Lumber Supply", "Sheet Goods", 14.82, 19.50, 44.0, 120, 300},
+		{"7/16 OSB 4x8", "OSB-716", "PCS", "Gable Lumber Supply", "Sheet Goods", 13.25, 17.50, 40.0, 120, 300},
+		{"1/2 Drywall Regular 4x8", "DW-12-REG", "PCS", "Gable Lumber Supply", "Sheet Goods", 12.48, 16.00, 57.0, 100, 250},
+		{"5/8 Drywall Firecode 4x8", "DW-58-FC", "PCS", "Gable Lumber Supply", "Sheet Goods", 15.96, 21.00, 70.0, 60, 150},
 
-		// Lumber — Random Length / Economy Grade (Hunter's Ranch demo)
-		{"1 X 4 RL #3 SYP", "LUMB14RLN3+", "LF", "Gable Lumber Supply", "Lumber", 0.34, 0.52, 0.3, 500, 2000},
-		{"2 X 4 RL #3 SYP", "LUMB24RLN3", "LF", "Gable Lumber Supply", "Lumber", 0.30, 0.46, 0.5, 1000, 5000},
-		{"2 X 4 RL Utility", "LUMBUT24RL", "LF", "Gable Lumber Supply", "Lumber", 0.29, 0.44, 0.5, 500, 2000},
+		// Hardware — costs at ~75-77% of price → margins 23-25%
+		{"16d Common Nails (50lb)", "NAIL-16D-50", "BOX", "Fastener Depot", "Hardware", 50.05, 65.00, 50.0, 20, 50},
+		{"10d Common Nails (50lb)", "NAIL-10D-50", "BOX", "Fastener Depot", "Hardware", 50.05, 65.00, 50.0, 20, 50},
+		{"3\" Deck Screws (5lb)", "SCR-DECK-3-5", "BOX", "Fastener Depot", "Hardware", 22.49, 29.99, 5.0, 40, 100},
+		{"Joist Hanger 2x6", "HANGER-26", "PCS", "Hardware Wholesale Inc", "Hardware", 1.10, 1.45, 0.5, 200, 500},
+		{"Joist Hanger 2x8", "HANGER-28", "PCS", "Hardware Wholesale Inc", "Hardware", 1.27, 1.65, 0.6, 150, 400},
+		{"Joist Hanger 2x10", "HANGER-210", "PCS", "Hardware Wholesale Inc", "Hardware", 1.39, 1.85, 0.7, 100, 300},
+		{"Hurricane Tie H1", "TIE-H1", "PCS", "Hardware Wholesale Inc", "Hardware", 0.87, 1.15, 0.3, 200, 500},
+		{"Simpson Strong-Tie LUS28", "SIMP-LUS28", "PCS", "Hardware Wholesale Inc", "Hardware", 1.16, 1.50, 0.4, 150, 400},
+
+		// Roofing — costs at ~76-78% of price → margins 22-24%
+		{"Architectural Shingles 30yr", "RF-ARCH-30", "BUNDLE", "Roofing Specialists Ltd", "Roofing", 31.92, 42.00, 70.0, 50, 100},
+		{"Architectural Shingles (Black)", "RF-SH-BLK", "BUNDLE", "Roofing Specialists Ltd", "Roofing", 31.92, 42.00, 70.0, 50, 100},
+		{"Architectural Shingles (Weathered Wood)", "RF-SH-WW", "BUNDLE", "Roofing Specialists Ltd", "Roofing", 32.34, 42.00, 70.0, 50, 100},
+		{"Roofing Felt #15", "RF-FELT-15", "RL", "Roofing Specialists Ltd", "Roofing", 16.88, 22.50, 15.0, 30, 80},
+		{"Ice & Water Shield 65'", "RF-ICE-65", "RL", "Roofing Specialists Ltd", "Roofing", 74.48, 98.00, 36.0, 20, 50},
+		{"Roof Edge Drip 10'", "RF-DRIP-10", "PCS", "Roofing Specialists Ltd", "Roofing", 5.78, 7.50, 2.0, 60, 150},
+		{"Ridge Vent 4'", "RF-RIDGE-4", "PCS", "Roofing Specialists Ltd", "Roofing", 10.13, 13.50, 3.0, 40, 80},
+		{"Starter Strip", "RF-START", "PCS", "Roofing Specialists Ltd", "Roofing", 7.60, 10.00, 2.5, 40, 80},
+		{"1.25\" Roofing Nails 5lb", "RF-NAIL-125", "BOX", "Roofing Specialists Ltd", "Roofing", 14.63, 19.00, 5.0, 30, 60},
+		{"Step Flashing", "RF-FLASH-STEP", "PCS", "Roofing Specialists Ltd", "Roofing", 3.38, 4.50, 0.5, 60, 120},
+		{"Pipe Boot Flashing", "RF-FLASH-PIPE", "PCS", "Roofing Specialists Ltd", "Roofing", 10.64, 14.00, 1.5, 20, 40},
+		{"Ice & Water Shield", "RF-ICE-WTR", "RL", "Roofing Specialists Ltd", "Roofing", 75.46, 98.00, 36.0, 20, 50},
+		{"Roof Edge Drip 10'", "RF-EDGE-WHT", "PCS", "Roofing Specialists Ltd", "Roofing", 5.70, 7.50, 2.0, 60, 150},
+
+		// Insulation & Housewrap — costs at ~74-77% of price → margins 23-26%
+		{"R-13 Fiberglass Batts 15x93", "INS-R13-15", "BAG", "Valley Insulation", "Insulation", 51.68, 68.00, 32.0, 30, 60},
+		{"R-19 Fiberglass Batts 15x93", "INS-R19-15", "BAG", "Valley Insulation", "Insulation", 63.14, 82.00, 42.0, 25, 50},
+		{"R-30 Fiberglass Batts 24x48", "INS-R30-24", "BAG", "Valley Insulation", "Insulation", 73.50, 98.00, 48.0, 20, 40},
+		{"Tyvek HomeWrap 9x150", "WRP-TYVEK-9X150", "RL", "Valley Insulation", "Insulation", 134.75, 175.00, 28.0, 15, 30},
+		{"Tyvek HomeWrap 3x165", "WRP-TYVEK-3X165", "RL", "Valley Insulation", "Insulation", 52.50, 69.00, 10.0, 20, 40},
+		{"Foam Board XPS 1\" 4x8", "INS-XPS-1-48", "PCS", "Valley Insulation", "Insulation", 19.50, 25.50, 6.0, 30, 60},
+
+		// Millwork — costs at ~74-76% of price → margins 24-26%
+		{"Int Door 30x80 6-Panel Hollow", "DR-INT-3080-6P", "PCS", "Millwork Masters", "Millwork", 72.20, 95.00, 38.0, 15, 30},
+		{"Int Door 32x80 6-Panel Hollow", "DR-INT-3280-6P", "PCS", "Millwork Masters", "Millwork", 73.15, 95.00, 40.0, 15, 30},
+		{"Int Door 36x80 6-Panel Hollow", "DR-INT-3680-6P", "PCS", "Millwork Masters", "Millwork", 74.25, 99.00, 42.0, 15, 30},
+		{"Ext Door 36x80 Steel 6-Panel", "DR-EXT-3680-STL", "PCS", "Millwork Masters", "Millwork", 212.80, 280.00, 85.0, 8, 20},
+		{"Baseboard 3-1/4 MDF 16'", "MLD-BASE-MDF", "PCS", "Millwork Masters", "Millwork", 15.02, 19.50, 8.0, 50, 100},
+		{"Casing 2-1/4 MDF 14'", "MLD-CASE-MDF", "PCS", "Millwork Masters", "Millwork", 10.26, 13.50, 5.0, 50, 100},
+
+		// Cornice / Exterior Trim Materials — costs at ~75-77% of price → margins 23-25%
+		{"Flashing J 6 X 6 X 10", "CORN2006", "EA", "Gable Lumber Supply", "Cornice", 17.44, 23.25, 3.0, 20, 50},
+		{"Flashing Z Bar 3/4 X 10'", "CORN2009", "EA", "Gable Lumber Supply", "Cornice", 3.99, 5.25, 1.5, 30, 60},
+		{"Silicone Clear Caulk", "CORNCLEAR", "EA", "Hardware Wholesale Inc", "Cornice", 6.66, 8.65, 0.8, 40, 80},
+		{"Cemtrim Textured 7/16 X 4 X 12", "CORNCTRM412+", "EA", "Gable Lumber Supply", "Cornice", 8.60, 11.31, 12.0, 50, 120},
+		{"Cemtrim Textured 7/16 X 6 X 12", "CORNCTRMG12+", "EA", "Gable Lumber Supply", "Cornice", 13.43, 17.91, 18.0, 30, 80},
+		{"Vinyl H Mold 1/4 X 12'", "CORNHMOLD14", "EA", "Gable Lumber Supply", "Cornice", 4.62, 6.00, 1.0, 30, 60},
+		{"Poly Black 18 X 300", "CORNPOLY18", "RL", "Hardware Wholesale Inc", "Cornice", 26.36, 34.68, 25.0, 10, 25},
+		{"Solid Soffit Hardie Textured 1/4 X 12 X 12", "CORNSFT1212", "EA", "Gable Lumber Supply", "Cornice", 17.62, 22.88, 20.0, 30, 60},
+		{"Solid Soffit Hardie Textured 1/4 X 16 X 12", "CORNSFT1612", "EA", "Gable Lumber Supply", "Cornice", 23.01, 30.68, 28.0, 20, 50},
+		{"Vented Soffit Hardie Textured 1/4 X 16 X 12", "CORNSFT1612V", "EA", "Gable Lumber Supply", "Cornice", 29.81, 39.23, 30.0, 25, 60},
+		{"Vented Soffit Hardie Textured 1/4 X 24 X 8", "CORNSFT2408V", "EA", "Gable Lumber Supply", "Cornice", 20.21, 26.25, 22.0, 20, 50},
+		{"Sheathing 1/8 X 4 X 9 (Green) NSP DRYLine TSX", "CORNSHTGR49", "EA", "Gable Lumber Supply", "Cornice", 10.53, 14.04, 24.0, 40, 100},
+		{"Window Tape 6\" (100')", "CORNTAPE", "RL", "Hardware Wholesale Inc", "Cornice", 25.08, 33.00, 3.0, 15, 30},
+
+		// Lumber — Random Length / Economy Grade — costs at ~76-77% → margins 23-24%
+		{"1 X 4 RL #3 SYP", "LUMB14RLN3+", "LF", "Gable Lumber Supply", "Lumber", 0.40, 0.52, 0.3, 500, 2000},
+		{"2 X 4 RL #3 SYP", "LUMB24RLN3", "LF", "Gable Lumber Supply", "Lumber", 0.35, 0.46, 0.5, 1000, 5000},
+		{"2 X 4 RL Utility", "LUMBUT24RL", "LF", "Gable Lumber Supply", "Lumber", 0.34, 0.44, 0.5, 500, 2000},
 	}
 
 	skuToID := make(map[string]uuid.UUID)
@@ -341,6 +356,7 @@ func main() {
 		{"a1b2c3d4-0004-4000-8000-000000000004", "Marcus Williams", "marcus.w@gable.com", "503-555-5004", "Sales Rep"},
 		{"a1b2c3d4-0005-4000-8000-000000000005", "Tyler Brooks", "tyler.b@gable.com", "503-555-5005", "Sales Rep"},
 		{"a1b2c3d4-0006-4000-8000-000000000006", "Rachel Dunn", "rachel.d@gable.com", "503-555-5006", "Account Executive"},
+		{"a1b2c3d4-0007-4000-8000-000000000007", "Jameson Labuguen", "jameson@intellipim.com", "503-555-5007", "Account Executive"},
 	}
 	for _, sr := range salesReps {
 		db.Exec(`INSERT INTO sales_team (id, name, email, phone, role)
@@ -360,7 +376,7 @@ func main() {
 		"Summit Contracting":   "a1b2c3d4-0001-4000-8000-000000000001", // Sarah Mitchell - top account
 		"Elite Homes":          "a1b2c3d4-0001-4000-8000-000000000001", // Sarah Mitchell - top account
 		"Acme Construction":    "a1b2c3d4-0003-4000-8000-000000000003", // Emily Chen
-		"Structure Masters":    "a1b2c3d4-0003-4000-8000-000000000003", // Emily Chen
+		"Structure Masters":    "a1b2c3d4-0007-4000-8000-000000000007", // Jameson Labuguen
 		"Modern Renovations":   "a1b2c3d4-0006-4000-8000-000000000006", // Rachel Dunn
 		"Cornerstone Concrete": "a1b2c3d4-0006-4000-8000-000000000006", // Rachel Dunn
 		"Bob's Builders":       "a1b2c3d4-0002-4000-8000-000000000002", // Jake Rodriguez
