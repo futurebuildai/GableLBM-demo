@@ -415,19 +415,31 @@ func main() {
 	var portalMw func(http.Handler) http.Handler
 	if cfg.JWKSURL == "" {
 		logger.Warn("DEMO MODE: Portal auth bypassed — injecting demo customer claims")
-		// Query first customer from DB for demo claims
-		var demoCustomerID uuid.UUID
-		row := db.Pool.QueryRow(context.Background(), "SELECT id FROM customers LIMIT 1")
-		if err := row.Scan(&demoCustomerID); err != nil {
+		// Query first customer from DB as default fallback
+		var fallbackCustomerID uuid.UUID
+		row := db.Pool.QueryRow(context.Background(), "SELECT id FROM customers ORDER BY name LIMIT 1")
+		if err := row.Scan(&fallbackCustomerID); err != nil {
 			logger.Error("Failed to load demo customer", "error", err)
-			demoCustomerID = uuid.New() // Fallback
+			fallbackCustomerID = uuid.New()
 		}
 		portalMw = func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				customerID := fallbackCustomerID
+				customerName := "Demo Contractor"
+				// Allow X-Customer-Name header to resolve a specific customer
+				if name := r.Header.Get("X-Customer-Name"); name != "" {
+					var resolvedID uuid.UUID
+					err := db.Pool.QueryRow(r.Context(),
+						"SELECT id FROM customers WHERE name = $1 LIMIT 1", name).Scan(&resolvedID)
+					if err == nil {
+						customerID = resolvedID
+						customerName = name
+					}
+				}
 				claims := &middleware.PortalClaims{
-					CustomerID: demoCustomerID,
+					CustomerID: customerID,
 					Email:      "demo@gable.com",
-					Name:       "Demo Contractor",
+					Name:       customerName,
 				}
 				ctx := context.WithValue(r.Context(), middleware.PortalClaimsKey, claims)
 				next.ServeHTTP(w, r.WithContext(ctx))
