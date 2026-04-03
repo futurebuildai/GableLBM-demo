@@ -96,10 +96,10 @@ export default function QuoteList() {
         <div className="space-y-6">
             <QuoteViewTabs active="list" />
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white font-mono">Quotes</h1>
-                    <p className="text-muted-foreground mt-2">Manage sales quotes and convert to orders.</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-mono">Quotes</h1>
+                    <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">Manage sales quotes and convert to orders.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -111,18 +111,18 @@ export default function QuoteList() {
                 </div>
             </div>
 
-            <div className="bg-slate-steel border border-white/10 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-sm">
+            <div className="bg-slate-steel border border-white/10 rounded-lg overflow-hidden overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-[640px]">
                     <thead>
                         <tr className="border-b border-white/10 bg-white/5">
-                            <th className="p-4 font-medium text-muted-foreground">Quote ID</th>
-                            <th className="p-4 font-medium text-muted-foreground">Date</th>
-                            <th className="p-4 font-medium text-muted-foreground">Customer</th>
-                            <th className="p-4 font-medium text-muted-foreground">Source</th>
-                            <th className="p-4 font-medium text-muted-foreground">Fulfillment</th>
-                            <th className="p-4 font-medium text-muted-foreground">State</th>
-                            <th className="p-4 font-medium text-muted-foreground text-right">Total</th>
-                            <th className="p-4 font-medium text-muted-foreground text-right">Actions</th>
+                            <th className="p-3 sm:p-4 font-medium text-muted-foreground">Quote ID</th>
+                            <th className="p-3 sm:p-4 font-medium text-muted-foreground hidden sm:table-cell">Date</th>
+                            <th className="p-3 sm:p-4 font-medium text-muted-foreground">Customer</th>
+                            <th className="p-3 sm:p-4 font-medium text-muted-foreground hidden md:table-cell">Source</th>
+                            <th className="p-3 sm:p-4 font-medium text-muted-foreground hidden md:table-cell">Fulfillment</th>
+                            <th className="p-3 sm:p-4 font-medium text-muted-foreground">State</th>
+                            <th className="p-3 sm:p-4 font-medium text-muted-foreground text-right">Total</th>
+                            <th className="p-3 sm:p-4 font-medium text-muted-foreground text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -141,10 +141,10 @@ export default function QuoteList() {
                                 const isBusy = converting === quote.id || updatingState === quote.id;
                                 return (
                                     <tr key={quote.id} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => navigate(`/erp/quotes/${quote.id}`)}>
-                                        <td className="p-4 font-mono text-white/80">#{quote.id.slice(0, 8)}</td>
-                                        <td className="p-4 text-white/80">{new Date(quote.created_at).toLocaleDateString()}</td>
-                                        <td className="p-4 text-white font-medium">{quote.customer_name || quote.customer_id.slice(0, 8)}</td>
-                                        <td className="p-4">
+                                        <td className="p-3 sm:p-4 font-mono text-white/80 text-xs sm:text-sm">#{quote.id.slice(0, 8)}</td>
+                                        <td className="p-3 sm:p-4 text-white/80 hidden sm:table-cell">{new Date(quote.created_at).toLocaleDateString()}</td>
+                                        <td className="p-3 sm:p-4 text-white font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{quote.customer_name || quote.customer_id.slice(0, 8)}</td>
+                                        <td className="p-3 sm:p-4 hidden md:table-cell">
                                             {quote.source === 'ai' ? (
                                                 <span className="inline-flex items-center gap-1 text-xs text-violet-400">
                                                     <Sparkles size={12} /> AI
@@ -153,7 +153,7 @@ export default function QuoteList() {
                                                 <span className="text-xs text-zinc-500">Manual</span>
                                             )}
                                         </td>
-                                        <td className="p-4">
+                                        <td className="p-3 sm:p-4 hidden md:table-cell">
                                             {quote.delivery_type === 'DELIVERY' ? (
                                                 <span className="inline-flex items-center gap-1 text-xs text-blue-400">
                                                     <Truck size={12} /> Delivery
@@ -164,16 +164,16 @@ export default function QuoteList() {
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="p-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${stateColors[quote.state] || ''}`}>
+                                        <td className="p-3 sm:p-4">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium border ${stateColors[quote.state] || ''}`}>
                                                 {quote.state}
                                             </span>
                                         </td>
-                                        <td className="p-4 font-mono text-right text-gable-green">
+                                        <td className="p-3 sm:p-4 font-mono text-right text-gable-green text-xs sm:text-sm">
                                             ${quote.total_amount.toFixed(2)}
                                         </td>
-                                        <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
-                                            <div className="flex items-center justify-end gap-1.5">
+                                        <td className="p-3 sm:p-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-end gap-1">
                                                 {quote.state === 'DRAFT' && (
                                                     <button onClick={() => navigate(`/erp/quotes/${quote.id}/edit`)} disabled={isBusy}
                                                         className="text-amber-400 hover:text-amber-300 transition-colors p-1 rounded hover:bg-white/5 disabled:opacity-50" title="Edit Draft">
@@ -182,28 +182,21 @@ export default function QuoteList() {
                                                 )}
                                                 {quote.state === 'DRAFT' && (
                                                     <button onClick={() => handleStateChange(quote.id, 'SENT')} disabled={isBusy}
-                                                        className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded hover:bg-white/5 disabled:opacity-50" title="Mark Sent">
+                                                        className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded hover:bg-white/5 disabled:opacity-50 hidden sm:inline-flex" title="Mark Sent">
                                                         <Send size={14} />
                                                     </button>
                                                 )}
                                                 {(quote.state === 'DRAFT' || quote.state === 'SENT') && (
                                                     <>
                                                         <button onClick={() => handleStateChange(quote.id, 'ACCEPTED')} disabled={isBusy}
-                                                            className="text-emerald-400 hover:text-emerald-300 transition-colors p-1 rounded hover:bg-white/5 disabled:opacity-50" title="Accept">
+                                                            className="text-emerald-400 hover:text-emerald-300 transition-colors p-1 rounded hover:bg-white/5 disabled:opacity-50 hidden sm:inline-flex" title="Accept">
                                                             <Check size={14} />
                                                         </button>
                                                         <button onClick={() => handleStateChange(quote.id, 'REJECTED')} disabled={isBusy}
-                                                            className="text-red-400 hover:text-red-300 transition-colors p-1 rounded hover:bg-white/5 disabled:opacity-50" title="Reject">
+                                                            className="text-red-400 hover:text-red-300 transition-colors p-1 rounded hover:bg-white/5 disabled:opacity-50 hidden sm:inline-flex" title="Reject">
                                                             <X size={14} />
                                                         </button>
                                                     </>
-                                                )}
-                                                {(quote.state === 'DRAFT' || quote.state === 'SENT' || quote.state === 'ACCEPTED') && (
-                                                    <button onClick={() => handleConvert(quote.id)} disabled={isBusy}
-                                                        className="text-gable-green hover:text-gable-green/80 transition-colors flex items-center gap-1 text-xs font-medium disabled:opacity-50 p-1 rounded hover:bg-white/5"
-                                                        title="Convert to Order">
-                                                        <ShoppingCart size={14} />
-                                                    </button>
                                                 )}
                                                 <button onClick={() => navigate(`/erp/quotes/${quote.id}`)}
                                                     className="text-white/50 hover:text-white transition-colors p-1 rounded hover:bg-white/5">

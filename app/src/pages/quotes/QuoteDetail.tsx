@@ -84,13 +84,13 @@ export default function QuoteDetail() {
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
             {/* Header */}
-            <div className="flex items-center justify-between pb-6 border-b border-white/10">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-white/10">
                 <div>
                     <button onClick={() => navigate('/erp/quotes')} className="text-zinc-500 hover:text-white text-sm flex items-center gap-1 mb-3 transition-colors">
                         <ArrowLeft size={14} /> Back to Quotes
                     </button>
-                    <div className="flex items-center gap-4 mb-2">
-                        <h1 className="text-3xl font-bold font-mono text-white">Quote #{quote.id.slice(0, 8)}</h1>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-2">
+                        <h1 className="text-2xl sm:text-3xl font-bold font-mono text-white">Quote #{quote.id.slice(0, 8)}</h1>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${stateColors[quote.state] || ''}`}>
                             {quote.state}
                         </span>
@@ -100,39 +100,39 @@ export default function QuoteDetail() {
                             </span>
                         )}
                     </div>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground text-sm sm:text-base">
                         {quote.customer_name || quote.customer_id.slice(0, 8)} &middot; Created {new Date(quote.created_at).toLocaleDateString()}
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     {quote.state === 'DRAFT' && (
                         <button onClick={() => navigate(`/erp/quotes/${quote.id}/edit`)} disabled={processing}
-                            className="bg-surface-3 text-white px-4 py-2 rounded hover:bg-surface-2 transition-colors flex items-center gap-2 text-sm font-medium border border-white/10 disabled:opacity-50">
-                            <Pencil size={14} /> Edit Quote
+                            className="bg-surface-3 text-white px-3 sm:px-4 py-2 rounded hover:bg-surface-2 transition-colors flex items-center gap-2 text-sm font-medium border border-white/10 disabled:opacity-50">
+                            <Pencil size={14} /> <span className="hidden sm:inline">Edit Quote</span><span className="sm:hidden">Edit</span>
                         </button>
                     )}
                     {quote.state === 'DRAFT' && (
                         <button onClick={() => handleStateChange('SENT')} disabled={processing}
-                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50">
-                            <Send size={14} /> Mark Sent
+                            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-500 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50">
+                            <Send size={14} /> <span className="hidden sm:inline">Mark</span> Sent
                         </button>
                     )}
                     {(quote.state === 'DRAFT' || quote.state === 'SENT') && (
                         <>
                             <button onClick={() => handleStateChange('ACCEPTED')} disabled={processing}
-                                className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-500 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50">
+                                className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-emerald-500 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50">
                                 <Check size={14} /> Accept
                             </button>
                             <button onClick={() => handleStateChange('REJECTED')} disabled={processing}
-                                className="bg-red-600/80 text-white px-4 py-2 rounded hover:bg-red-500 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50">
+                                className="bg-red-600/80 text-white px-3 sm:px-4 py-2 rounded hover:bg-red-500 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50">
                                 <X size={14} /> Reject
                             </button>
                         </>
                     )}
                     {(quote.state === 'DRAFT' || quote.state === 'SENT' || quote.state === 'ACCEPTED') && (
                         <button onClick={handleConvert} disabled={processing}
-                            className="bg-gable-green text-black px-4 py-2 rounded hover:bg-gable-green/90 transition-colors flex items-center gap-2 text-sm font-bold disabled:opacity-50">
-                            <ShoppingCart size={14} /> Convert to Order
+                            className="bg-gable-green text-black px-3 sm:px-4 py-2 rounded hover:bg-gable-green/90 transition-colors flex items-center gap-2 text-sm font-bold disabled:opacity-50">
+                            <ShoppingCart size={14} /> Convert
                         </button>
                     )}
                 </div>
@@ -340,8 +340,8 @@ function DetailsTab({ quote, onQuoteUpdated }: { quote: Quote; onQuoteUpdated?: 
             </div>
 
             {/* Line Items */}
-            <div className="bg-slate-steel border border-white/10 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-sm">
+            <div className="bg-slate-steel border border-white/10 rounded-lg overflow-hidden overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-[600px]">
                     <thead>
                         <tr className="border-b border-white/10 bg-white/5">
                             <th className="p-4 font-medium text-muted-foreground">SKU</th>

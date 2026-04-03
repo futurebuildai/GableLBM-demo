@@ -11,9 +11,25 @@ import { DemoModeIndicator } from '../ui/DemoModeIndicator';
 import { BrandLogo } from '../ui/BrandLogo';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const location = useLocation();
+
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 1024;
+            setIsMobile(mobile);
+            if (!mobile && !sidebarOpen) setSidebarOpen(true);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [sidebarOpen]);
+
+    // Close sidebar on navigation on mobile
+    useEffect(() => {
+        if (isMobile) setSidebarOpen(false);
+    }, [location.pathname]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -29,10 +45,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     return (
         <div className="min-h-screen bg-deep-space text-foreground flex overflow-hidden font-sans selection:bg-gable-green/30">
+            {/* Mobile backdrop */}
+            {isMobile && sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/60 z-40"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
             <motion.aside
                 initial={false}
-                animate={{ width: sidebarOpen ? 280 : 80 }}
+                animate={isMobile
+                    ? { x: sidebarOpen ? 0 : -280, width: 280 }
+                    : { x: 0, width: sidebarOpen ? 280 : 80 }
+                }
                 transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }} // MD3 Emphasized easing
                 className="bg-slate-steel border-r border-white/5 flex flex-col fixed inset-y-0 left-0 z-50 shadow-elevation-2"
             >
@@ -98,7 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* Main Content */}
             <motion.main
-                animate={{ marginLeft: sidebarOpen ? 280 : 80 }}
+                animate={{ marginLeft: isMobile ? 0 : (sidebarOpen ? 280 : 80) }}
                 transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
                 className="flex-1 flex flex-col min-h-screen relative w-full"
             >
@@ -134,7 +161,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </header>
 
                 {/* Page Content with Transition */}
-                <div className="p-6 md:p-8 max-w-[1600px] w-full">
+                <div className="p-4 sm:p-6 md:p-8 max-w-[1600px] w-full">
                     <PageTransition key={location.pathname}>
                         {children}
                     </PageTransition>
