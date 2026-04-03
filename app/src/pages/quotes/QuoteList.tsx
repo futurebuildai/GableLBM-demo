@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowRight, ShoppingCart, BarChart3, Sparkles, Send, Check, X, List, FilePlus, Pencil, Truck, Package } from 'lucide-react';
+import { ArrowRight, BarChart3, Sparkles, Send, Check, X, List, FilePlus, Pencil, Truck, Package } from 'lucide-react';
 import { QuoteService } from '../../services/QuoteService';
-import { OrderService } from '../../services/OrderService';
 import type { Quote, QuoteState } from '../../types/quote';
 import { useToast } from '../../components/ui/ToastContext';
 import { cn } from '../../lib/utils';
@@ -39,7 +38,6 @@ export default function QuoteList() {
     const { showToast } = useToast();
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [loading, setLoading] = useState(true);
-    const [converting, setConverting] = useState<string | null>(null);
     const [updatingState, setUpdatingState] = useState<string | null>(null);
 
     useEffect(() => {
@@ -54,20 +52,6 @@ export default function QuoteList() {
             console.error('Failed to load quotes:', error);
         } finally {
             setLoading(false);
-        }
-    }
-
-    async function handleConvert(quoteId: string) {
-        setConverting(quoteId);
-        try {
-            const orderPayload = await QuoteService.convertToOrder(quoteId);
-            const order = await OrderService.createOrder(orderPayload);
-            showToast('Quote converted to order successfully', 'success');
-            navigate(`/erp/orders/${order.id}`);
-        } catch (error) {
-            showToast(`Failed to convert: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
-        } finally {
-            setConverting(null);
         }
     }
 
@@ -138,7 +122,7 @@ export default function QuoteList() {
                             </tr>
                         ) : (
                             quotes.map((quote) => {
-                                const isBusy = converting === quote.id || updatingState === quote.id;
+                                const isBusy = updatingState === quote.id;
                                 return (
                                     <tr key={quote.id} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => navigate(`/erp/quotes/${quote.id}`)}>
                                         <td className="p-3 sm:p-4 font-mono text-white/80 text-xs sm:text-sm">#{quote.id.slice(0, 8)}</td>
