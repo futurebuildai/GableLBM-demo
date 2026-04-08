@@ -251,24 +251,36 @@ func (c *Client) ExtractFreightInvoice(ctx context.Context, fileBytes []byte, co
 }
 
 // systemPrompt instructs Claude how to extract material lists.
-const systemPrompt = `You are a material list extraction assistant for a lumber and building materials dealer.
+const systemPrompt = `You are a material list extraction assistant for a lumber and building materials dealer in the United States.
 
-Your job is to extract structured line items from uploaded material lists — these may be handwritten notes, printed lists, PDFs, spreadsheets, or photos.
+Your job is to extract structured line items from uploaded material lists — these may be handwritten notes, printed lists, PDFs, spreadsheets, or photos. Lists may be written in ANY language (especially Spanish) or contain misspellings.
 
 For each item you find, output exactly one line in this format:
 QUANTITY UOM - DESCRIPTION
 
 Rules:
+- ALWAYS translate ALL descriptions into clean, standard American English using proper US lumber/building materials industry terminology
+- Correct ALL misspellings, abbreviations, and shorthand — output the proper product name
+- Common Spanish translations: "plancha"=sheet/board, "rollos"=rolls, "clavos"=nails, "libras"=lbs, "pulgadas"=inches, "madera"=lumber, "tornillos"=screws, "cemento"=concrete, "tablas"=boards, "vigas"=beams, "tejas"=shingles, "tubos"=pipes, "pegamento"=adhesive, "lija"=sandpaper, "pintura"=paint
+- Recognize misspelled brand names: "Tyguek"/"Tyvek"/"tyvec"=Tyvek, "Quikrete"/"quickrete"=Quikrete, "Hardie"/"hardy"=Hardie
+- "SOB board" or "SOB" = OSB (Oriented Strand Board) — this is a common handwriting misread
 - QUANTITY must be a number (integer or decimal)
-- UOM should be one of: pcs, ea, lf, sf, bf, sheets, bags, rolls, bundles, gal
-- DESCRIPTION should include dimensions, species, grade, and any other identifying details
+- UOM should be one of: pcs, ea, lf, sf, bf, sheets, bags, rolls, bundles, gal, lbs
+- DESCRIPTION should include dimensions, species, grade, and any other identifying details in standard US format
 - If you cannot determine the quantity, default to 1
 - If you cannot determine the UOM, default to pcs
 - Output ONLY the extracted lines, nothing else — no headers, no explanations
 - Each line item on its own line
-- Preserve the original descriptions as closely as possible while being clear
 
-Example output:
+Example — handwritten Spanish input:
+"12 - 2x4x8 SPF, 5 - 1/2 plancha SOB board, 2 rollos Tyguek, 50 libras 3 puligades clavos"
+Expected output:
+12 pcs - 2x4x8 SPF Stud
+5 sheets - 1/2 OSB 4x8
+2 rolls - Tyvek HomeWrap
+50 lbs - 3" Common Nails
+
+More examples:
 50 pcs - 2x4x8 SPF Stud
 25 pcs - 2x6x12 Doug Fir #2
 30 sheets - OSB 7/16 4x8
@@ -298,7 +310,7 @@ func (c *Client) ExtractMaterialList(ctx context.Context, fileBytes []byte, cont
 			},
 			{
 				Type: "text",
-				Text: "Extract all material list items from this image. Output each item as: QUANTITY UOM - DESCRIPTION",
+				Text: "Extract all material list items from this image. Translate any non-English text to standard US building materials terminology. Correct all misspellings and brand name errors. Output each item as: QUANTITY UOM - DESCRIPTION",
 			},
 		}
 	case contentType == "application/pdf":
@@ -314,7 +326,7 @@ func (c *Client) ExtractMaterialList(ctx context.Context, fileBytes []byte, cont
 			},
 			{
 				Type: "text",
-				Text: "Extract all material list items from this PDF. Output each item as: QUANTITY UOM - DESCRIPTION",
+				Text: "Extract all material list items from this PDF. Translate any non-English text to standard US building materials terminology. Correct all misspellings and brand name errors. Output each item as: QUANTITY UOM - DESCRIPTION",
 			},
 		}
 	case contentType == "text/plain" || contentType == "text/csv":
@@ -322,7 +334,7 @@ func (c *Client) ExtractMaterialList(ctx context.Context, fileBytes []byte, cont
 		content = []contentPart{
 			{
 				Type: "text",
-				Text: "Extract all material list items from this text data. Output each item as: QUANTITY UOM - DESCRIPTION\n\n" + string(fileBytes),
+				Text: "Extract all material list items from this text data. Translate any non-English text to standard US building materials terminology. Correct all misspellings and brand name errors. Output each item as: QUANTITY UOM - DESCRIPTION\n\n" + string(fileBytes),
 			},
 		}
 	default:
