@@ -4,6 +4,9 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Disable upload size limit for material list photos, PDFs, spreadsheets
+    client_max_body_size 0;
+
     # SPA fallback — send all non-file requests to index.html
     location / {
         try_files $uri $uri/ /index.html;
