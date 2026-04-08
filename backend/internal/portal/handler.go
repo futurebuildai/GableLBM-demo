@@ -13,8 +13,12 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// maxBodySize is the maximum request body size (1MB).
+// maxBodySize is the maximum request body size (1MB) for normal endpoints.
 const maxBodySize = 1 << 20
+
+// maxQuoteBodySize is the maximum request body size for quote creation (20MB).
+// Quote requests may include a base64-encoded original file (image/PDF).
+const maxQuoteBodySize = 20 << 20
 
 // Handler provides HTTP handlers for portal endpoints.
 type Handler struct {
@@ -550,7 +554,7 @@ func (h *Handler) HandleParseText(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateQuickQuote creates a draft quote from parsed material list items.
 func (h *Handler) HandleCreateQuickQuote(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	r.Body = http.MaxBytesReader(w, r.Body, maxQuoteBodySize)
 	customerID := getPortalCustomerID(r)
 
 	var req PortalQuoteRequest
