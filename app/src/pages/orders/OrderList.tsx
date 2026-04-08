@@ -4,6 +4,9 @@ import { ArrowRight } from 'lucide-react';
 import { OrderService } from '../../services/OrderService';
 import { type Order, getStatusColor } from '../../types/order';
 
+const fmt = (cents: number) =>
+    (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function OrderList() {
     const navigate = useNavigate();
     const [orders, setOrders] = useState<Order[]>([]);
@@ -70,7 +73,7 @@ export default function OrderList() {
                                         <StatusBadge status={order.status} />
                                     </td>
                                     <td className="p-4 font-mono text-right text-gable-green">
-                                        ${order.total_amount.toFixed(2)}
+                                        ${fmt(order.total_amount)}
                                     </td>
                                     <td className="p-4 text-right">
                                         <button

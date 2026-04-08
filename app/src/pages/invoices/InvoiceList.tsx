@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { InvoiceService } from '../../services/InvoiceService';
 import type { Invoice } from '../../types/invoice';
 
+const fmt = (cents: number) =>
+    (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function InvoiceList() {
     const navigate = useNavigate();
     const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -58,7 +61,7 @@ export default function InvoiceList() {
                                         <td className="px-6 py-3 font-mono text-zinc-400">{inv.order_id.slice(0, 8)}</td>
                                         <td className="px-6 py-3 text-zinc-300">{inv.customer_name || inv.customer_id.slice(0, 8)}</td>
                                         <td className="px-6 py-3 text-right font-mono text-emerald-400 font-medium">
-                                            ${inv.total_amount.toFixed(2)}
+                                            ${fmt(inv.total_amount)}
                                         </td>
                                         <td className="px-6 py-3">
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border

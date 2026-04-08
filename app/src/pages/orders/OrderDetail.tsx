@@ -9,6 +9,9 @@ import { useToast } from '../../components/ui/ToastContext';
 
 const API_URL = '';
 
+const fmt = (cents: number) =>
+    (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function OrderDetail() {
     const { id } = useParams();
     const { showToast } = useToast();
@@ -151,13 +154,13 @@ export default function OrderDetail() {
                                                 {line.product_name && <div className="text-xs text-muted-foreground">{line.product_name}</div>}
                                             </td>
                                             <td className="p-4 text-white font-mono text-right">{line.quantity}</td>
-                                            <td className="p-4 text-white font-mono text-right">${line.price_each.toFixed(2)}</td>
+                                            <td className="p-4 text-white font-mono text-right">${fmt(line.price_each)}</td>
                                             <td className="p-4 text-gable-green font-mono text-right font-medium">
-                                                ${lineTotal.toFixed(2)}
+                                                ${fmt(lineTotal)}
                                             </td>
-                                            <td className="p-4 text-zinc-400 font-mono text-right">${lineCost.toFixed(2)}</td>
+                                            <td className="p-4 text-zinc-400 font-mono text-right">${fmt(lineCost)}</td>
                                             <td className={`p-4 font-mono text-right ${lmColor}`}>
-                                                ${lineMargin.toFixed(2)}
+                                                ${fmt(lineMargin)}
                                                 <span className="text-xs ml-1">({lineMarginPct.toFixed(1)}%)</span>
                                             </td>
                                         </tr>
@@ -168,13 +171,13 @@ export default function OrderDetail() {
                                 <tr>
                                     <td colSpan={3} className="p-4 text-right font-bold text-white uppercase">Grand Total</td>
                                     <td className="p-4 text-right font-bold text-gable-green font-mono text-lg">
-                                        ${order.total_amount.toFixed(2)}
+                                        ${fmt(order.total_amount)}
                                     </td>
                                     <td className="p-4 text-right font-mono text-zinc-400">
-                                        ${order.total_cost.toFixed(2)}
+                                        ${fmt(order.total_cost)}
                                     </td>
                                     <td className={`p-4 text-right font-mono font-bold ${marginColor}`}>
-                                        ${order.total_margin.toFixed(2)}
+                                        ${fmt(order.total_margin)}
                                     </td>
                                 </tr>
                             </tfoot>
@@ -226,21 +229,21 @@ export default function OrderDetail() {
                         <div className="space-y-3 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-zinc-400">Revenue</span>
-                                <span className="text-white font-mono font-medium">${order.total_amount.toFixed(2)}</span>
+                                <span className="text-white font-mono font-medium">${fmt(order.total_amount)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-zinc-400">Cost</span>
-                                <span className="text-white font-mono">${order.total_cost.toFixed(2)}</span>
+                                <span className="text-white font-mono">${fmt(order.total_cost)}</span>
                             </div>
                             <div className="border-t border-white/10 pt-3 flex justify-between">
                                 <span className="text-zinc-400">Margin</span>
                                 <span className={`font-mono font-bold ${marginColor}`}>
-                                    ${order.total_margin.toFixed(2)} ({order.margin_percent.toFixed(1)}%)
+                                    ${fmt(order.total_margin)} ({order.margin_percent.toFixed(1)}%)
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-zinc-400">Commission</span>
-                                <span className="text-white font-mono">${order.total_commission.toFixed(2)}</span>
+                                <span className="text-white font-mono">${fmt(order.total_commission)}</span>
                             </div>
                         </div>
                     </div>
