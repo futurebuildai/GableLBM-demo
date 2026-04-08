@@ -11,6 +11,9 @@ import { ReportingService } from '../../services/ReportingService';
 
 const API_URL = '';
 
+const fmt = (cents: number) =>
+    (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function InvoiceDetail() {
     const { id } = useParams();
     const { showToast } = useToast();
@@ -166,8 +169,8 @@ export default function InvoiceDetail() {
                                     {line.product_name && <div className="text-xs text-zinc-400">{line.product_name}</div>}
                                 </td>
                                 <td className="px-6 py-4 text-right text-zinc-300 font-mono">{line.quantity}</td>
-                                <td className="px-6 py-4 text-right text-zinc-300 font-mono">${line.price_each.toFixed(2)}</td>
-                                <td className="px-6 py-4 text-right text-white font-mono font-bold">${(line.quantity * line.price_each).toFixed(2)}</td>
+                                <td className="px-6 py-4 text-right text-zinc-300 font-mono">${fmt(line.price_each)}</td>
+                                <td className="px-6 py-4 text-right text-white font-mono font-bold">${fmt(line.quantity * line.price_each)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -176,17 +179,17 @@ export default function InvoiceDetail() {
                             <>
                                 <tr>
                                     <td colSpan={3} className="px-6 py-2 text-right text-zinc-400">Subtotal</td>
-                                    <td className="px-6 py-2 text-right text-zinc-300 font-mono">${invoice.subtotal.toFixed(2)}</td>
+                                    <td className="px-6 py-2 text-right text-zinc-300 font-mono">${fmt(invoice.subtotal)}</td>
                                 </tr>
                                 <tr>
                                     <td colSpan={3} className="px-6 py-2 text-right text-zinc-400">Tax ({(invoice.tax_rate * 100).toFixed(2)}%)</td>
-                                    <td className="px-6 py-2 text-right text-zinc-300 font-mono">${invoice.tax_amount.toFixed(2)}</td>
+                                    <td className="px-6 py-2 text-right text-zinc-300 font-mono">${fmt(invoice.tax_amount)}</td>
                                 </tr>
                             </>
                         )}
                         <tr>
                             <td colSpan={3} className="px-6 py-4 text-right text-zinc-400 font-bold uppercase">Total Due</td>
-                            <td className="px-6 py-4 text-right text-emerald-500 font-bold font-mono text-xl">${invoice.total_amount.toFixed(2)}</td>
+                            <td className="px-6 py-4 text-right text-emerald-500 font-bold font-mono text-xl">${fmt(invoice.total_amount)}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -198,7 +201,7 @@ export default function InvoiceDetail() {
                     <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
                         <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
                             <h3 className="text-zinc-100 font-bold">Payment History</h3>
-                            <span className="text-zinc-400 text-sm">Paid: <span className="text-green-400 font-mono">${totalPaid.toFixed(2)}</span></span>
+                            <span className="text-zinc-400 text-sm">Paid: <span className="text-green-400 font-mono">${fmt(totalPaid)}</span></span>
                         </div>
                         <table className="w-full text-left text-sm">
                             <thead className="bg-zinc-950 text-zinc-400 uppercase text-xs">
@@ -215,7 +218,7 @@ export default function InvoiceDetail() {
                                         <td className="px-6 py-4 text-zinc-300">{new Date(p.created_at).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-zinc-300 font-bold">{p.method}</td>
                                         <td className="px-6 py-4 text-zinc-400 font-mono text-xs">{p.reference || '-'}</td>
-                                        <td className="px-6 py-4 text-right text-white font-mono font-bold">${p.amount.toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-right text-white font-mono font-bold">${fmt(p.amount)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -289,7 +292,7 @@ export default function InvoiceDetail() {
                         onClose={() => setIsPaymentModalOpen(false)}
                         onSave={handlePayment}
                         invoiceId={invoice.id}
-                        amountDue={amountDue > 0 ? amountDue : 0}
+                        amountDue={amountDue > 0 ? amountDue / 100 : 0}
                     />
                 )
             }
